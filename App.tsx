@@ -17,6 +17,7 @@ import EditLocation from './screens/EditLocation';
 import ClientRegistration from './screens/Login&RegistrationScreens/clientRegistration.tsx';
 import NavigationMap from './screens/GoogleMapsScreens/NavigationMap.tsx';
 import SelectLocation from './screens/GoogleMapsScreens/SelectLocation.tsx';
+import RHomeScreen from './screens/RecipientHomePageScreens/RHomeScreen.tsx';
 
 // Define your navigation types
 type RootStackParamList = {
@@ -100,7 +101,7 @@ const App = () => {
     <UserProvider>
       <NavigationContainer>
         <Stack.Navigator 
-          initialRouteName="Login"
+          initialRouteName="RHome"
           screenOptions={{
             headerShown: false
           }}
@@ -164,6 +165,10 @@ const App = () => {
           <Stack.Screen
             name="SelectLocation"
             component={SelectLocation}
+          />
+          <Stack.Screen
+            name="RHome"
+            component={RHomeScreen}
           />
         </Stack.Navigator>
       </NavigationContainer>
