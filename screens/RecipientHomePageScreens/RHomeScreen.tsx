@@ -1,16 +1,40 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, Modal } from "react-native";
 import Icon from "react-native-vector-icons/MaterialIcons";
-import RNPickerSelect from "react-native-picker-select";
+import { Dropdown } from "react-native-element-dropdown";
 
-const PickupsScreen = () => {
-  const [availablePickups, setAvailablePickups] = useState([
-    { id: 1, itemName: "S24 Ultra - Phone" },
+ const RHomeScreen = () => {
+ const [availablePickups, setAvailablePickups] = useState([
+  {
+    id: 1,
+    pickUpNo: "PICK1234",
+    itemName: "S24 Ultra - Phone",
+    type: "Electronics",
+    condition: "New",
+    length: "15cm",
+    width: "7cm",
+    height: "1cm",
+    quantity: 1,
+    address: "3, Eko Galleria, C0301, C0302, C0401, Blok C, Taman, Persiaran Eko Botani, 79100 Iskandar Puteri, Johor Darul Ta'zim",
+  },
+  {
+    id: 2,
+    pickUpNo: "PICK5678",
+    itemName: "MacBook Pro 14",
+    type: "Laptop",
+    condition: "Refurbished",
+    length: "32cm",
+    width: "22cm",
+    height: "2cm",
+    quantity: 1,
+    address: "3, Eko Galleria, C0301, C0302, C0401, Blok C, Taman, Persiaran Eko Botani, 79100 Iskandar Puteri, Johor Darul Ta'zim",
+  },
   ]);
-  const [pendingPickups, setPendingPickups] = useState([
-    { id: 2, itemName: "S24 - Phone", collector: "XXXX" },
-  ]);
-  const [modalVisible, setModalVisible] = useState(false);
+
+  const [pendingPickups, setPendingPickups] = useState([]);
+  const [modal1Visible, setModal1Visible] = useState(false);
+  const [modal2Visible, setModal2Visible] = useState(false);
+  const [modal3Visible, setModal3Visible] = useState(false);
   const [selectedPickup, setSelectedPickup] = useState(null);
   const [selectedCollector, setSelectedCollector] = useState(null);
   const [collectors, setCollectors] = useState([]);
@@ -25,14 +49,22 @@ const PickupsScreen = () => {
 
   const acceptPickup = (pickup) => {
     setSelectedPickup(pickup);
-    setModalVisible(true);
+    setModal2Visible(true);
+  };
+  const viewPickupDetails = (pickup) => {
+    setSelectedPickup(pickup);
+    setModal1Visible(true);
+  };
+  const viewPendingPickupStatus = (pickup) => {
+    setSelectedPickup(pickup);
+    setModal3Visible(true);
   };
 
   const assignCollector = () => {
     if (selectedPickup && selectedCollector) {
-      setPendingPickups([...pendingPickups, { ...selectedPickup, collector: selectedCollector }]);
+      setPendingPickups([...pendingPickups, { ...selectedPickup, collector: selectedCollector ,status: "Out for pickup"}]);
       setAvailablePickups(availablePickups.filter((item) => item.id !== selectedPickup.id));
-      setModalVisible(false);
+      setModal2Visible(false);
       setSelectedCollector(null);
     }
   };
@@ -52,7 +84,7 @@ const PickupsScreen = () => {
           <View style={styles.pickupCard}>
             <Text style={styles.itemText}>{item.itemName}</Text>
             <View style={styles.iconRow}>
-              <TouchableOpacity>
+              <TouchableOpacity onPress={() => viewPickupDetails(item)}>
                 <Icon name="visibility" size={20} color="black" />
               </TouchableOpacity>
               <TouchableOpacity style={styles.acceptButton} onPress={() => acceptPickup(item)}>
@@ -73,11 +105,8 @@ const PickupsScreen = () => {
             <Text style={styles.itemText}>{item.itemName}</Text>
             <Text style={styles.collectorText}>Collector: {item.collector}</Text>
             <View style={styles.iconRow}>
-              <TouchableOpacity style={{ marginRight: 10 }}>
-                <Icon name="visibility" size={20} color="black" />
-              </TouchableOpacity>
-              <TouchableOpacity>
-                <Icon name="shopping-cart" size={20} color="black" />
+              <TouchableOpacity onPress={() => viewPendingPickupStatus(item)}>
+                <Icon name="hourglass-empty" size={20} color="black" />
               </TouchableOpacity>
             </View>
           </View>
@@ -99,24 +128,97 @@ const PickupsScreen = () => {
         </TouchableOpacity>
       </View>
 
-      <Modal visible={modalVisible} animationType="slide" transparent={true}>
+      <Modal visible={modal1Visible} animationType="slide" transparent={true}>
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
-            <TouchableOpacity onPress={() => setModalVisible(false)}>
+              <TouchableOpacity onPress={() => setModal1Visible(false)} style={{ alignSelf: "flex-start" }}>
+                <Icon name="close" size={24} color="black" />
+              </TouchableOpacity>
+              <Text style={styles.modalTitle}>Pickup details</Text>
+             {selectedPickup && (
+              <View>
+              <Text style={styles.label}><Text style={styles.bold}>Pickup No:</Text> {selectedPickup.pickUpNo}</Text>
+              <Text style={styles.label}><Text style={styles.bold}>Item Name:</Text> {selectedPickup.itemName}</Text>
+              <Text style={styles.label}><Text style={styles.bold}>Type:</Text> {selectedPickup.type}</Text>
+              <Text style={styles.label}><Text style={styles.bold}>Condition:</Text> {selectedPickup.condition}</Text>
+              <Text style={styles.label}><Text style={styles.bold}>Size:</Text> {selectedPickup.length} x {selectedPickup.width} x {selectedPickup.height}</Text>
+              <Text style={styles.label}><Text style={styles.bold}>Quantity:</Text> {selectedPickup.quantity}</Text>
+              <Text style={styles.label}><Text style={styles.bold}>Address:</Text> {selectedPickup.address}</Text>
+            </View> )}
+          </View>
+        </View>
+      </Modal>
+      <Modal visible={modal2Visible} animationType="slide" transparent={true}>
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <TouchableOpacity onPress={() => setModal2Visible(false)} style={{ alignSelf: "flex-start" }}>
               <Icon name="close" size={24} color="black" />
             </TouchableOpacity>
             <Text style={styles.modalTitle}>Assign to</Text>
             <Text style={styles.label}>Select Collector</Text>
 
-            <RNPickerSelect
-              onValueChange={(value) => setSelectedCollector(value)}
-              items={collectors}
-              placeholder={{ label: "Select a collector...", value: null }}
+           <Dropdown
+              style={styles.dropdown}
+              placeholderStyle={styles.placeholderStyle}
+              selectedTextStyle={styles.selectedTextStyle}
+              inputSearchStyle={styles.inputSearchStyle}
+              itemTextStyle={styles.itemTextStyle}
+              data={collectors}
+              labelField="label"
+              valueField="value"
+              placeholder="Select a collector..."
+              value={selectedCollector}
+              onChange={(item) => setSelectedCollector(item.value)}
             />
 
             <TouchableOpacity style={styles.assignButton} onPress={assignCollector} disabled={!selectedCollector}>
               <Text style={styles.assignText}>Confirm</Text>
             </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+      <Modal visible={modal3Visible} animationType="slide" transparent={true}>
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+
+            <TouchableOpacity onPress={() => setModal3Visible(false)} style={{ alignSelf: "flex-start" }}>
+              <Icon name="close" size={24} color="black" />
+            </TouchableOpacity>
+
+            <Text style={styles.modalTitle}>Pending Pickup Details</Text>
+
+            {selectedPickup && (
+              <View>
+                  <View style={styles.statusContainer}>
+                     {selectedPickup.status === "Out for pickup" && (
+                       <>
+                         <Icon name="local-shipping" size={80} color="blue" />
+                         <Text style={styles.statusText}>Collector out for pickup</Text>
+                       </>
+                     )}
+                     {selectedPickup.status === "Collected" && (
+                       <>
+                         <Icon name="move-to-inbox" size={80} color="orange" />
+                         <Text style={styles.statusText}>Collector received</Text>
+                       </>
+                     )}
+                     {selectedPickup.status === "Recycled" && (
+                       <>
+                         <Icon name="check-circle-outline" size={80} color="green" />
+                         <Text style={styles.statusText}>Company received, completed pickup</Text>
+                       </>
+                     )}
+                   </View>
+              <Text style={styles.label}><Text style={styles.bold}>Pickup No:</Text> {selectedPickup.pickUpNo}</Text>
+              <Text style={styles.label}><Text style={styles.bold}>Item Name:</Text> {selectedPickup.itemName}</Text>
+              <Text style={styles.label}><Text style={styles.bold}>Type:</Text> {selectedPickup.type}</Text>
+              <Text style={styles.label}><Text style={styles.bold}>Condition:</Text> {selectedPickup.condition}</Text>
+              <Text style={styles.label}><Text style={styles.bold}>Size:</Text> {selectedPickup.length} x {selectedPickup.width} x {selectedPickup.height}</Text>
+              <Text style={styles.label}><Text style={styles.bold}>Quantity:</Text> {selectedPickup.quantity}</Text>
+              <Text style={styles.label}><Text style={styles.bold}>Address:</Text> {selectedPickup.address}</Text>
+              </View>
+            )}
+
           </View>
         </View>
       </Modal>
@@ -221,11 +323,20 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "bold",
     marginBottom: 10,
+    color:"black",
   },
   label: {
     alignSelf: "flex-start",
     fontSize: 14,
-    marginBottom: 5,
+    marginTop: 10 ,
+    color:"black",
+  },
+  bold: {
+    alignSelf: "flex-start",
+    fontSize: 14,
+    marginTop: 10 ,
+    fontWeight: "bold",
+    color:"black",
   },
   assignButton: {
     backgroundColor: "#5E4DCD",
@@ -239,13 +350,43 @@ const styles = StyleSheet.create({
     color: "white",
     fontWeight: "bold",
   },
-  picker: {
-    fontSize: 16,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 5,
+  dropdown: {
     width: "100%",
-    textAlign: "center",
+    height: 50,
+    borderColor: "#ccc",
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    backgroundColor: "white",
+  },
+  itemTextStyle: {
+    color: "#000",
+    fontSize: 16,
+  },
+  placeholderStyle: {
+    color: "#161717",
+    fontSize: 16,
+  },
+  selectedTextStyle: {
+    color: "#2645f0",
+    fontSize: 16,
+  },
+  inputSearchStyle: {
+    color: "#000",
+    fontSize: 16,
+  },
+  statusContainer: {
+    padding: 20,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  statusText: {
+    marginTop: 10,
+    marginBottom: 10,
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#333",
   },
 });
+
+export default RHomeScreen;
