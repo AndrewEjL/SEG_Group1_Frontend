@@ -194,7 +194,8 @@ const MapScreen: React.FC<MapScreenProps> = ({ navigation, route }) => {
         <Text style={styles.headerTitle}>Select Location</Text>
       </View>
 
-      <ScrollView 
+      <ScrollView
+        nestedScrollEnabled={true}
         style={styles.scrollContainer}
         contentContainerStyle={[
           styles.scrollContentContainer,
@@ -381,7 +382,7 @@ const styles = StyleSheet.create({
   searchContainer: {
     position: "absolute",
     width: "90%",
-    top: 15,
+    top: 5,
     left: "5%",
     backgroundColor: "white",
     padding: 12,
