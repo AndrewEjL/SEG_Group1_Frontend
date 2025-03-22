@@ -17,6 +17,8 @@ import EditLocation from './screens/EditLocation';
 import ClientRegistration from './screens/Login&RegistrationScreens/clientRegistration.tsx';
 import NavigationMap from './screens/GoogleMapsScreens/NavigationMap.tsx';
 import SelectLocation from './screens/GoogleMapsScreens/SelectLocation.tsx';
+import CProfileScreen from './screens/CProfileScreen';
+import PickupHistoryScreen from './screens/PickupHistoryScreen';
 
 // Define your navigation types
 type RootStackParamList = {
@@ -47,6 +49,8 @@ type RootStackParamList = {
   ClientRegistration: undefined;
   NavigationMap: undefined;
   SelectLocation: { onLocationSelect: (location: any) => void };
+  CProfileScreen: undefined;
+  PickupHistory: undefined;
 };
 
 // Type for navigation prop
@@ -164,6 +168,14 @@ const App = () => {
           <Stack.Screen
             name="SelectLocation"
             component={SelectLocation}
+          />
+          <Stack.Screen
+            name="CProfileScreen"
+            component={CProfileScreen}
+          />
+          <Stack.Screen
+            name="PickupHistory"
+            component={PickupHistoryScreen}
           />
         </Stack.Navigator>
       </NavigationContainer>

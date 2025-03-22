@@ -47,9 +47,9 @@ const LoadingIcon: React.FC = () => {
 
 const PickupDetails: React.FC<PickupDetailsProps> = ({ navigation, route }) => {
   const { pickupId } = route.params;
-  const { getPickupDetails, getListedItems } = useUser();
+  const { getPickupDetails, getListedItems, getHistoricalItemDetails } = useUser();
   const [pickup, setPickup] = useState<ScheduledPickup | null>(null);
-  const [listedItems, setListedItems] = useState<{ [key: string]: ListedItem }>({});
+  const [itemDetails, setItemDetails] = useState<{ [key: string]: ListedItem | null }>({});
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -62,19 +62,77 @@ const PickupDetails: React.FC<PickupDetailsProps> = ({ navigation, route }) => {
       const details = await getPickupDetails(pickupId);
       if (details) {
         setPickup(details);
-        // Get all listed items and create a map for easy lookup
+        
+        // Get all active listed items
         const allListedItems = await getListedItems();
-        const itemsMap = allListedItems.reduce((acc, item) => {
+        const activeItemsMap = allListedItems.reduce((acc, item) => {
           acc[item.id] = item;
           return acc;
         }, {} as { [key: string]: ListedItem });
-        setListedItems(itemsMap);
+        
+        // Load detailed information for each item in the pickup
+        const detailsMap: { [key: string]: ListedItem | null } = {};
+        
+        for (const pickupItem of details.items) {
+          // First check if the item exists in active listings
+          if (activeItemsMap[pickupItem.id]) {
+            detailsMap[pickupItem.id] = activeItemsMap[pickupItem.id];
+          } else {
+            // If not in active listings, try to get from historical records
+            const historicalItem = await getHistoricalItemDetails(pickupItem.id);
+            detailsMap[pickupItem.id] = historicalItem;
+          }
+        }
+        
+        setItemDetails(detailsMap);
       }
     } catch (error) {
       console.error('Error loading pickup details:', error);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Helper function to render item details safely
+  const renderItemDetails = (pickupItem: PickupItem) => {
+    const item = itemDetails[pickupItem.id];
+    
+    // If the item details are not available at all
+    if (!item) {
+      return (
+        <View style={styles.itemCard}>
+          <View style={styles.itemDetails}>
+            <Text style={styles.itemName}>{pickupItem.name}</Text>
+            <Text style={styles.itemSubtext}>
+              Item details are not available
+            </Text>
+          </View>
+        </View>
+      );
+    }
+    
+    // Item details are available (either from active listings or historical records)
+    return (
+      <View style={styles.itemCard}>
+        <View style={styles.itemDetails}>
+          <Text style={styles.itemName}>{item.name}</Text>
+          <Text style={styles.itemSubtext}>
+            {item.type} • {item.condition}
+          </Text>
+          <Text style={styles.itemDimensions}>
+            Dimensions: {item.dimensions.length}×{item.dimensions.width}×{item.dimensions.height} cm
+          </Text>
+          <Text style={styles.itemQuantity}>
+            Quantity: {item.quantity}
+          </Text>
+          {item.address && (
+            <Text style={styles.itemAddress}>
+              Address: {item.address}
+            </Text>
+          )}
+        </View>
+      </View>
+    );
   };
 
   return (
@@ -106,33 +164,25 @@ const PickupDetails: React.FC<PickupDetailsProps> = ({ navigation, route }) => {
           <View style={styles.facilityContainer}>
             <Text style={styles.facilityLabel}>Facility</Text>
             <Text style={styles.facilityName}>{pickup.facilityName}</Text>
+            
+            {/* Display pickup status */}
+            <View style={[styles.statusContainer, { 
+              backgroundColor: 
+                pickup.status === 'completed' ? '#4CAF50' : 
+                pickup.status === 'cancelled' ? '#F44336' : '#FFC107'
+            }]}>
+              <Text style={styles.statusText}>{pickup.status}</Text>
+            </View>
           </View>
 
           {/* Items List */}
           <View style={styles.itemsContainer}>
             <Text style={styles.itemsLabel}>Items for Pickup</Text>
-            {pickup.items.map((pickupItem) => {
-              const item = listedItems[pickupItem.id];
-              return (
-                <View key={pickupItem.id} style={styles.itemCard}>
-                  <View style={styles.itemDetails}>
-                    <Text style={styles.itemName}>{item.name}</Text>
-                    <Text style={styles.itemSubtext}>
-                      {item.type} • {item.condition}
-                    </Text>
-                    <Text style={styles.itemDimensions}>
-                      Dimensions: {item.dimensions.length}×{item.dimensions.width}×{item.dimensions.height} cm
-                    </Text>
-                    <Text style={styles.itemQuantity}>
-                      Quantity: {item.quantity}
-                    </Text>
-                    <Text style={styles.itemAddress}>
-                      Address: {item.address}
-                    </Text>
-                  </View>
-                </View>
-              );
-            })}
+            {pickup.items.map((pickupItem) => (
+              <React.Fragment key={pickupItem.id}>
+                {renderItemDetails(pickupItem)}
+              </React.Fragment>
+            ))}
           </View>
           
           {/* Add padding at the bottom for better scrolling */}
@@ -254,6 +304,19 @@ const styles = StyleSheet.create({
   errorText: {
     color: '#D32F2F',
     fontSize: 16,
+  },
+  statusContainer: {
+    marginTop: 8,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  statusText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '500',
+    textTransform: 'capitalize',
   },
 });
 
