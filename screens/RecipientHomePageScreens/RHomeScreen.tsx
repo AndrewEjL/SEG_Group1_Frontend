@@ -3,14 +3,14 @@ import { View, Text, FlatList, TouchableOpacity, StyleSheet, Modal } from "react
 import Icon from "react-native-vector-icons/MaterialIcons";
 import { Dropdown } from "react-native-element-dropdown";
 
- const RHomeScreen = () => {
+ const RHomeScreen = ({ navigation }) => {
  const [availablePickups, setAvailablePickups] = useState([
   {
     id: 1,
     pickUpNo: "PICK1234",
     itemName: "S24 Ultra - Phone",
-    type: "Electronics",
-    condition: "New",
+    type: "Phone",
+    condition: "Partial working",
     length: "15cm",
     width: "7cm",
     height: "1cm",
@@ -22,7 +22,7 @@ import { Dropdown } from "react-native-element-dropdown";
     pickUpNo: "PICK5678",
     itemName: "MacBook Pro 14",
     type: "Laptop",
-    condition: "Refurbished",
+    condition: "Not working",
     length: "32cm",
     width: "22cm",
     height: "2cm",
