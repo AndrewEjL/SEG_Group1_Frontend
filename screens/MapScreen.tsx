@@ -195,7 +195,6 @@ const MapScreen: React.FC<MapScreenProps> = ({ navigation, route }) => {
       </View>
 
       <ScrollView
-        nestedScrollEnabled={true}
         style={styles.scrollContainer}
         contentContainerStyle={[
           styles.scrollContentContainer,
@@ -258,24 +257,7 @@ const MapScreen: React.FC<MapScreenProps> = ({ navigation, route }) => {
                   <Text style={styles.searchButtonText}>Search</Text>
                 </TouchableOpacity>
               </View>
-              {locationSuggestions.length > 0 && (
-                <FlatList
-                  data={locationSuggestions}
-                  keyExtractor={(item) => item.place_id}
-                  style={styles.flatlist}
-                  renderItem={({ item }) => (
-                    <TouchableOpacity
-                      style={styles.suggestionItem}
-                      onPress={() => {
-                        setLocation({ ...location, address: item.description });
-                        setLocationSuggestions([]);
-                      }}
-                    >
-                      <Text style={styles.suggestionText}>{item.description}</Text>
-                    </TouchableOpacity>
-                  )}
-                />
-              )}
+
             </View>
 
             {/* Confirmed Address Section */}
@@ -303,7 +285,25 @@ const MapScreen: React.FC<MapScreenProps> = ({ navigation, route }) => {
           </View>
         </TouchableWithoutFeedback>
       </ScrollView>
-
+              {locationSuggestions.length > 0 && (
+                <FlatList
+                  data={locationSuggestions}
+                  nestedScrollEnabled={true}
+                  keyExtractor={(item) => item.place_id}
+                  style={styles.flatlist}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity
+                      style={styles.suggestionItem}
+                      onPress={() => {
+                        setLocation({ ...location, address: item.description });
+                        setLocationSuggestions([]);
+                      }}
+                    >
+                      <Text style={styles.suggestionText}>{item.description}</Text>
+                    </TouchableOpacity>
+                  )}
+                />
+              )}
       {/* List Item Button - Fixed at bottom */}
       <View style={[
         styles.buttonContainer,
@@ -502,8 +502,8 @@ const styles = StyleSheet.create({
       position: "absolute",
       maxHeight: 250,
       width: "60%",
-      left: "8%",
-      top: 70,
+      left: "9%",
+      top: 150,
       zIndex: 2,
   },
 
