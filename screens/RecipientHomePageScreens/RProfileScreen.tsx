@@ -37,37 +37,6 @@ const [tempPassword, setTempPassword] = useState({ originPassword: "", password:
 const [errors, setErrors] = useState({ email: "", phoneNumber: "", address: "" });
 const [passwordErrors, setPasswordErrors] = useState({ originPassword: "", password: "", confirmPassword: "" });
 
-const [selectedState, setSelectedState] = useState("State 1");
-const [cities, setCities] = useState([]);
-
-const states = ["State 1", "State 2", "State 3"];
-const stateCities = {
-  "State 1": [{ name: "City 1", selected: false }, { name: "City 2", selected: false }],
-  "State 2": [{ name: "City 3", selected: false }, { name: "City 4", selected: false }],
-  "State 3": [{ name: "City 5", selected: false }, { name: "City 6", selected: false }],
-};
-
-
-const [ewasteTypes, setEWasteTypes] = useState(EWasteTypes);
-const [tempEWasteTypes, setTempEWasteTypes] = useState(ewasteTypes);
-
-const handleStateChange = (newState) => {
-  setSelectedState(newState);
-  setCities(stateCities[newState] || []);
-};
-
-  const handleEWasteTypeChange = (type) => {
-    setEWasteTypes((prevTypes) => {
-      return prevTypes.map((item) => {
-        if (item.type === type) {
-          return { ...item, selected: !item.selected };
-        }
-        return item;
-      });
-    });
-  };
-
-
 const validateEmail = (email) => {
   const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
   return emailRegex.test(email);
@@ -140,6 +109,72 @@ const handleChangePassword = () => {
   }
 };
 
+const [states, setStates] = useState([
+  { name: "State 1", selected: true },
+  { name: "State 2", selected: false },
+  { name: "State 3", selected: false }
+]);
+
+const stateCities = {
+  "State 1": [{ name: "City 1", selected: false }, { name: "City 2", selected: false }],
+  "State 2": [{ name: "City 3", selected: false }, { name: "City 4", selected: false }],
+  "State 3": [{ name: "City 5", selected: false }, { name: "City 6", selected: false }],
+};
+
+
+const selectedState = states.find(state => state.selected)?.name || "State 1";
+
+const [cities, setCities] = useState(stateCities[selectedState] || []);
+
+
+const [tempSelectedState, setTempSelectedState] = useState(selectedState);
+const [tempCities, setTempCities] = useState(cities);
+
+const handleTempStateChange = (newStateName) => {
+  setTempSelectedState(newStateName);
+  setTempCities(stateCities[newStateName] || []);
+};
+
+const toggleTempCitySelection = (index) => {
+  setTempCities(tempCities.map((city, i) =>
+    i === index ? { ...city, selected: !city.selected } : city
+  ));
+};
+
+const handleStateCitiesChange = () => {
+  setStates(states.map(state => ({
+    ...state,
+    selected: state.name === tempSelectedState
+  })));
+  setCities(tempCities);
+  setModal3Visible(false);
+  Alert.alert("Success", "Service area updated!");
+};
+
+
+const [ewasteTypes, setEWasteTypes] = useState(EWasteTypes);
+const [tempEWasteTypes, setTempEWasteTypes] = useState(ewasteTypes);
+
+const handleEWasteTypeChange = (type) => {
+    setTempEWasteTypes((prevTypes) => {
+      return prevTypes.map((item) => {
+        if (item.type === type) {
+          return { ...item, selected: !item.selected };
+        }
+        return item;
+      });
+    });
+  };
+
+const handleEWasteTypeSave = () => {
+    setEWasteTypes(tempEWasteTypes);
+    Alert.alert("Success", "E-waste types updated!");
+    setModal4Visible(false);
+};
+
+
+
+
   return (
     <View style={styles.container}>
       <View style={styles.profileHeader}>
@@ -192,16 +227,16 @@ const handleChangePassword = () => {
 
       {/* Bottom Navigation */}
       <View style={styles.bottomNav}>
-        <TouchableOpacity style={styles.navItem} onPress={() => handleTabPress("home")}>
-          <Icon name="home" size={24} color="#5E4DCD" />
+        <TouchableOpacity style={styles.navItem} onPress={() => handleTabPress("RHome")}>
+          <Icon name="home" size={24} color="#666" />
           <Text style={[styles.navText, styles.activeNavText]}>Home</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem} onPress={() => handleTabPress("rewards")}>
           <Icon name="package-variant" size={24} color="#666" />
           <Text style={styles.navText}>Inventory</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem} onPress={() => handleTabPress("profile")}>
-          <Icon name="account" size={24} color="#666" />
+        <TouchableOpacity style={styles.navItem} onPress={() => handleTabPress("RProfile")}>
+          <Icon name="account" size={24} color="#5E4DCD" />
           <Text style={styles.navText}>Profile</Text>
         </TouchableOpacity>
       </View>
@@ -213,13 +248,14 @@ const handleChangePassword = () => {
       >
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
-            <TouchableOpacity onPress={() => setModal1Visible(false)} style={{ alignSelf: "flex-start" }}>
+            <TouchableOpacity onPress={() => {setModal1Visible(false);setTempUser(user);}} style={{ alignSelf: "flex-start" }}>
                 <Icon name="close" size={24} color="black" />
             </TouchableOpacity>
             <Text style={styles.modalTitle}>Edit Profile</Text>
             <TextInput
               style={styles.input}
               placeholder="Email"
+              placeholderTextColor="black"
               value={tempUser.email}
               onChangeText={(text) => setTempUser({ ...tempUser, email: text })}
             />
@@ -227,6 +263,7 @@ const handleChangePassword = () => {
             <TextInput
               style={styles.input}
               placeholder="Phone Number"
+              placeholderTextColor="black"
               value={tempUser.phoneNumber}
               onChangeText={handlePhoneNumberChange}
             />
@@ -234,6 +271,7 @@ const handleChangePassword = () => {
             <TextInput
               style={styles.input}
               placeholder="Address"
+              placeholderTextColor="black"
               value={tempUser.address}
               onChangeText={(text) => setTempUser({ ...tempUser, address: text })}
             />
@@ -263,6 +301,7 @@ const handleChangePassword = () => {
              <Text style={styles.modalTitle}>Change password</Text>
              <TextInput
                placeholder="Origin Password"
+               placeholderTextColor="black"
                value={tempPassword.originPassword}
                onChangeText={(text) => setTempPassword({ ...tempPassword, originPassword: text })}
                secureTextEntry
@@ -271,14 +310,16 @@ const handleChangePassword = () => {
              {passwordErrors.originPassword ? <Text style={styles.errorText}>{passwordErrors.originPassword}</Text> : null}
              <TextInput
                placeholder="New Password"
+               placeholderTextColor="black"
                value={tempPassword.password}
                onChangeText={(text) => setTempPassword({ ...tempPassword, password: text })}
                secureTextEntry
                style={styles.input}
              />
-             {passwordErrors.password ? <Text style={styles.errorText}>{passwordErrors.password}</Text> : null}
+             {passwordErrors.password ? <Text style={styles.errorText}>{passwordErrors.password}</Text> : <Text style={styles.hintText}>At least 8 characters long, containing at least one number and one special character</Text>}
              <TextInput
                placeholder="Confirm new Password"
+               placeholderTextColor="black"
                value={tempPassword.confirmPassword}
                onChangeText={(text) => setTempPassword({ ...tempPassword, confirmPassword: text })}
                secureTextEntry
@@ -304,34 +345,42 @@ const handleChangePassword = () => {
        >
          <View style={styles.modalContainer}>
            <View style={styles.modalContent}>
-             <TouchableOpacity onPress={() => {setModal3Visible(false); Alert.alert("Success", "Service area updated!");}} style={{ alignSelf: "flex-start" }}>
+             <TouchableOpacity onPress={() => {setModal3Visible(false);setTempSelectedState(selectedState);setTempCities(cities);}} style={{ alignSelf: "flex-start" }}>
                <Icon name="close" size={24} color="black" />
              </TouchableOpacity>
              <Text style={styles.modalTitle}>Select Service Area</Text>
+              <Dropdown
+                style={styles.dropdown}
+                placeholderStyle={styles.placeholderStyle}
+                selectedTextStyle={styles.selectedTextStyle}
+                inputSearchStyle={styles.inputSearchStyle}
+                itemTextStyle={styles.itemTextStyle}
+                data={states.map((state) => ({ label: state.name, value: state.name }))}
+                labelField="label"
+                valueField="value"
+                value={tempSelectedState}
+                onChange={(item) => handleTempStateChange(item.value)}
+                placeholder="Select a state"
+              />
 
-             <Dropdown
-               style={styles.dropdown}
-               placeholderStyle={styles.placeholderStyle}
-               selectedTextStyle={styles.selectedTextStyle}
-               inputSearchStyle={styles.inputSearchStyle}
-               itemTextStyle={styles.itemTextStyle}
-               data={states.map((state) => ({ label: state, value: state }))}
-               labelField="label"
-               valueField="value"
-               value={selectedState}
-               onChange={(item) => handleStateChange(item.value)}
-               placeholder="Select a state"
-             />
-
-             <Text style={styles.modalTitle}>Select Cities</Text>
-             {cities.map((city, index) => (
-               <TouchableOpacity key={index} style={styles.checkboxContainer} onPress={() => {
-                 setCities(cities.map((c, i) => i === index ? { ...c, selected: !c.selected } : c));
-               }}>
-                 <Checkbox status={city.selected ? "checked" : "unchecked"} />
-                 <Text style={styles.checkboxLabel}>{city.name}</Text>
-               </TouchableOpacity>
-             ))}
+              <Text style={styles.modalTitle}>Select Cities</Text>
+              {tempCities.map((city, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={styles.checkboxContainer}
+                  onPress={() => toggleTempCitySelection(index)}>
+                  <Checkbox status={city.selected ? "checked" : "unchecked"} />
+                  <Text style={styles.checkboxLabel}>{city.name}</Text>
+                </TouchableOpacity>
+              ))}
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={styles.saveButton}
+                  onPress={handleStateCitiesChange}
+                >
+                  <Text style={styles.buttonText}>Save</Text>
+                </TouchableOpacity>
+              </View>
            </View>
          </View>
        </Modal>
@@ -343,11 +392,11 @@ const handleChangePassword = () => {
        >
          <View style={styles.modalContainer}>
            <View style={styles.modalContent}>
-             <TouchableOpacity onPress={() => {setModal4Visible(false);Alert.alert("Success", "E-waste types updated!");}} style={{ alignSelf: "flex-start" }}>
+             <TouchableOpacity onPress={() => {setModal4Visible(false);setTempEWasteTypes(ewasteTypes);}} style={{ alignSelf: "flex-start" }}>
                <Icon name="close" size={24} color="black" />
              </TouchableOpacity>
              <Text style={styles.modalTitle}>Specify e-waste type</Text>
-             {ewasteTypes.slice(1).map((item, index) => (
+             {tempEWasteTypes.slice(1).map((item, index) => (
               <View key={index} style={styles.checkboxContainer}>
                 <Checkbox
                   status={item.selected ? 'checked' : 'unchecked'}
@@ -356,6 +405,14 @@ const handleChangePassword = () => {
                 <Text style={styles.checkboxText}>{item.type}</Text>
               </View>
             ))}
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.saveButton}
+                onPress={handleEWasteTypeSave}
+              >
+                <Text style={styles.buttonText}>Save</Text>
+              </TouchableOpacity>
+            </View>
            </View>
          </View>
        </Modal>
@@ -468,6 +525,11 @@ modalContainer: {
   buttonText: { color: "#fff", fontWeight: "bold" },
   errorText: {
     color: "red",
+    fontSize: 12,
+    marginBottom: 10,
+  },
+ hintText: {
+    color: "#4c4d4a",
     fontSize: 12,
     marginBottom: 10,
   },

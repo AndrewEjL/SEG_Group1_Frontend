@@ -70,7 +70,7 @@ import { Dropdown } from "react-native-element-dropdown";
   };
 
   const handleTabPress = (tabName) => {
-    console.log("Pressed tab:", tabName);
+      navigation.navigate(tabName)
   };
 
   return (
@@ -114,7 +114,7 @@ import { Dropdown } from "react-native-element-dropdown";
       />
 
       <View style={styles.bottomNav}>
-        <TouchableOpacity style={styles.navItem} onPress={() => handleTabPress("home")}>
+        <TouchableOpacity style={styles.navItem} onPress={() => handleTabPress("Rhome")}>
           <Icon name="home" size={24} color="#5E4DCD" />
           <Text style={[styles.navText, styles.activeNavText]}>Home</Text>
         </TouchableOpacity>
@@ -122,7 +122,7 @@ import { Dropdown } from "react-native-element-dropdown";
           <Icon name="inventory" size={24} color="#666" />
           <Text style={styles.navText}>Inventory</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem} onPress={() => handleTabPress("profile")}>
+        <TouchableOpacity style={styles.navItem} onPress={() => handleTabPress("RProfile")}>
           <Icon name="person" size={24} color="#666" />
           <Text style={styles.navText}>Profile</Text>
         </TouchableOpacity>
