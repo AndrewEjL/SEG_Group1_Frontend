@@ -43,6 +43,8 @@ export interface User {
   name: string;
   email: string;
   points: number;
+  address: string;   // Adding address field
+  phoneNumber: string;  // Adding phone number field
   scheduledPickups: string[];  // Array of pickup IDs - references to pickups in the database
   listedItems: string[];      // Array of listed item IDs
 }
@@ -58,6 +60,8 @@ interface UserContextType {
   logout: () => void;
   register: (name: string, email: string, password: string, phoneNumber: string) => Promise<boolean>;
   updatePoints: (points: number) => Promise<boolean>;
+  updateUserProfile: (data: { name?: string; email?: string; address?: string; phoneNumber?: string }) => Promise<boolean>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<boolean>;
   getScheduledPickups: () => Promise<ScheduledPickup[]>;
   getPickupDetails: (pickupId: string) => Promise<ScheduledPickup | null>;
   listItem: (item: Omit<ListedItem, 'id' | 'userId' | 'createdAt'>) => Promise<boolean>;
@@ -78,6 +82,8 @@ interface UserService {
   logout: () => Promise<void>;
   register: (name: string, email: string, password: string, phoneNumber: string) => Promise<boolean>;
   updatePoints: (userId: string, points: number) => Promise<boolean>;
+  updateUserProfile: (userId: string, data: { name?: string; email?: string; address?: string; phoneNumber?: string }) => Promise<boolean>;
+  changePassword: (userId: string, currentPassword: string, newPassword: string) => Promise<boolean>;
   getScheduledPickups: (userId: string) => Promise<ScheduledPickup[]>;
   getPickupDetails: (pickupId: string) => Promise<ScheduledPickup | null>;
   listItem: (userId: string, item: Omit<ListedItem, 'id' | 'userId' | 'createdAt'>) => Promise<boolean>;
@@ -229,6 +235,8 @@ const mockUserService: UserService = {
         name: 'John Doe',
         email: 'test@example.com',
         points: 150,
+        address: '123 Main St, City',
+        phoneNumber: '+601233335555',
         scheduledPickups: ['pickup1', 'pickup2'],
         listedItems: ['item1']
       };
@@ -259,6 +267,20 @@ const mockUserService: UserService = {
   updatePoints: async (userId: string, points: number) => {
     // Replace with real database update
     await new Promise(resolve => setTimeout(resolve, 500));
+    return true;
+  },
+
+  updateUserProfile: async (userId: string, data: { name?: string; email?: string; address?: string; phoneNumber?: string }) => {
+    // Replace with real database update
+    await new Promise(resolve => setTimeout(resolve, 500));
+    return true;
+  },
+
+  changePassword: async (userId: string, currentPassword: string, newPassword: string) => {
+    // Replace with real password validation and update logic
+    await new Promise(resolve => setTimeout(resolve, 500));
+    // In a real implementation, you would verify the current password
+    // and update with the hashed new password in the database
     return true;
   },
 
@@ -401,6 +423,32 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  const updateUserProfile = async (data: { name?: string; email?: string; address?: string; phoneNumber?: string }) => {
+    if (!user) return false;
+    
+    try {
+      const success = await userService.updateUserProfile(user.id, data);
+      if (success) {
+        setUser(prev => prev ? { ...prev, ...data } : null);
+      }
+      return success;
+    } catch (error) {
+      console.error('Update user profile error:', error);
+      return false;
+    }
+  };
+
+  const changePassword = async (currentPassword: string, newPassword: string) => {
+    if (!user) return false;
+    
+    try {
+      return await userService.changePassword(user.id, currentPassword, newPassword);
+    } catch (error) {
+      console.error('Change password error:', error);
+      return false;
+    }
+  };
+
   const getScheduledPickups = async () => {
     if (!user) return [];
     try {
@@ -464,6 +512,8 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       logout, 
       register,
       updatePoints,
+      updateUserProfile,
+      changePassword,
       getScheduledPickups,
       getPickupDetails,
       listItem,
