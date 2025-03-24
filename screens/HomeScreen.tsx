@@ -11,6 +11,7 @@ type RootStackParamList = {
   AddPickupItem: undefined;
   EditListedItems: { itemId: string };
   CProfileScreen: undefined;
+  rewards: undefined;
 };
 
 type HomeScreenProps = {
@@ -146,6 +147,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     console.log('Pressed tab:', tabName);
     if (tabName === 'profile') {
       navigation.navigate('CProfileScreen');
+    } else if (tabName === 'rewards') {
+      navigation.navigate('rewards');
     }
   };
 
