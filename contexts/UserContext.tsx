@@ -18,6 +18,7 @@ export interface ScheduledPickup {
   facilityName: string;
   items: PickupItem[];
   listedItemIds: string[];  // Array of listed item IDs that are part of this pickup
+  status: 'ongoing' | 'completed' | 'cancelled'; // Status of the pickup
   // Backend team can add more properties here (e.g., date, status, location, etc.)
 }
 
@@ -63,6 +64,7 @@ interface UserContextType {
   getListedItems: () => Promise<ListedItem[]>;
   updateListedItem: (itemId: string, updatedItem: Omit<ListedItem, 'id' | 'userId' | 'createdAt'>) => Promise<boolean>;
   deleteListedItem: (itemId: string) => Promise<boolean>;
+  getHistoricalItemDetails: (itemId: string) => Promise<ListedItem | null>;
 }
 
 /**
@@ -82,6 +84,7 @@ interface UserService {
   getListedItems: (userId: string) => Promise<ListedItem[]>;
   updateListedItem: (itemId: string, updatedItem: Omit<ListedItem, 'id' | 'userId' | 'createdAt'>) => Promise<boolean>;
   deleteListedItem: (itemId: string) => Promise<boolean>;
+  getHistoricalItemDetails: (itemId: string) => Promise<ListedItem | null>;
 }
 
 /**
@@ -138,6 +141,36 @@ const mockListedItems: { [key: string]: ListedItem } = {
   },
 };
 
+// Historical record of all items, including those no longer in active listings
+// In a real database, these would be archived items with a "deleted" flag
+const mockHistoricalItems: { [key: string]: ListedItem } = {
+  // Include all current items
+  ...mockListedItems,
+  // Add items that are in historical pickups but no longer in active listings
+  'item5': {
+    id: 'item5',
+    userId: '1',
+    name: 'Dell Laptop',
+    type: 'Laptop',
+    condition: 'Working',
+    dimensions: { length: '35', width: '25', height: '2' },
+    quantity: '1',
+    createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // 30 days ago
+    address: 'Jalan Bakawali 54, Taman Johor Jaya, 81100 Johor Bahru, Johor, Malaysia',
+  },
+  'item6': {
+    id: 'item6',
+    userId: '1',
+    name: 'HP Printer',
+    type: 'Printer',
+    condition: 'Not Working',
+    dimensions: { length: '45', width: '35', height: '20' },
+    quantity: '1',
+    createdAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000), // 45 days ago
+    address: 'Jalan Perang, Taman Pelangi, 80400 Johor Bahru, Johor, Malaysia',
+  },
+};
+
 const mockPickups: { [key: string]: ScheduledPickup } = {
   'pickup1': {
     id: 'pickup1',
@@ -147,7 +180,8 @@ const mockPickups: { [key: string]: ScheduledPickup } = {
       { id: 'item2', name: 'S24' },
       { id: 'item3', name: 'S24 Plus' },
     ],
-    listedItemIds: ['item1', 'item2', 'item3']  // All items are listed items
+    listedItemIds: ['item1', 'item2', 'item3'],  // All items are listed items
+    status: 'ongoing'
   },
   'pickup2': {
     id: 'pickup2',
@@ -155,7 +189,26 @@ const mockPickups: { [key: string]: ScheduledPickup } = {
     items: [
       { id: 'item4', name: 'iPhone 15' },
     ],
-    listedItemIds: ['item4']  // This item is a listed item
+    listedItemIds: ['item4'],  // This item is a listed item
+    status: 'ongoing'
+  },
+  'pickup3': {
+    id: 'pickup3',
+    facilityName: 'Facility A',
+    items: [
+      { id: 'item5', name: 'Dell Laptop' },
+    ],
+    listedItemIds: ['item5'],
+    status: 'completed'
+  },
+  'pickup4': {
+    id: 'pickup4',
+    facilityName: 'Facility C',
+    items: [
+      { id: 'item6', name: 'HP Printer' },
+    ],
+    listedItemIds: ['item6'],
+    status: 'cancelled'
   }
 };
 
@@ -221,6 +274,12 @@ const mockUserService: UserService = {
     return mockPickups[pickupId] || null;
   },
 
+  getHistoricalItemDetails: async (itemId: string) => {
+    // In a real database, you would fetch from the historical records
+    await new Promise(resolve => setTimeout(resolve, 300));
+    return mockHistoricalItems[itemId] || null;
+  },
+
   listItem: async (userId: string, item: Omit<ListedItem, 'id' | 'userId' | 'createdAt'>) => {
     await new Promise(resolve => setTimeout(resolve, 500));
     const itemId = `item${Object.keys(mockListedItems).length + 1}`;
@@ -230,6 +289,8 @@ const mockUserService: UserService = {
       userId,
       createdAt: new Date(),
     };
+    // Also add to historical items collection
+    mockHistoricalItems[itemId] = mockListedItems[itemId];
     return true;
   },
 
@@ -246,6 +307,8 @@ const mockUserService: UserService = {
         ...mockListedItems[itemId],
         ...updatedItem,
       };
+      // Also update in historical items
+      mockHistoricalItems[itemId] = mockListedItems[itemId];
       return true;
     }
     return false;
@@ -263,6 +326,8 @@ const mockUserService: UserService = {
       
       // Only allow deletion if the item is not in a pickup
       if (!isInPickup) {
+        // Keep a copy in the historical items before deleting from active listings
+        // In a real database, this would be a soft delete with a "deleted" flag
         delete mockListedItems[itemId];
         return true;
       }
@@ -350,6 +415,10 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return userService.getPickupDetails(pickupId);
   };
 
+  const getHistoricalItemDetails = async (itemId: string) => {
+    return userService.getHistoricalItemDetails(itemId);
+  };
+
   const listItem = async (item: Omit<ListedItem, 'id' | 'userId' | 'createdAt'>) => {
     if (!user) return false;
     try {
@@ -401,6 +470,7 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       getListedItems,
       updateListedItem,
       deleteListedItem,
+      getHistoricalItemDetails,
     }}>
       {children}
     </UserContext.Provider>

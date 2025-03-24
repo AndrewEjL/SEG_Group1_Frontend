@@ -10,6 +10,7 @@ type RootStackParamList = {
   PickupDetails: { pickupId: string };
   AddPickupItem: undefined;
   EditListedItems: { itemId: string };
+  CProfileScreen: undefined;
 };
 
 type HomeScreenProps = {
@@ -76,8 +77,10 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     if (user) {
       // Load pickups
       setIsPickupsLoading(true);
-      const pickups = await getScheduledPickups();
-      setScheduledPickups(pickups);
+      const allPickups = await getScheduledPickups();
+      // Filter to show only ongoing pickups
+      const ongoingPickups = allPickups.filter(pickup => pickup.status === 'ongoing');
+      setScheduledPickups(ongoingPickups);
       setIsPickupsLoading(false);
 
       // Load listed items
@@ -141,6 +144,9 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
 
   const handleTabPress = (tabName: string) => {
     console.log('Pressed tab:', tabName);
+    if (tabName === 'profile') {
+      navigation.navigate('CProfileScreen');
+    }
   };
 
   return (
