@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import {
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useUser } from '../contexts/UserContext';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { GiftCard } from '../contexts/UserContext';
 
 // Create navigation type definitions similar to other screens
 type RootStackParamList = {
@@ -21,6 +22,7 @@ type RootStackParamList = {
   notifications: undefined;
   profile: undefined;
   CProfileScreen: undefined;
+  RewardsHistory: undefined;
 };
 
 type RewardsScreenProps = {
@@ -28,49 +30,98 @@ type RewardsScreenProps = {
 };
 
 const RewardsScreen: React.FC<RewardsScreenProps> = ({ navigation }) => {
-  const { user } = useUser();
+  const { user, updateUserPoints, addRedeemedReward, getGiftCards } = useUser();
   const [giftCardModalVisible, setGiftCardModalVisible] = useState(false);
-  const [selectedGiftCard, setSelectedGiftCard] = useState<null | { name: string, points: number, value: string }>(null);
+  const [selectedGiftCard, setSelectedGiftCard] = useState<GiftCard | null>(null);
   const [activeCategory, setActiveCategory] = useState('All');
+  const [redemptionPin, setRedemptionPin] = useState<string | null>(null);
+  const [showPin, setShowPin] = useState(false);
 
-  // Gift card data
-  const giftCards = [
-    { id: '1', name: 'Touch \'n Go eWallet RM5', points: 50, image: require('./assets/TnG_Icon.png'), value: 'RM5', category: 'Gift Cards' },
-    { id: '2', name: 'Touch \'n Go eWallet RM15', points: 150, image: require('./assets/TnG_Icon.png'), value: 'RM15', category: 'Gift Cards' },
-    { id: '3', name: 'Touch \'n Go eWallet RM30', points: 300, image: require('./assets/TnG_Icon.png'), value: 'RM30', category: 'Gift Cards' },
-    { id: '4', name: 'Touch \'n Go eWallet RM50', points: 500, image: require('./assets/TnG_Icon.png'), value: 'RM50', category: 'Gift Cards' },
-    { id: '5', name: 'Touch \'n Go eWallet RM100', points: 1000, image: require('./assets/TnG_Icon.png'), value: 'RM100', category: 'Gift Cards' },
-    // We can add more gift cards later as needed
-  ];
+  // Get gift card data from UserContext
+  const giftCards = getGiftCards();
 
   // Filter cards based on active category
-  const filteredCards = activeCategory === 'All' 
-    ? giftCards 
-    : giftCards.filter(card => card.category === activeCategory);
-
-  // Sort cards by point cost
-  const sortedCards = [...filteredCards].sort((a, b) => a.points - b.points);
+  const filteredCards = useMemo(() => {
+    const categoryFiltered = activeCategory === 'All' 
+      ? giftCards 
+      : giftCards.filter(card => card.category === activeCategory);
+    
+    // Sort by availability (available first) and then by point cost
+    return [...categoryFiltered].sort((a, b) => {
+      // First sort by availability
+      if (a.status === 'available' && b.status === 'unavailable') return -1;
+      if (a.status === 'unavailable' && b.status === 'available') return 1;
+      // Then sort by points
+      return a.points - b.points;
+    });
+  }, [giftCards, activeCategory]);
 
   const handleTabPress = (screen: keyof RootStackParamList) => {
     navigation.navigate(screen);
   };
 
-  const openGiftCardDetails = (giftCard: { name: string, points: number, value: string }) => {
+  const openGiftCardDetails = (giftCard: GiftCard) => {
     setSelectedGiftCard(giftCard);
     setGiftCardModalVisible(true);
+    setShowPin(false);
+  };
+
+  // Generate a random 10-digit PIN
+  const generatePin = (): string => {
+    let pin = '';
+    for (let i = 0; i < 10; i++) {
+      pin += Math.floor(Math.random() * 10).toString();
+    }
+    return pin;
   };
 
   const redeemGiftCard = () => {
-    if (!selectedGiftCard) return;
+    if (!selectedGiftCard || !user) return;
     
-    if (!user || user.points < selectedGiftCard.points) {
+    if (user.points < selectedGiftCard.points) {
       Alert.alert('Insufficient Points', 'You do not have enough points to redeem this gift card.');
       return;
     }
 
-    // In real app, we would call the updatePoints function from UserContext
-    Alert.alert('Success', `Congratulations! You have redeemed a ${selectedGiftCard.value} Touch 'n Go eWallet gift card.`);
+    // Generate a new PIN for this redemption
+    const newPin = generatePin();
+    setRedemptionPin(newPin);
+    setShowPin(true);
+
+    // Create a reward redemption record with current timestamp
+    const rewardRedemption = {
+      id: Date.now().toString(),
+      name: selectedGiftCard.name,
+      value: selectedGiftCard.value,
+      pin: newPin,
+      date: new Date().toISOString(),
+      imageSource: selectedGiftCard.image,
+    };
+
+    // Update user points and add to redemption history
+    if (updateUserPoints && addRedeemedReward) {
+      updateUserPoints(user.points - selectedGiftCard.points);
+      addRedeemedReward(rewardRedemption);
+    }
+
+    // Don't close modal yet, we'll show the PIN
+  };
+
+  const closeRedemptionModal = () => {
     setGiftCardModalVisible(false);
+    setRedemptionPin(null);
+    setShowPin(false);
+  };
+
+  // Generate header text based on card availability sections
+  const getRewardsSectionHeader = () => {
+    const hasAvailable = filteredCards.some(card => card.status === 'available');
+    const hasUnavailable = filteredCards.some(card => card.status === 'unavailable');
+    
+    if (hasAvailable && hasUnavailable) {
+      return "Available Rewards";
+    }
+    return "Rewards";
   };
 
   return (
@@ -115,28 +166,74 @@ const RewardsScreen: React.FC<RewardsScreenProps> = ({ navigation }) => {
         </ScrollView>
       </View>
 
-      {/* Available Rewards */}
+      {/* Rewards */}
       <ScrollView style={styles.rewardsContainer}>
-        <Text style={styles.sectionTitle}>Available Rewards</Text>
+        <Text style={styles.sectionTitle}>{getRewardsSectionHeader()}</Text>
         <View style={styles.rewardsList}>
-          {sortedCards.map((card) => (
-            <TouchableOpacity 
-              key={card.id} 
-              style={styles.rewardCard}
-              onPress={() => openGiftCardDetails(card)}
-            >
-              <View style={styles.rewardCardContent}>
-                <Image source={card.image} style={styles.rewardImage} />
-                <View style={styles.rewardInfo}>
-                  <View style={styles.rewardNameContainer}>
-                    <Text style={styles.rewardName}>{card.value}</Text>
-                    <Text style={styles.rewardSubtitle}>Touch 'n Go eWallet</Text>
+          {filteredCards.map((card) => {
+            const isAvailable = card.status === 'available';
+            const lastAvailableCard = isAvailable && 
+              filteredCards.findIndex((c, index) => index > filteredCards.indexOf(card) && c.status === 'unavailable') === filteredCards.indexOf(card) + 1;
+            
+            return (
+              <React.Fragment key={card.id}>
+                <TouchableOpacity 
+                  style={[
+                    styles.rewardCard,
+                    !isAvailable && styles.unavailableRewardCard
+                  ]}
+                  onPress={() => isAvailable && openGiftCardDetails(card)}
+                  disabled={!isAvailable}
+                >
+                  <View style={styles.rewardCardContent}>
+                    <Image 
+                      source={card.image} 
+                      style={[
+                        styles.rewardImage,
+                        !isAvailable && styles.unavailableRewardImage
+                      ]} 
+                    />
+                    <View style={styles.rewardInfo}>
+                      <View style={styles.rewardNameContainer}>
+                        <Text 
+                          style={[
+                            styles.rewardName,
+                            !isAvailable && styles.unavailableRewardText
+                          ]}
+                        >
+                          {card.value}
+                        </Text>
+                        <Text 
+                          style={[
+                            styles.rewardSubtitle,
+                            !isAvailable && styles.unavailableRewardText
+                          ]}
+                        >
+                          Touch 'n Go eWallet
+                        </Text>
+                      </View>
+                      <Text 
+                        style={[
+                          styles.rewardPoints,
+                          !isAvailable && styles.unavailableRewardPoints
+                        ]}
+                      >
+                        {card.points} Points
+                      </Text>
+                      {!isAvailable && (
+                        <Text style={styles.unavailableLabel}>Coming Soon</Text>
+                      )}
+                    </View>
                   </View>
-                  <Text style={styles.rewardPoints}>{card.points} Points</Text>
-                </View>
-              </View>
-            </TouchableOpacity>
-          ))}
+                </TouchableOpacity>
+                
+                {/* Add a section header if this is the last available card */}
+                {lastAvailableCard && (
+                  <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Coming Soon</Text>
+                )}
+              </React.Fragment>
+            );
+          })}
         </View>
       </ScrollView>
 
@@ -145,18 +242,18 @@ const RewardsScreen: React.FC<RewardsScreenProps> = ({ navigation }) => {
         animationType="slide"
         transparent={true}
         visible={giftCardModalVisible}
-        onRequestClose={() => setGiftCardModalVisible(false)}
+        onRequestClose={closeRedemptionModal}
       >
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
             <TouchableOpacity 
               style={styles.closeButton}
-              onPress={() => setGiftCardModalVisible(false)}
+              onPress={closeRedemptionModal}
             >
               <Icon name="close" size={24} color="#000" />
             </TouchableOpacity>
             
-            {selectedGiftCard && (
+            {selectedGiftCard && !showPin && (
               <>
                 <Text style={styles.modalTitle}>{selectedGiftCard.name}</Text>
                 <Image 
@@ -185,6 +282,32 @@ const RewardsScreen: React.FC<RewardsScreenProps> = ({ navigation }) => {
                       ? 'Not Enough Points' 
                       : 'Redeem Now'}
                   </Text>
+                </TouchableOpacity>
+              </>
+            )}
+
+            {showPin && redemptionPin && (
+              <>
+                <Text style={styles.modalTitle}>Redemption Successful!</Text>
+                <Image 
+                  source={selectedGiftCard?.image}
+                  style={styles.modalImage} 
+                />
+                <Text style={styles.modalDescription}>
+                  You have redeemed a {selectedGiftCard?.value} Touch 'n Go eWallet gift card.
+                </Text>
+                <View style={styles.pinContainer}>
+                  <Text style={styles.pinLabel}>Your PIN Code:</Text>
+                  <Text style={styles.pinValue}>{redemptionPin}</Text>
+                  <Text style={styles.pinInstructions}>
+                    Use this PIN to redeem your gift card in the Touch 'n Go eWallet app.
+                  </Text>
+                </View>
+                <TouchableOpacity 
+                  style={styles.redeemButton}
+                  onPress={closeRedemptionModal}
+                >
+                  <Text style={styles.redeemButtonText}>Done</Text>
                 </TouchableOpacity>
               </>
             )}
@@ -286,11 +409,16 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+    elevation: 0,
+    shadowColor: 'transparent',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0,
+    shadowRadius: 0,
+  },
+  unavailableRewardCard: {
+    backgroundColor: '#F2F2F2',
+    borderColor: '#E0E0E0',
+    borderWidth: 1,
   },
   rewardCardContent: {
     flexDirection: 'row',
@@ -301,6 +429,9 @@ const styles = StyleSheet.create({
     height: 60,
     borderRadius: 8,
     marginRight: 12,
+  },
+  unavailableRewardImage: {
+    opacity: 0.5,
   },
   rewardInfo: {
     flex: 1,
@@ -313,6 +444,9 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#333',
   },
+  unavailableRewardText: {
+    color: '#999',
+  },
   rewardSubtitle: {
     fontSize: 14,
     color: '#666',
@@ -321,6 +455,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#5E4DCD',
     fontWeight: '500',
+  },
+  unavailableRewardPoints: {
+    color: '#999',
+  },
+  unavailableLabel: {
+    fontSize: 12,
+    color: '#999',
+    fontStyle: 'italic',
+    marginTop: 4,
   },
   bottomNav: {
     flexDirection: 'row',
@@ -408,6 +551,32 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '500',
+    textAlign: 'center',
+  },
+  pinContainer: {
+    backgroundColor: '#F0EBF8',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderRadius: 16,
+    marginBottom: 20,
+    width: '90%',
+    alignItems: 'center',
+  },
+  pinLabel: {
+    fontSize: 14,
+    color: '#5E4DCD',
+    marginBottom: 8,
+  },
+  pinValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#5E4DCD',
+    letterSpacing: 2,
+    marginBottom: 12,
+  },
+  pinInstructions: {
+    fontSize: 14,
+    color: '#666',
     textAlign: 'center',
   },
 });

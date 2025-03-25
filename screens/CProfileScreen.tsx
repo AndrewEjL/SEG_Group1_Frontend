@@ -12,6 +12,7 @@ type RootStackParamList = {
   notifications: undefined;
   profile: undefined;
   PickupHistory: undefined;
+  RewardsHistory: undefined;
 };
 
 type CProfileScreenProps = {
@@ -172,6 +173,17 @@ const handleChangePassword = async () => {
         </TouchableOpacity>
       </View>
 
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Rewards</Text>
+        <TouchableOpacity 
+          style={styles.listItem}
+          onPress={() => navigation.navigate('RewardsHistory')}
+        >
+          <Icon name="star" size={20} color="#5E4DCD" />
+          <Text style={styles.listText}>Rewards History</Text>
+        </TouchableOpacity>
+      </View>
+
       {/* Bottom Navigation */}
       <View style={styles.bottomNav}>
         <TouchableOpacity style={styles.navItem} onPress={() => handleTabPress("Home")}>
@@ -315,10 +327,10 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginTop: 40,
     marginBottom: 30,
-    shadowColor: "#000",
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 5,
+    shadowColor: "transparent",
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    elevation: 0,
     paddingBottom: 20,
   },
   avatarContainer: {

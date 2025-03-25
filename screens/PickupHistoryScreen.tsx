@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView, FlatList } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useUser, ScheduledPickup } from '../contexts/UserContext';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -9,6 +9,8 @@ type RootStackParamList = {
   CProfileScreen: undefined;
   PickupHistory: undefined;
   PickupDetails: { pickupId: string };
+  rewards: undefined;
+  notifications: undefined;
 };
 
 type PickupHistoryScreenProps = {
@@ -32,7 +34,13 @@ const PickupHistoryScreen: React.FC<PickupHistoryScreenProps> = ({ navigation })
       const historyPickups = allPickups.filter(
         pickup => pickup.status === 'completed' || pickup.status === 'cancelled'
       );
-      setPickups(historyPickups);
+      
+      // Sort pickups by date (most recent first)
+      const sortedPickups = [...historyPickups].sort((a, b) => 
+        new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+      
+      setPickups(sortedPickups);
     } catch (error) {
       console.error('Failed to load pickup history:', error);
     } finally {
@@ -50,9 +58,50 @@ const PickupHistoryScreen: React.FC<PickupHistoryScreenProps> = ({ navigation })
     return '#FFC107'; // Default yellow
   };
 
-  const handleTabPress = (screen: keyof RootStackParamList) => {
-    navigation.navigate(screen);
+  // Format date to a more readable format
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-MY', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
+
+  const handleTabPress = (screen: keyof RootStackParamList) => {
+    if (screen === 'Home' || screen === 'CProfileScreen' || 
+        screen === 'PickupHistory' || screen === 'rewards' || 
+        screen === 'notifications') {
+      navigation.navigate(screen);
+    } else if (screen === 'PickupDetails') {
+      console.log('Cannot navigate directly to PickupDetails without pickupId');
+    }
+  };
+
+  const renderPickupItem = (pickup: ScheduledPickup) => (
+    <TouchableOpacity 
+      key={pickup.id} 
+      style={styles.pickupCard}
+      onPress={() => handleViewPickup(pickup.id)}
+    >
+      <View style={styles.pickupContent}>
+        <Text style={styles.facilityName}>{pickup.facilityName}</Text>
+        <View style={styles.pickupDetails}>
+          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(pickup.status) }]}>
+            <Text style={styles.statusText}>{pickup.status}</Text>
+          </View>
+          <Text style={styles.dateText}>{formatDate(pickup.date)}</Text>
+        </View>
+        <Text style={styles.itemCountText}>
+          {pickup.items.length} {pickup.items.length === 1 ? 'Item' : 'Items'}
+        </Text>
+      </View>
+      
+      <Icon name="visibility" size={24} color="#5E4DCD" />
+    </TouchableOpacity>
+  );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -61,34 +110,33 @@ const PickupHistoryScreen: React.FC<PickupHistoryScreenProps> = ({ navigation })
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Icon name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
-        <Text style={styles.title}>Pick up History</Text>
+        <Text style={styles.title}>Pickup History</Text>
       </View>
 
       {/* Pickup List */}
-      <ScrollView style={styles.content}>
-        {loading ? (
+      {loading ? (
+        <View style={styles.loadingContainer}>
           <Text style={styles.loadingText}>Loading...</Text>
-        ) : pickups.length === 0 ? (
+        </View>
+      ) : pickups.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Icon name="history" size={64} color="#CCCCCC" />
           <Text style={styles.emptyText}>No pickup history found</Text>
-        ) : (
-          pickups.map((pickup) => (
-            <TouchableOpacity 
-              key={pickup.id} 
-              style={styles.pickupCard}
-              onPress={() => handleViewPickup(pickup.id)}
-            >
-              <View style={styles.pickupContent}>
-                <Text style={styles.facilityName}>{pickup.facilityName}</Text>
-                <View style={[styles.statusBadge, { backgroundColor: getStatusColor(pickup.status) }]}>
-                  <Text style={styles.statusText}>{pickup.status}</Text>
-                </View>
-              </View>
-              
-              <Icon name="visibility" size={24} color="#5E4DCD" />
-            </TouchableOpacity>
-          ))
-        )}
-      </ScrollView>
+          <TouchableOpacity 
+            style={styles.exploreButton}
+            onPress={() => navigation.navigate('Home')}
+          >
+            <Text style={styles.exploreButtonText}>Go to Home</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <FlatList
+          data={pickups}
+          renderItem={({ item }) => renderPickupItem(item)}
+          keyExtractor={item => item.id}
+          contentContainerStyle={styles.listContainer}
+        />
+      )}
 
       {/* Bottom Navigation */}
       <View style={styles.bottomNav}>
@@ -96,11 +144,11 @@ const PickupHistoryScreen: React.FC<PickupHistoryScreenProps> = ({ navigation })
           <Icon name="home" size={24} color="#666" />
           <Text style={styles.navText}>Home</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem} onPress={() => handleTabPress('Home')}>
+        <TouchableOpacity style={styles.navItem} onPress={() => handleTabPress('rewards')}>
           <Icon name="star" size={24} color="#666" />
           <Text style={styles.navText}>Rewards</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem} onPress={() => handleTabPress('Home')}>
+        <TouchableOpacity style={styles.navItem} onPress={() => handleTabPress('notifications')}>
           <Icon name="notifications" size={24} color="#666" />
           <Text style={styles.navText}>Notifications</Text>
         </TouchableOpacity>
@@ -137,50 +185,89 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 16,
   },
+  listContainer: {
+    padding: 16,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   loadingText: {
     textAlign: 'center',
-    marginTop: 20,
     fontSize: 16,
     color: '#666',
   },
+  emptyContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
+  },
   emptyText: {
-    textAlign: 'center',
-    marginTop: 20,
-    fontSize: 16,
+    fontSize: 18,
     color: '#666',
+    marginTop: 16,
+    marginBottom: 24,
   },
   pickupCard: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 16,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    borderRadius: 8,
+    backgroundColor: '#F9F9F9',
+    borderRadius: 12,
     marginBottom: 12,
-    backgroundColor: '#F5F5F5',
+    elevation: 0,
+    shadowColor: 'transparent',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0,
+    shadowRadius: 0,
   },
   pickupContent: {
     flex: 1,
   },
   facilityName: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: '600',
     color: '#333',
     marginBottom: 4,
   },
+  pickupDetails: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
   statusBadge: {
-    alignSelf: 'flex-start',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 4,
-    marginTop: 4,
+    marginRight: 8,
   },
   statusText: {
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '500',
     textTransform: 'capitalize',
+  },
+  dateText: {
+    fontSize: 12,
+    color: '#999',
+  },
+  itemCountText: {
+    fontSize: 14,
+    color: '#666',
+  },
+  exploreButton: {
+    backgroundColor: '#5E4DCD',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 24,
+  },
+  exploreButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '500',
   },
   bottomNav: {
     flexDirection: 'row',

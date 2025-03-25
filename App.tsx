@@ -19,6 +19,7 @@ import SelectLocation from './screens/GoogleMapsScreens/SelectLocation.tsx';
 import CProfileScreen from './screens/CProfileScreen';
 import PickupHistoryScreen from './screens/PickupHistoryScreen';
 import RewardsScreen from './screens/RewardsScreen';
+import RewardsHistory from './screens/RewardsHistory';
 
 // Define your navigation types
 type RootStackParamList = {
@@ -52,6 +53,7 @@ type RootStackParamList = {
   CProfileScreen: undefined;
   PickupHistory: undefined;
   rewards: undefined;
+  RewardsHistory: undefined;
 };
 
 // Type for navigation prop
@@ -184,6 +186,10 @@ const App = () => {
           <Stack.Screen
             name="rewards"
             component={RewardsScreen}
+          />
+          <Stack.Screen
+            name="RewardsHistory"
+            component={RewardsHistory}
           />
         </Stack.Navigator>
       </NavigationContainer>
