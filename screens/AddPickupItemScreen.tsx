@@ -12,15 +12,18 @@ import {
 import { Picker } from '@react-native-picker/picker';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useItemTypes } from './api/items/itemTypes';
+import { useRoute } from '@react-navigation/native';
 
 type RootStackParamList = {
   Home: undefined;
   AddPickupItem: undefined;
   MapScreen: {
+    id: number;
     itemData: {
       name: string;
-      type: string;
-      condition: string;
+      type: number;
+      condition: number;
       dimensions: {
         length: string;
         width: string;
@@ -33,33 +36,16 @@ type RootStackParamList = {
 
 type AddPickupItemScreenProps = {
   navigation: NativeStackNavigationProp<RootStackParamList, 'AddPickupItem'>;
+  route: any;
 };
 
-// Item type options
-const itemTypes = [
-  'Select Type',
-  'Smartphone',
-  'Tablet',
-  'Laptop',
-  'Desktop Computer',
-  'Monitor',
-  'Printer',
-  'Gaming Console',
-  'TV'
-];
-
-// Condition options (placeholders)
-const conditions = [
-  'Select Condition',
-  'Working',
-  'Partially Working',
-  'Not Working'
-];
-
 const AddPickupItemScreen: React.FC<AddPickupItemScreenProps> = ({ navigation }) => {
+  const route = useRoute();
+  const {id} = route.params || {};
+  const {itemTypes, deviceCondition, loadingName } = useItemTypes();
   const [itemName, setItemName] = useState('');
-  const [itemType, setItemType] = useState(itemTypes[0]);
-  const [condition, setCondition] = useState(conditions[0]);
+  const [itemType, setItemType] = useState<number | null>(null);
+  const [condition, setCondition] = useState<number | null>(null);
   const [dimensions, setDimensions] = useState({
     length: '',
     width: '',
@@ -93,11 +79,12 @@ const AddPickupItemScreen: React.FC<AddPickupItemScreenProps> = ({ navigation })
       Alert.alert('Error', 'Please enter item name');
       return;
     }
-    if (itemType === 'Select Type') {
+    if (!itemType) {
       Alert.alert('Error', 'Please select item type');
       return;
     }
-    if (condition === 'Select Condition') {
+
+    if (!condition) {
       Alert.alert('Error', 'Please select condition');
       return;
     }
@@ -111,14 +98,16 @@ const AddPickupItemScreen: React.FC<AddPickupItemScreenProps> = ({ navigation })
     }
 
     navigation.navigate('MapScreen', {
+      id,
       itemData: {
         name: itemName,
         type: itemType,
-        condition,
+        condition: condition,
         dimensions,
         quantity
-      }
+      },
     });
+    
   };
 
   return (
@@ -168,15 +157,15 @@ const AddPickupItemScreen: React.FC<AddPickupItemScreenProps> = ({ navigation })
             >
               <Picker.Item 
                 label="Select Type" 
-                value="Select Type" 
+                value="" 
                 color={itemType === "Select Type" ? "#666" : "#000"}
                 style={{ backgroundColor: '#FFFFFF' }}
               />
-              {itemTypes.slice(1).map((type) => (
+              {itemTypes.map((type) => (
                 <Picker.Item 
-                  key={type} 
-                  label={type} 
-                  value={type}
+                  key={type.id} 
+                  label={type.name} 
+                  value={type.id}
                   color="#000"
                   style={{ backgroundColor: '#FFFFFF' }}
                 />
@@ -200,15 +189,15 @@ const AddPickupItemScreen: React.FC<AddPickupItemScreenProps> = ({ navigation })
             >
               <Picker.Item 
                 label="Select Condition" 
-                value="Select Condition" 
+                value="" 
                 color={condition === "Select Condition" ? "#666" : "#000"}
                 style={{ backgroundColor: '#FFFFFF' }}
               />
-              {conditions.slice(1).map((cond) => (
+              {deviceCondition.map((cond) => (
                 <Picker.Item 
-                  key={cond} 
-                  label={cond} 
-                  value={cond}
+                  key={cond.id} 
+                  label={cond.name} 
+                  value={cond.id}
                   color="#000"
                   style={{ backgroundColor: '#FFFFFF' }}
                 />

@@ -3,11 +3,11 @@ import { View, ScrollView, Text, StyleSheet, Dimensions, Alert } from "react-nat
 import { TextInput, Button, HelperText } from "react-native-paper";
 import Icon from "react-native-vector-icons/MaterialIcons";
 import { useUser } from "../../contexts/UserContext";
+import { checkEmailExists, registerUser } from "../api/registerClient";
 
 const { width, height } = Dimensions.get("window");
 
 const ClientRegistration = ({ navigation }) => {
-  const { register } = useUser();
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -29,20 +29,18 @@ const isFormValid = useMemo(() => {
 }, [username, email, phoneNumber, password, confirmPassword]);
 
   const handleSubmit = async () => {
-    const existingEmails = ["test@example.com", "user@gmail.com"];
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;//valid email format
     const passwordRegex = /^(?=.*[0-9])(?=.*[\W_]).{8,}$/;// at least 8 characters, including a number and a special character.
+
+    setEmailError("");
+    setPasswordError("");
+    setConfirmPasswordError("");
 
     if (!emailRegex.test(email)) {
       setEmailError("Invalid email format.");
       return;
     }
-    if (existingEmails.includes(email)) {
-      setEmailError("Email is already in use.");
-      return;
-    } else {
-      setEmailError("");
-    }
+
     if (!passwordRegex.test(password)) {
         setPasswordError("Password must be at least 8 characters long and include a number and a special character.");
         return;
@@ -57,8 +55,14 @@ const isFormValid = useMemo(() => {
 
     setIsLoading(true);
     try {
-      // Call the register function from UserContext
-      const success = await register(username, email, password, phoneNumber);
+      const emailExists = await checkEmailExists(email);
+      if(emailExists){
+        setEmailError("Email already exist");
+        setIsLoading(false);
+        return;
+      }
+
+      const success = await registerUser(username, email, password, `+60${phoneNumber}`);
       
       if (success) {
         Alert.alert("Success", "Your account has been registered, you may login now.");

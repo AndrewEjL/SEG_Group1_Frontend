@@ -15,11 +15,14 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 import { useUser, type ListedItem } from '../contexts/UserContext';
+import { useItemTypes } from './api/items/itemTypes';
+import { displayItemByItemID } from './api/items/displayItemsByItemID';
+import { updateItem } from './api/items/updateItem';
 
 type RootStackParamList = {
-  Home: undefined;
-  EditListedItems: { itemId: string };
-  EditLocation: { itemId: string; currentAddress: string };
+  Home: {id: number};
+  EditListedItems: { userDonorID: number };
+  EditLocation: { itemId: number; currentAddress: number };
 };
 
 type EditListedItemsProps = {
@@ -27,38 +30,19 @@ type EditListedItemsProps = {
   route: RouteProp<RootStackParamList, 'EditListedItems'>;
 };
 
-// Item type options
-const itemTypes = [
-  'Select Type',
-  'Smartphone',
-  'Tablet',
-  'Laptop',
-  'Desktop Computer',
-  'Monitor',
-  'Printer',
-  'Gaming Console',
-  'TV'
-];
-
-// Condition options
-const conditions = [
-  'Select Condition',
-  'Working',
-  'Partially Working',
-  'Not Working'
-];
-
 const EditListedItems: React.FC<EditListedItemsProps> = ({ navigation, route }) => {
-  const { itemId } = route.params;
+  const { itemId, id } = route.params;
   const { getListedItems, updateListedItem } = useUser();
+  const { displayItemByID, loading } = displayItemByItemID(itemId);
+  const {itemTypes, deviceCondition, loadingName } = useItemTypes();
   
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+  const [userDonorID, setUserDonorID] =  useState<number>(0)
   const [itemName, setItemName] = useState('');
-  const [itemType, setItemType] = useState(itemTypes[0]);
-  const [condition, setCondition] = useState(conditions[0]);
+  const [itemType, setItemType] = useState<number | null>(null);
+  const [condition, setCondition] = useState<number | null>(null);
   const [dimensions, setDimensions] = useState({
     length: '',
     width: '',
@@ -69,34 +53,21 @@ const EditListedItems: React.FC<EditListedItemsProps> = ({ navigation, route }) 
 
   // Load item data when component mounts
   useEffect(() => {
-    loadItemData();
-  }, [itemId]);
-
-  const loadItemData = async () => {
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      const items = await getListedItems();
-      const item = items.find(item => item.id === itemId);
-      
-      if (item) {
-        setItemName(item.name);
-        setItemType(item.type);
-        setCondition(item.condition);
-        setDimensions(item.dimensions);
-        setQuantity(item.quantity);
-        setAddress(item.address || '');
-      } else {
-        setError('Item not found');
-      }
-    } catch (err) {
-      console.error('Error loading item:', err);
-      setError('Failed to load item data');
-    } finally {
+    if(displayItemByID){
+      const item = displayItemByID;
+      setUserDonorID(item.user_donor_id || 0);
+      setItemName(item.item_name);
+      setItemType(item.item_type_id || 'Select Type');
+      setCondition(item.device_condition_id);
+      setDimensions({
+        length: item.dimension_length?.toString() || '',
+        width: item.dimension_width?.toString() || '',
+        height: item.dimension_height?.toString() || ''
+      });
+      setAddress(item.pickup_location || '');
       setIsLoading(false);
     }
-  };
+  }, [displayItemByID]);
 
   const handleDimensionChange = (value: string, dimension: 'length' | 'width' | 'height') => {
     // Only allow numbers and limit to 3 digits
@@ -109,14 +80,14 @@ const EditListedItems: React.FC<EditListedItemsProps> = ({ navigation, route }) 
     }
   };
 
-  const handleQuantityChange = (value: string) => {
-    // Only allow numbers and limit to 20
-    const numericValue = value.replace(/[^0-9]/g, '');
-    const numberValue = parseInt(numericValue || '0', 10);
-    if (numberValue <= 20) {
-      setQuantity(numericValue);
-    }
-  };
+  // const handleQuantityChange = (value: string) => {
+  //   // Only allow numbers and limit to 20
+  //   const numericValue = value.replace(/[^0-9]/g, '');
+  //   const numberValue = parseInt(numericValue || '0', 10);
+  //   if (numberValue <= 20) {
+  //     setQuantity(numericValue);
+  //   }
+  // };
 
   const handleUpdate = async () => {
     // Basic validation
@@ -124,20 +95,16 @@ const EditListedItems: React.FC<EditListedItemsProps> = ({ navigation, route }) 
       Alert.alert('Error', 'Please enter item name');
       return;
     }
-    if (itemType === 'Select Type') {
+    if (!itemType) {
       Alert.alert('Error', 'Please select item type');
       return;
     }
-    if (condition === 'Select Condition') {
+    if (!deviceCondition) {
       Alert.alert('Error', 'Please select condition');
       return;
     }
     if (!dimensions.length || !dimensions.width || !dimensions.height) {
       Alert.alert('Error', 'Please enter all dimensions');
-      return;
-    }
-    if (!quantity) {
-      Alert.alert('Error', 'Please enter quantity');
       return;
     }
     if (!address) {
@@ -148,17 +115,26 @@ const EditListedItems: React.FC<EditListedItemsProps> = ({ navigation, route }) 
     setIsSaving(true);
     
     try {
-      const success = await updateListedItem(itemId, {
-        name: itemName,
-        type: itemType,
-        condition,
-        dimensions,
-        quantity,
-        address
-      });
-      
+      const updatedItem = {
+        item_name: itemName,
+        item_type_id: itemType,
+        device_condition_id: condition,
+        dimension_length: parseFloat(dimensions.length),
+        dimension_width: parseFloat(dimensions.width),
+        dimension_height: parseFloat(dimensions.height),
+        pickup_location: address,
+      };
+
+      // if (itemId) {
+      //   console.error(userDonorID);
+      //   return;
+      // }
+
+      const success = await updateItem(userDonorID, updatedItem);
+
       if (success) {
-        navigation.navigate('Home');
+        console.log(id)
+        navigation.navigate('Home', {id});
       } else {
         setError('Failed to update item');
       }
@@ -199,176 +175,181 @@ const EditListedItems: React.FC<EditListedItemsProps> = ({ navigation, route }) 
         showsVerticalScrollIndicator={true}
         bounces={true}
       >
-        {error && (
+        {/* {error && (
           <View style={styles.errorContainer}>
             <Text style={styles.errorText}>{error}</Text>
           </View>
-        )}
+        )} */}
         
-        {/* Item Name */}
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Item Name</Text>
-          <TextInput
-            style={[styles.input, { color: '#000', textAlign: 'left' }]}
-            placeholder="Enter item name"
-            placeholderTextColor="#666"
-            value={itemName}
-            onChangeText={setItemName}
-          />
-        </View>
-
-        {/* Item Type Dropdown */}
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Item Type</Text>
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={itemType}
-              onValueChange={(value) => setItemType(value)}
-              style={styles.picker}
-              dropdownIconColor="#666"
-              mode="dropdown"
-              enabled={true}
-              itemStyle={{ backgroundColor: '#FFFFFF' }}
-            >
-              <Picker.Item 
-                label="Select Type" 
-                value="Select Type" 
-                color={itemType === "Select Type" ? "#666" : "#000"}
-                style={{ backgroundColor: '#FFFFFF' }}
-              />
-              {itemTypes.slice(1).map((type) => (
-                <Picker.Item 
-                  key={type} 
-                  label={type} 
-                  value={type}
-                  color="#000"
-                  style={{ backgroundColor: '#FFFFFF' }}
-                />
-              ))}
-            </Picker>
-          </View>
-        </View>
-
-        {/* Condition Dropdown */}
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Condition</Text>
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={condition}
-              onValueChange={(value) => setCondition(value)}
-              style={styles.picker}
-              dropdownIconColor="#666"
-              mode="dropdown"
-              enabled={true}
-              itemStyle={{ backgroundColor: '#FFFFFF' }}
-            >
-              <Picker.Item 
-                label="Select Condition" 
-                value="Select Condition" 
-                color={condition === "Select Condition" ? "#666" : "#000"}
-                style={{ backgroundColor: '#FFFFFF' }}
-              />
-              {conditions.slice(1).map((cond) => (
-                <Picker.Item 
-                  key={cond} 
-                  label={cond} 
-                  value={cond}
-                  color="#000"
-                  style={{ backgroundColor: '#FFFFFF' }}
-                />
-              ))}
-            </Picker>
-          </View>
-        </View>
-
-        {/* Dimensions */}
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Dimensions</Text>
-          <Text style={styles.sublabel}>(in centimeters)</Text>
-          <View style={styles.dimensionsContainer}>
-            <View style={styles.dimensionInput}>
+        {displayItemByID && (
+          <>
+           {/* Item Name */}
+           <View style={styles.inputContainer}>
+              <Text style={styles.label}>Item Name</Text>
               <TextInput
-                style={[styles.input, { color: '#000' }]}
-                placeholder="L"
+                style={[styles.input, { color: '#000', textAlign: 'left' }]}
+                placeholder="Enter item name"
+                placeholderTextColor="#666"
+                value={itemName}
+                onChangeText={setItemName}
+              />
+            </View>
+
+            {/* Item Type Dropdown */}
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Item Type</Text>
+              <View style={styles.pickerContainer}>
+                <Picker
+                  selectedValue={itemType}
+                  onValueChange={(value) => setItemType(value)}
+                  style={styles.picker}
+                  dropdownIconColor="#666"
+                  mode="dropdown"
+                  enabled={true}
+                  itemStyle={{ backgroundColor: '#FFFFFF' }}
+                >
+                  <Picker.Item 
+                    label="Select Type" 
+                    value="Select Type" 
+                    color={itemType === "Select Type" ? "#666" : "#000"}
+                    style={{ backgroundColor: '#FFFFFF' }}
+                  />
+                  {itemTypes.map((type) => (
+                    <Picker.Item 
+                      key={type.id} 
+                      label={type.name} 
+                      value={type.id}
+                      color="#000"
+                      style={{ backgroundColor: '#FFFFFF' }}
+                    />
+                  ))}
+                </Picker>
+              </View>
+            </View>
+
+            {/* Condition Dropdown */}
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Condition</Text>
+              <View style={styles.pickerContainer}>
+                <Picker
+                  selectedValue={condition}
+                  onValueChange={(value) => setCondition(value)}
+                  style={styles.picker}
+                  dropdownIconColor="#666"
+                  mode="dropdown"
+                  enabled={true}
+                  itemStyle={{ backgroundColor: '#FFFFFF' }}
+                >
+                  <Picker.Item 
+                    label="Select Condition" 
+                    value="Select Condition" 
+                    color={condition === "Select Condition" ? "#666" : "#000"}
+                    style={{ backgroundColor: '#FFFFFF' }}
+                  />
+                  {deviceCondition.map((cond) => (
+                    <Picker.Item 
+                      key={cond.id} 
+                      label={cond.name} 
+                      value={cond.id}
+                      color="#000"
+                      style={{ backgroundColor: '#FFFFFF' }}
+                    />
+                  ))}
+                </Picker>
+              </View>
+            </View>
+
+            {/* Dimensions */}
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Dimensions</Text>
+              <Text style={styles.sublabel}>(in centimeters)</Text>
+              <View style={styles.dimensionsContainer}>
+                <View style={styles.dimensionInput}>
+                  <TextInput
+                    style={[styles.input, { color: '#000' }]}
+                    placeholder="L"
+                    placeholderTextColor="#666"
+                    keyboardType="numeric"
+                    value={dimensions.length}
+                    onChangeText={(value) => handleDimensionChange(value, 'length')}
+                  />
+                  <Text style={styles.dimensionLabel}>Length</Text>
+                </View>
+                <Text style={styles.dimensionX}>×</Text>
+                <View style={styles.dimensionInput}>
+                  <TextInput
+                    style={[styles.input, { color: '#000' }]}
+                    placeholder="W"
+                    placeholderTextColor="#666"
+                    keyboardType="numeric"
+                    value={dimensions.width}
+                    onChangeText={(value) => handleDimensionChange(value, 'width')}
+                  />
+                  <Text style={styles.dimensionLabel}>Width</Text>
+                </View>
+                <Text style={styles.dimensionX}>×</Text>
+                <View style={styles.dimensionInput}>
+                  <TextInput
+                    style={[styles.input, { color: '#000' }]}
+                    placeholder="H"
+                    placeholderTextColor="#666"
+                    keyboardType="numeric"
+                    value={dimensions.height}
+                    onChangeText={(value) => handleDimensionChange(value, 'height')}
+                  />
+                  <Text style={styles.dimensionLabel}>Height</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Quantity
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Quantity</Text>
+              <Text style={styles.sublabel}>(maximum 20)</Text>
+              <TextInput
+                style={[styles.input, styles.quantityInput, { color: '#000' }]}
+                placeholder="1"
                 placeholderTextColor="#666"
                 keyboardType="numeric"
-                value={dimensions.length}
-                onChangeText={(value) => handleDimensionChange(value, 'length')}
+                value={quantity}
+                onChangeText={handleQuantityChange}
               />
-              <Text style={styles.dimensionLabel}>Length</Text>
-            </View>
-            <Text style={styles.dimensionX}>×</Text>
-            <View style={styles.dimensionInput}>
-              <TextInput
-                style={[styles.input, { color: '#000' }]}
-                placeholder="W"
-                placeholderTextColor="#666"
-                keyboardType="numeric"
-                value={dimensions.width}
-                onChangeText={(value) => handleDimensionChange(value, 'width')}
-              />
-              <Text style={styles.dimensionLabel}>Width</Text>
-            </View>
-            <Text style={styles.dimensionX}>×</Text>
-            <View style={styles.dimensionInput}>
-              <TextInput
-                style={[styles.input, { color: '#000' }]}
-                placeholder="H"
-                placeholderTextColor="#666"
-                keyboardType="numeric"
-                value={dimensions.height}
-                onChangeText={(value) => handleDimensionChange(value, 'height')}
-              />
-              <Text style={styles.dimensionLabel}>Height</Text>
-            </View>
-          </View>
-        </View>
+            </View> */}
 
-        {/* Quantity */}
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Quantity</Text>
-          <Text style={styles.sublabel}>(maximum 20)</Text>
-          <TextInput
-            style={[styles.input, styles.quantityInput, { color: '#000' }]}
-            placeholder="1"
-            placeholderTextColor="#666"
-            keyboardType="numeric"
-            value={quantity}
-            onChangeText={handleQuantityChange}
-          />
-        </View>
+            {/* Location */}
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Location</Text>
+              <View style={styles.locationContainer}>
+                <Text style={styles.addressText} numberOfLines={2} ellipsizeMode="tail">
+                  {address || 'No location set'}
+                </Text>
+                <TouchableOpacity 
+                  style={styles.editLocationButton}
+                  onPress={() => navigation.navigate('EditLocation', { itemId, currentAddress: address })}
+                >
+                  <Text style={styles.editLocationButtonText}>Edit Location</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
 
-        {/* Location */}
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Location</Text>
-          <View style={styles.locationContainer}>
-            <Text style={styles.addressText} numberOfLines={2} ellipsizeMode="tail">
-              {address || 'No location set'}
-            </Text>
+            {/* Update Button */}
             <TouchableOpacity 
-              style={styles.editLocationButton}
-              onPress={() => navigation.navigate('EditLocation', { itemId, currentAddress: address })}
+              style={styles.listButton}
+              onPress={handleUpdate}
+              disabled={isSaving}
             >
-              <Text style={styles.editLocationButtonText}>Edit Location</Text>
+              {isSaving ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <Text style={styles.listButtonText}>Edit Item</Text>
+              )}
             </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Update Button */}
-        <TouchableOpacity 
-          style={styles.listButton}
-          onPress={handleUpdate}
-          disabled={isSaving}
-        >
-          {isSaving ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <Text style={styles.listButtonText}>Edit Item</Text>
-          )}
-        </TouchableOpacity>
-        
-        {/* Add padding at the bottom for better scrolling */}
-        <View style={styles.bottomPadding} />
+            
+            {/* Add padding at the bottom for better scrolling */}
+            <View style={styles.bottomPadding} />
+          
+          </>
+        )}                 
       </ScrollView>
     </SafeAreaView>
   );

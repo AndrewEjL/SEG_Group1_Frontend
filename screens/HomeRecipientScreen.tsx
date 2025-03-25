@@ -4,18 +4,12 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useUser, DevAutoLogin, ScheduledPickup, type ListedItem } from '../contexts/UserContext';
 import { useFocusEffect } from '@react-navigation/native';
-import { useRoute } from '@react-navigation/native';
-import { displayItem } from './api/items/displayItems';
-import { useItemTypes } from './api/items/itemTypes';
-import { useDeleteItem } from './api/items/deleteItem';
-import { grabTransactionOrg } from './api/transaction/grabTransactionOrg';
-import { useOrganization } from './api/transaction/getOrganization';
 
 type RootStackParamList = {
-  Home: {id: number};
-  PickupDetails: { pickupId: number };
-  AddPickupItem: { id: number };
-  EditListedItems: { itemId: number, id:number };
+  Home: undefined;
+  PickupDetails: { pickupId: string };
+  AddPickupItem: undefined;
+  EditListedItems: { itemId: string };
 };
 
 type HomeScreenProps = {
@@ -27,7 +21,6 @@ interface PickupItem {
   id: number;
   facility: string;
 }
-
 
 const LoadingIcon: React.FC = () => {
   const spinValue = useRef(new Animated.Value(0)).current;
@@ -61,14 +54,7 @@ const LoadingIcon: React.FC = () => {
 };
 
 const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
-  const route = useRoute();
   const { user, getScheduledPickups, getListedItems, deleteListedItem } = useUser();
-  const { itemTypes, deviceCondition, itemsStatus, loadingName } = useItemTypes();
-  const {id} = route.params;
-  const { displayItems, loading } = displayItem(id);
-  const { displayTransactionOrg, loadingT1} = grabTransactionOrg(id)
-  const { displayOrg, loading: loadingOrg} = useOrganization();
-  const { deleteItem, loadingDelete, error } = useDeleteItem();
   const [scheduledPickups, setScheduledPickups] = useState<ScheduledPickup[]>([]);
   const [listedItems, setListedItems] = useState<ListedItem[]>([]);
   const [isPickupsLoading, setIsPickupsLoading] = useState(true);
@@ -89,16 +75,16 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const loadData = async () => {
     if (user) {
       // Load pickups
-      // setIsPickupsLoading(true);
-      // const pickups = await getScheduledPickups();
-      // setScheduledPickups(pickups);
-      // setIsPickupsLoading(false);
+      setIsPickupsLoading(true);
+      const pickups = await getScheduledPickups();
+      setScheduledPickups(pickups);
+      setIsPickupsLoading(false);
 
       // Load listed items
-      // setIsItemsLoading(true);
-      // const items = await getListedItems();
-      // setListedItems(items);
-      // setIsItemsLoading(false);
+      setIsItemsLoading(true);
+      const items = await getListedItems();
+      setListedItems(items);
+      setIsItemsLoading(false);
     }
   };
 
@@ -107,7 +93,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     return scheduledPickups.some(pickup => pickup.listedItemIds.includes(itemId));
   };
 
-  const handleViewPickup = (pickupId: number) => {
+  const handleViewPickup = (pickupId: string) => {
     navigation.navigate('PickupDetails', { pickupId });
   };
 
@@ -116,12 +102,11 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     Alert.alert('Coming Soon', 'Edit pickup functionality will be available soon');
   };
 
-  const handleEditItem = (itemId: number) => {
-    console.log("Navigating with:", { itemId, id });
-    navigation.navigate('EditListedItems', { itemId, id });
+  const handleEditItem = (itemId: string) => {
+    navigation.navigate('EditListedItems', { itemId });
   };
 
-  const handleDeleteItem = (itemId: number, itemName: string) => {
+  const handleDeleteItem = (itemId: string, itemName: string) => {
     Alert.alert(
       "Remove Item",
       `Are you sure you want to remove "${itemName}" from listing?`,
@@ -134,10 +119,10 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           text: "Remove", 
           style: "destructive",
           onPress: async () => {
-            const success = await deleteItem(itemId);
+            const success = await deleteListedItem(itemId);
             if (success) {
               // Refresh the list after deletion
-              await loadData();
+              loadData();
             } else {
               Alert.alert(
                 "Error",
@@ -151,21 +136,19 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   };
 
   const handleAddPickupItem = () => {
-    navigation.navigate('AddPickupItem', {id});
+    navigation.navigate('AddPickupItem');
   };
 
   const handleTabPress = (tabName: string) => {
     console.log('Pressed tab:', tabName);
   };
 
-  
-
   return (
     <SafeAreaView style={styles.container}>
       <DevAutoLogin />
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>E-Waste App</Text>
+        <Text style={styles.title}>E-Waste App Recipient</Text>
         <View style={styles.pointsContainer}>
           <Icon name="stars" size={20} color="#5E4DCD" />
           <Text style={styles.points}>Points {user?.points || 0}</Text>
@@ -177,44 +160,29 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         <Text style={styles.sectionTitle}>Your Scheduled Pickups</Text>
         <View style={styles.tableContainer}>
           <ScrollView style={styles.scrollView}>
-            {displayTransactionOrg.length === 0 ? (
-              <View style={styles.emptyContainer}>
-                <Text style={styles.emptyText}>No Scheduled listed yet</Text>
+            {isPickupsLoading ? (
+              <View style={styles.loadingContainer}>
+                <LoadingIcon />
               </View>
-            ) : (
-              displayTransactionOrg.map((pickup) => {
-                const organizationId = typeof pickup === "object" ? pickup.organization_id : pickup;
-                console.log("Organization ID:", organizationId);
-                const organization = displayOrg.find((org) => org.organizationID === pickup.organization_id);
-                console.log("displayOrg:", displayOrg);
-                console.log("Found organization:", organization);
-
-
-                return(
-                <View key={pickup.pickup_transaction_id} style={styles.tableRow}>              
-                  <Text style={styles.facilityText}>
-                    {/* {organization?.organization_name} */}
-                    {organization?.organization_name}
-                  </Text>                  
-                  <View style={styles.actionButtons}>
-                    <TouchableOpacity 
-                      style={styles.iconButton} 
-                      onPress={() => handleViewPickup(pickup.pickup_transaction_id)}
-                    >
-                      <Icon name="visibility" size={24} color="#666" />
-                    </TouchableOpacity>
-                    <TouchableOpacity 
-                      style={styles.iconButton} 
-                      onPress={() => handleEditPickup(pickup.pickup_transaction_id)}
-                    >
-                      <LoadingIcon />
-                    </TouchableOpacity>
-                  </View>
+            ) : scheduledPickups.map((pickup) => (
+              <View key={pickup.id} style={styles.tableRow}>
+                <Text style={styles.facilityText}>{pickup.facilityName}</Text>
+                <View style={styles.actionButtons}>
+                  <TouchableOpacity 
+                    style={styles.iconButton} 
+                    onPress={() => handleViewPickup(pickup.id)}
+                  >
+                    <Icon name="visibility" size={24} color="#666" />
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={styles.iconButton} 
+                    onPress={() => handleEditPickup(pickup.id)}
+                  >
+                    <LoadingIcon />
+                  </TouchableOpacity>
                 </View>
-                )
-              
-            })
-            )}
+              </View>
+            ))}
           </ScrollView>
         </View>
       </View>
@@ -224,53 +192,72 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         <Text style={styles.sectionTitle}>Your Listed Items</Text>
         <View style={styles.tableContainer}>
           <ScrollView style={styles.scrollView}>
-            {displayItems.length === 0 ? (
+            {isItemsLoading ? (
+              <View style={styles.loadingContainer}>
+                <LoadingIcon />
+              </View>
+            ) : listedItems.length === 0 ? (
               <View style={styles.emptyContainer}>
                 <Text style={styles.emptyText}>No items listed yet</Text>
               </View>
             ) : (
-              displayItems
-              .sort((a, b) => (a.item_status_id === 1 ? -1 : b.item_status_id === 1 ? 1 : 0))
-              .map((item) => {
-                const type = itemTypes.find((t) => t.id === item.item_type_id);
-                const condition = deviceCondition.find((t) => t.id === item.device_condition_id);
-                const status = itemsStatus.find((t) => t.id === item.item_status_id)
-                return(
-                  <View key={item.pickup_items_id} style={styles.tableRow}>
-                    <View style={styles.itemDetails}>
-                      <Text style={styles.itemText}>{item.item_name}</Text>
-                      <Text style={styles.itemSubtext}>
-                        {type?.name} • {condition?.name}
-                      </Text>
-                      <Text style={styles.itemStatus}>
-                        {status?.name}
-                      </Text>
-                      {/* <Text style={styles.listingStatus}>
-                        Listing
-                      </Text> */}
-                  
+              [...listedItems]
+                .sort((a, b) => {
+                  const aInPickup = isItemInPickup(a.id);
+                  const bInPickup = isItemInPickup(b.id);
+                  if (aInPickup === bInPickup) return 0;
+                  return aInPickup ? 1 : -1; // Items not in pickup (Listing) come first
+                })
+                .map((item) => {
+                  const inPickup = isItemInPickup(item.id);
+                  return (
+                    <View key={item.id} style={styles.tableRow}>
+                      <View style={styles.itemDetails}>
+                        <Text style={styles.itemText}>{item.name}</Text>
+                        <View style={styles.itemInfo}>
+                          <Text style={styles.itemSubtext}>
+                            {item.type} • {item.condition}
+                          </Text>
+                          {inPickup ? (
+                            <Text style={styles.itemStatus}>
+                              Awaiting Pickup
+                            </Text>
+                          ) : (
+                            <Text style={styles.listingStatus}>
+                              Listing
+                            </Text>
+                          )}
+                        </View>
+                      </View>
+                      <View style={styles.actionButtons}>
+                        <TouchableOpacity 
+                          style={styles.iconButton} 
+                          onPress={() => handleEditItem(item.id)}
+                          disabled={inPickup}
+                        >
+                          <Icon 
+                            name="edit" 
+                            size={24} 
+                            color={inPickup ? "#BDBDBD" : "#666"} 
+                          />
+                        </TouchableOpacity>
+                        
+                        {!inPickup && (
+                          <TouchableOpacity 
+                            style={styles.deleteButton} 
+                            onPress={() => handleDeleteItem(item.id, item.name)}
+                          >
+                            <Icon 
+                              name="close" 
+                              size={24} 
+                              color="#D32F2F" 
+                            />
+                          </TouchableOpacity>
+                        )}
+                      </View>
                     </View>
-                    <View style={styles.actionButtons}>
-                      <TouchableOpacity 
-                        style={styles.iconButton} 
-                        onPress={() => handleEditItem(item.pickup_items_id)}
-                        disabled={item.item_status_id !== 1}
-                      >
-                        <Icon name="edit" size={24} color="#666" />
-                      </TouchableOpacity>
-                      {item.item_status_id == 1 && (
-                      <TouchableOpacity 
-                        style={styles.deleteButton} 
-                        onPress={() => handleDeleteItem(item.pickup_items_id, item.item_name)}
-                      >
-                        <Icon name="close" size={24} color="#D32F2F" />
-                      </TouchableOpacity>
-                      )}
-                    </View>
-                  </View>
-                )
-                
-              })
+                  );
+                })
             )}
           </ScrollView>
         </View>

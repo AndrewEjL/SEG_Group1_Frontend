@@ -1,22 +1,17 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { View,ScrollView, Text, StyleSheet, Dimensions, Alert } from "react-native";
 import { TextInput, Button, HelperText } from "react-native-paper";
 import { Dropdown } from "react-native-element-dropdown";
 import Icon from "react-native-vector-icons/MaterialIcons";
+import { useRegistrationTypes } from "../api/useRegistrationType";
+import { checkEmailExists, registerOrganization } from "../api/registerOrganization";
 
 const { width, height } = Dimensions.get("window");
 
-const registrationTypes = [
-  { label: "Company Registration Number Old", value: "company_old" },
-  { label: "Business Registration Number Old", value: "business_old" },
-  { label: "Company Registration Number New", value: "company_new" },
-  { label: "Business Registration Number New", value: "business_new" },
-  { label: "LLP Registration Number", value: "llp" },
-];
-
 const OrgRegistration = ({ navigation }) => {
+  const { registrationTypes, loading} = useRegistrationTypes();
   const [orgName, setOrgName] = useState("");
-  const [businessType, setBusinessType] = useState(null);
+  const [businessType, setBusinessType] = useState<number | null>(null);
   const [isFocus, setIsFocus] = useState(false);
   const [brn, setBrn] = useState("");
   const [address, setAddress] = useState("");
@@ -24,6 +19,7 @@ const OrgRegistration = ({ navigation }) => {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [emailError, setEmailError] = useState("");
   const [brnError, setBrnError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   const isFormValid =
     orgName.trim() !== "" &&
@@ -36,27 +32,36 @@ const OrgRegistration = ({ navigation }) => {
     brnError === "";
 
  const handleSubmit = async () => {
-  //dummy data
-  const existingEmails = ["test@example.com", "user@gmail.com"];
-  const existingBrns = ["123456789", "987654321"];
-
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;//valid email format
+
+  setEmailError("");
 
   if (!emailRegex.test(email)) {
     setEmailError("Invalid email format.");
     return;
-  } else {
-    setEmailError("");
   }
 
-  setEmailError(existingEmails.includes(email) ? "Email is already in use." : "");
-  setBrnError(existingBrns.includes(brn) ? "This Business registration number is already registered." : "");
+  setIsLoading(true);
+  try{
+    const emailExists = await checkEmailExists(email);
+    if(emailExists){
+      setEmailError("Email already exist");
+      setIsLoading(false);
+      return;
+    }
 
-  if (existingEmails.includes(email) || existingBrns.includes(brn)) {
-    return;
+    const success = await registerOrganization(orgName, brn, businessType, address, email, `+60${phoneNumber}`);
+      if (success) {
+        navigation.navigate("OrgRegistrationCompleted");
+      } else {
+        Alert.alert("Error", "Registration failed. Please try again.");
+      }
+    } catch (error) {
+        console.error("Registration error:", error);
+        Alert.alert("Error", "An unexpected error occurred. Please try again.");
+    } finally {
+      setIsLoading(false);
   }
-
-  navigation.navigate("OrgRegistrationCompleted");
  };
 
 
@@ -76,7 +81,10 @@ const OrgRegistration = ({ navigation }) => {
         inputSearchStyle={styles.inputSearchStyle}
         itemTextStyle={styles.itemTextStyle}
         iconStyle={styles.iconStyle}
-        data={registrationTypes}
+        data={registrationTypes.length >0 ? registrationTypes.map((item) => ({
+          label: item.name,
+          value: item.id,
+        })) : []}
         search
         maxHeight={300}
         labelField="label"
@@ -128,7 +136,7 @@ const OrgRegistration = ({ navigation }) => {
         label="Email"
         mode="outlined"
         value={email}
-        onChangeText={setEmail}
+        onChangeText={(text) => { setEmail(text.trim()); setEmailError("");}}
         style={styles.input}
         error={emailError !== ""}
       />

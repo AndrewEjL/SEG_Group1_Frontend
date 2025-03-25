@@ -17,6 +17,8 @@ import EditLocation from './screens/EditLocation';
 import ClientRegistration from './screens/Login&RegistrationScreens/clientRegistration.tsx';
 import NavigationMap from './screens/GoogleMapsScreens/NavigationMap.tsx';
 import SelectLocation from './screens/GoogleMapsScreens/SelectLocation.tsx';
+import HomeRecipientScreen from './screens/HomeRecipientScreen.tsx';
+import HomeOrganizationScreen from './screens/HomeOrganizationScreen.tsx';
 
 // Define your navigation types
 type RootStackParamList = {
@@ -27,6 +29,8 @@ type RootStackParamList = {
   SelectRegistrationRole: undefined;
   OrgRegistrationCompleted: undefined;
   Home: undefined;
+  HomeRecipient: undefined;
+  HomeOrganization: undefined;
   PickupDetails: { pickupId: string };
   AddPickupItem: undefined;
   MapScreen: {
@@ -131,6 +135,14 @@ const App = () => {
           <Stack.Screen
             name="Home"
             component={HomeScreen}
+          />
+          <Stack.Screen
+            name="HomeRecipient"
+            component={HomeRecipientScreen}
+          />
+           <Stack.Screen
+            name="HomeOrganization"
+            component={HomeOrganizationScreen}
           />
           <Stack.Screen
             name="PickupDetails"

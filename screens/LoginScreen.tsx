@@ -3,6 +3,8 @@ import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, Key
 import { useUser } from '../contexts/UserContext';
 import { TextInput } from 'react-native-paper';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { login } from './api/login';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 type LoginScreenProps = {
   navigation: NativeStackNavigationProp<any, 'Login'>;
@@ -13,30 +15,40 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useUser();
 
   const handleSignIn = async () => {
-    if (!email || !password) {
-      setError('Please enter both email and password');
-      return;
-    }
-
-    setError('');
-    setIsLoading(true);
-
-    try {
-      const success = await login(email, password);
-      if (success) {
-        navigation.navigate('Home');
-      } else {
-        setError('Invalid email or password');
+      if (!email || !password) {
+          setError('Please enter both email and password');
+          return;
       }
-    } catch (err) {
-      setError('An error occurred during login');
-    } finally {
-      setIsLoading(false);
-    }
+
+      setError('');
+      setIsLoading(true);
+
+      try {
+          const result = await login(email, password);
+
+          if (result.success) {
+              await AsyncStorage.setItem("id", String(result.id));
+
+              if (result.userType === "donor") {
+                  navigation.navigate('Home', { id: result.id, userType: result.userType });
+              } else if (result.userType === "recipient") {
+                  navigation.navigate("HomeRecipient");
+              } else if (result.userType === "organization") {
+                  navigation.navigate("HomeOrganization");
+              }
+          } else {
+              setError('Invalid email or password');
+          }
+      } catch (err) {
+          setError('An error occurred during login');
+      } finally {
+          setIsLoading(false);
+      }
   };
+
+
 
   const handleSignUp = () => {
     navigation.navigate('SelectRegistrationRole');

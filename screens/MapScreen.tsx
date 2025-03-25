@@ -16,18 +16,21 @@ import {
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import MapView, { Marker } from 'react-native-maps';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import type { RouteProp } from '@react-navigation/native';
+import { useRoute, type RouteProp } from '@react-navigation/native';
 import { useUser } from '../contexts/UserContext';
+import { useItemTypes } from './api/items/itemTypes';
+import { addItem } from './api/items/addItem';
 
 // Google Maps API Key
 const GOOGLE_MAPS_API_KEY = "AIzaSyDqpBZYwzP8m_L8du5imDrLUQHYIUZFHtU";
 
 type RootStackParamList = {
   MapScreen: {
+    id: number;
     itemData: {
       name: string;
-      type: string;
-      condition: string;
+      type: number;
+      condition: number;
       dimensions: {
         length: string;
         width: string;
@@ -44,9 +47,13 @@ type MapScreenProps = {
   route: RouteProp<RootStackParamList, 'MapScreen'>;
 };
 
-const MapScreen: React.FC<MapScreenProps> = ({ navigation, route }) => {
-  const { itemData } = route.params;
+const MapScreen: React.FC<MapScreenProps> = ({ navigation}) => {
+  const route = useRoute();
+  const { id, itemData } = route.params || {};
+  const { itemTypes, deviceCondition, loading } = useItemTypes();
   const { listItem } = useUser();
+  const [itemTypeName, setItemTypeName] = useState('');
+  const [conditionName, setConditionName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
@@ -80,6 +87,18 @@ const MapScreen: React.FC<MapScreenProps> = ({ navigation, route }) => {
       keyboardDidHideListener.remove();
     };
   }, []);
+
+  // get item name and device condition name base on the id
+  useEffect(() => {
+    if (!loading && itemTypes.length > 0 && deviceCondition.length > 0) {
+      const type = itemTypes.find((t) => t.id === itemData.type);
+      if (type) setItemTypeName(type.name);
+  
+      const condition = deviceCondition.find((c) => c.id === itemData.condition);
+      if (condition) setConditionName(condition.name);
+    }
+  }, [loading, itemTypes, deviceCondition, itemData]);
+  
 
   // Convert address to coordinates
   const fetchCoordinates = async () => {
@@ -139,22 +158,33 @@ const MapScreen: React.FC<MapScreenProps> = ({ navigation, route }) => {
     setError(null);
     
     try {
-      // Call the listItem function from UserContext
-      const success = await listItem({
-        name: itemData.name,
-        type: itemData.type,
-        condition: itemData.condition,
-        dimensions: itemData.dimensions,
-        quantity: itemData.quantity,
-        address: location.address,
-      });
-      
-      if (success) {
-        // Navigate back to home screen on success
-        navigation.navigate('Home');
-      } else {
-        setError('Failed to list item. Please try again.');
+      for(let i=0; i<parseInt(itemData.quantity, 10); i++){
+        // Call the listItem function from UserContext
+        console.log("Item ID before submitting:", id);
+        if (!id) {
+            setError("Error: Item ID is missing.");
+            return;
+        }
+
+        const response = await addItem(
+          id, 
+          itemData.name, 
+          itemData.type,
+          itemData.condition,
+          parseFloat(itemData.dimensions.length),
+          parseFloat(itemData.dimensions.width),
+          parseFloat(itemData.dimensions.height),
+          location.address
+        )
+
+        console.log("Response from addItem:", response);
+
+        if(!response){
+          setError('Failed to list item. Please try again.');
+        }
       }
+      // Navigate back to home screen on success
+      navigation.navigate('Home', {id});
     } catch (err) {
       setError('An error occurred. Please try again.');
       console.error('Error listing item:', err);
@@ -243,9 +273,10 @@ const MapScreen: React.FC<MapScreenProps> = ({ navigation, route }) => {
             {/* Item Details Section */}
             <View style={styles.itemDetailsContainer}>
               <Text style={styles.itemDetailsTitle}>Item Details:</Text>
+              {/* <Text style={styles.itemDetail}>user id : {id}</Text> */}
               <Text style={styles.itemDetail}>Name: {itemData.name}</Text>
-              <Text style={styles.itemDetail}>Type: {itemData.type}</Text>
-              <Text style={styles.itemDetail}>Condition: {itemData.condition}</Text>
+              <Text style={styles.itemDetail}>Type: {itemTypeName || 'loading'}</Text>
+              <Text style={styles.itemDetail}>Condition: {conditionName || 'loading'}</Text>
               <Text style={styles.itemDetail}>Dimensions: {itemData.dimensions.length} x {itemData.dimensions.width} x {itemData.dimensions.height}</Text>
               <Text style={styles.itemDetail}>Quantity: {itemData.quantity}</Text>
             </View>
