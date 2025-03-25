@@ -83,26 +83,42 @@ const RewardsScreen: React.FC<RewardsScreenProps> = ({ navigation }) => {
       return;
     }
 
-    // Generate a new PIN for this redemption
-    const newPin = generatePin();
-    setRedemptionPin(newPin);
-    setShowPin(true);
-
-    // Create a reward redemption record with current timestamp
-    const rewardRedemption = {
-      id: Date.now().toString(),
-      name: selectedGiftCard.name,
-      value: selectedGiftCard.value,
-      pin: newPin,
-      date: new Date().toISOString(),
-      imageSource: selectedGiftCard.image,
-    };
-
-    // Update user points and add to redemption history
-    if (updateUserPoints && addRedeemedReward) {
-      updateUserPoints(user.points - selectedGiftCard.points);
-      addRedeemedReward(rewardRedemption);
-    }
+    // Show confirmation dialog before proceeding
+    Alert.alert(
+      'Confirm Redemption',
+      `Are you sure you want to redeem ${selectedGiftCard.points} points for a ${selectedGiftCard.value} Touch 'n Go eWallet gift card?`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel'
+        },
+        {
+          text: 'Redeem',
+          onPress: () => {
+            // Generate a new PIN for this redemption
+            const newPin = generatePin();
+            setRedemptionPin(newPin);
+            setShowPin(true);
+        
+            // Create a reward redemption record with current timestamp
+            const rewardRedemption = {
+              id: Date.now().toString(),
+              name: selectedGiftCard.name,
+              value: selectedGiftCard.value,
+              pin: newPin,
+              date: new Date().toISOString(),
+              imageSource: selectedGiftCard.image,
+            };
+        
+            // Update user points and add to redemption history
+            if (updateUserPoints && addRedeemedReward) {
+              updateUserPoints(user.points - selectedGiftCard.points);
+              addRedeemedReward(rewardRedemption);
+            }
+          }
+        }
+      ]
+    );
 
     // Don't close modal yet, we'll show the PIN
   };
@@ -121,7 +137,7 @@ const RewardsScreen: React.FC<RewardsScreenProps> = ({ navigation }) => {
     if (hasAvailable && hasUnavailable) {
       return "Available Rewards";
     }
-    return "Rewards";
+    return "Unavailable";
   };
 
   return (
@@ -221,7 +237,7 @@ const RewardsScreen: React.FC<RewardsScreenProps> = ({ navigation }) => {
                         {card.points} Points
                       </Text>
                       {!isAvailable && (
-                        <Text style={styles.unavailableLabel}>Coming Soon</Text>
+                        <Text style={styles.unavailableLabel}>temporarily unavailable</Text>
                       )}
                     </View>
                   </View>
@@ -229,7 +245,7 @@ const RewardsScreen: React.FC<RewardsScreenProps> = ({ navigation }) => {
                 
                 {/* Add a section header if this is the last available card */}
                 {lastAvailableCard && (
-                  <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Coming Soon</Text>
+                  <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Unavailable</Text>
                 )}
               </React.Fragment>
             );
