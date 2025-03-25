@@ -2,8 +2,10 @@ import React, { useEffect, useState } from "react";
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, Modal } from "react-native";
 import Icon from "react-native-vector-icons/MaterialIcons";
 import { Dropdown } from "react-native-element-dropdown";
+import RouteInfo from "./RouteInfo.tsx";
 
- const RHomeScreen = ({ navigation }) => {
+const RHomeScreen = ({ navigation }) => {
+
  const [availablePickups, setAvailablePickups] = useState([
   {
     id: 1,
@@ -93,6 +95,11 @@ import { Dropdown } from "react-native-element-dropdown";
             </View>
           </View>
         )}
+        ListEmptyComponent={() => (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>No available pickups</Text>
+            </View>
+          )}
       />
 
       <Text style={styles.header}>Pending pickups</Text>
@@ -111,10 +118,15 @@ import { Dropdown } from "react-native-element-dropdown";
             </View>
           </View>
         )}
+        ListEmptyComponent={() => (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>No pending pickups</Text>
+            </View>
+          )}
       />
 
       <View style={styles.bottomNav}>
-        <TouchableOpacity style={styles.navItem} onPress={() => handleTabPress("Rhome")}>
+        <TouchableOpacity style={styles.navItem} onPress={() => handleTabPress("RHome")}>
           <Icon name="home" size={24} color="#5E4DCD" />
           <Text style={[styles.navText, styles.activeNavText]}>Home</Text>
         </TouchableOpacity>
@@ -130,13 +142,17 @@ import { Dropdown } from "react-native-element-dropdown";
 
       <Modal visible={modal1Visible} animationType="slide" transparent={true}>
         <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
+          <View style={styles.modal1Content}>
               <TouchableOpacity onPress={() => setModal1Visible(false)} style={{ alignSelf: "flex-start" }}>
                 <Icon name="close" size={24} color="black" />
               </TouchableOpacity>
               <Text style={styles.modalTitle}>Pickup details</Text>
+
              {selectedPickup && (
               <View>
+              <View style={styles.mapWrapper}>
+              <RouteInfo  initialDestination={selectedPickup.address}/>
+              </View>
               <Text style={styles.label}><Text style={styles.bold}>Pickup No:</Text> {selectedPickup.pickUpNo}</Text>
               <Text style={styles.label}><Text style={styles.bold}>Item Name:</Text> {selectedPickup.itemName}</Text>
               <Text style={styles.label}><Text style={styles.bold}>Type:</Text> {selectedPickup.type}</Text>
@@ -318,6 +334,14 @@ const styles = StyleSheet.create({
     padding: 20,
     borderRadius: 10,
     alignItems: "center",
+
+  },
+  modal1Content: {
+    maxWidth:"90%",
+    backgroundColor: "white",
+    padding: 20,
+    borderRadius: 10,
+    alignItems: "center",
   },
   modalTitle: {
     fontSize: 20,
@@ -386,6 +410,26 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "bold",
     color: "#333",
+  },
+  emptyContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 20,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: "gray",
+  },
+  mapWrapper: {
+    height: 400,
+    width: 350,
+    position: 'relative',
+    marginTop: 10,
+    marginBottom: 10,
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
   },
 });
 

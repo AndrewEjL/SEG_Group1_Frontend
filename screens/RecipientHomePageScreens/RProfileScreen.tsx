@@ -4,6 +4,8 @@ import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import { Dropdown } from "react-native-element-dropdown";
 import { Checkbox } from "react-native-paper";
 
+
+
 const EWasteTypes = [
   { type: 'Select Type', selected: false },
   { type: 'Smartphone', selected: false },
@@ -15,6 +17,7 @@ const EWasteTypes = [
   { type: 'Gaming Console', selected: false },
   { type: 'TV', selected: false }
 ];
+
 
 const RProfileScreen = ({ navigation }) => {
   const handleTabPress = (screen) => {
@@ -255,7 +258,6 @@ const handleEWasteTypeSave = () => {
             <TextInput
               style={styles.input}
               placeholder="Email"
-              placeholderTextColor="black"
               value={tempUser.email}
               onChangeText={(text) => setTempUser({ ...tempUser, email: text })}
             />
@@ -263,7 +265,6 @@ const handleEWasteTypeSave = () => {
             <TextInput
               style={styles.input}
               placeholder="Phone Number"
-              placeholderTextColor="black"
               value={tempUser.phoneNumber}
               onChangeText={handlePhoneNumberChange}
             />
@@ -271,7 +272,6 @@ const handleEWasteTypeSave = () => {
             <TextInput
               style={styles.input}
               placeholder="Address"
-              placeholderTextColor="black"
               value={tempUser.address}
               onChangeText={(text) => setTempUser({ ...tempUser, address: text })}
             />
@@ -301,7 +301,6 @@ const handleEWasteTypeSave = () => {
              <Text style={styles.modalTitle}>Change password</Text>
              <TextInput
                placeholder="Origin Password"
-               placeholderTextColor="black"
                value={tempPassword.originPassword}
                onChangeText={(text) => setTempPassword({ ...tempPassword, originPassword: text })}
                secureTextEntry
@@ -310,7 +309,6 @@ const handleEWasteTypeSave = () => {
              {passwordErrors.originPassword ? <Text style={styles.errorText}>{passwordErrors.originPassword}</Text> : null}
              <TextInput
                placeholder="New Password"
-               placeholderTextColor="black"
                value={tempPassword.password}
                onChangeText={(text) => setTempPassword({ ...tempPassword, password: text })}
                secureTextEntry
@@ -319,7 +317,6 @@ const handleEWasteTypeSave = () => {
              {passwordErrors.password ? <Text style={styles.errorText}>{passwordErrors.password}</Text> : <Text style={styles.hintText}>At least 8 characters long, containing at least one number and one special character</Text>}
              <TextInput
                placeholder="Confirm new Password"
-               placeholderTextColor="black"
                value={tempPassword.confirmPassword}
                onChangeText={(text) => setTempPassword({ ...tempPassword, confirmPassword: text })}
                secureTextEntry
@@ -505,6 +502,7 @@ modalContainer: {
     borderRadius: 5,
     paddingHorizontal: 10,
     marginBottom: 10,
+    color:"black",
   },
   modalButtons: {
     flexDirection: "row",
