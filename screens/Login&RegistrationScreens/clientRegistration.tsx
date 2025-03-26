@@ -12,6 +12,8 @@ const ClientRegistration = ({ navigation }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordVisible, setPasswordVisible] = useState(false);
+  const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState("");
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
@@ -122,7 +124,13 @@ const isFormValid = useMemo(() => {
         mode="outlined"
         value={password}
         onChangeText={setPassword}
-        secureTextEntry
+        secureTextEntry={!passwordVisible}
+        right={
+          <TextInput.Icon
+            icon={passwordVisible ? "eye-off" : "eye"}
+            onPress={() => setPasswordVisible(!passwordVisible)}
+          />
+        }
         style={styles.input}
         error={passwordError !== ""}
       />
@@ -143,7 +151,13 @@ const isFormValid = useMemo(() => {
         mode="outlined"
         value={confirmPassword}
         onChangeText={setConfirmPassword}
-        secureTextEntry
+        secureTextEntry={!confirmPasswordVisible}
+        right={
+          <TextInput.Icon
+            icon={confirmPasswordVisible ? "eye-off" : "eye"}
+            onPress={() => setConfirmPasswordVisible(!passwordVisible)}
+          />
+        }
         style={styles.input}
         error={confirmPasswordError !== ""}
       />

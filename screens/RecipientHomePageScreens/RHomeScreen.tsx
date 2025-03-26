@@ -128,11 +128,11 @@ const RHomeScreen = ({ navigation }) => {
       <View style={styles.bottomNav}>
         <TouchableOpacity style={styles.navItem} onPress={() => handleTabPress("RHome")}>
           <Icon name="home" size={24} color="#5E4DCD" />
-          <Text style={[styles.navText, styles.activeNavText]}>Home</Text>
+          <Text style={styles.activeNavText}>Home</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem} onPress={() => handleTabPress("rewards")}>
-          <Icon name="inventory" size={24} color="#666" />
-          <Text style={styles.navText}>Inventory</Text>
+        <TouchableOpacity style={styles.navItem} onPress={() => handleTabPress("RStats")}>
+          <Icon name="bar-chart" size={24} color="#666" />
+          <Text style={styles.navText}>Stats</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem} onPress={() => handleTabPress("RProfile")}>
           <Icon name="person" size={24} color="#666" />

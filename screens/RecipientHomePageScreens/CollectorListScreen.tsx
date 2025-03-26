@@ -8,16 +8,36 @@ const passwordRegex = /^(?=.*[0-9])(?=.*[\W_]).{8,}$/;
 
 const CollectorListScreen = () => {
   const [newEmployees, setNewEmployees] = useState([
-    { id: '1', name: 'John Doe', email: 'john@example.com', phoneNumber: '1234567890', password: 'Pass@123' },
+    { id: '1', name: 'John Doe', email: 'test@example.com', phoneNumber: '1234567890', password: 'Pass@1234' },
   ]);
 
   const [modalVisible, setModalVisible] = useState(false);
   const [newEmployee, setNewEmployee] = useState({ name: '', email: '', phoneNumber: '', password: '', confirmPassword: '' });
   const [errors, setErrors] = useState({});
+  const [passwordVisible, setPasswordVisible] = useState(false);
+  const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
 
-  const handleDelete = (id) => {
-    setNewEmployees((prev) => prev.filter((item) => item.id !== id));
-  };
+
+const handleDelete = (id) => {
+  Alert.alert(
+    "Confirm Deletion",
+    "Are you sure you want to delete this employee?",
+    [
+      {
+        text: "Cancel",
+        style: "cancel",
+      },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: () => {
+          setNewEmployees((prev) => prev.filter((item) => item.id !== id));
+        },
+      },
+    ]
+  );
+};
+
 
   const validateAndAddEmployee = () => {
     let validationErrors = {};
@@ -27,7 +47,7 @@ const CollectorListScreen = () => {
     else if (existingEmails.includes(newEmployee.email)) validationErrors.email = "Email already exists.";
     if (!newEmployee.phoneNumber.trim()) validationErrors.phoneNumber = "Phone number is required.";
     if (!newEmployee.password.trim()) validationErrors.password = "Password is required.";
-    else if (!passwordRegex.test(newEmployee.password)) validationErrors.password = "Password must contain at least one number and one special character.";
+    else if (!passwordRegex.test(newEmployee.password)) validationErrors.password = "At least 8 characters and include a number and a special character.";
     if (newEmployee.password !== newEmployee.confirmPassword) validationErrors.confirmPassword = "Passwords do not match.";
 
     if (Object.keys(validationErrors).length > 0) {
@@ -41,81 +61,255 @@ const CollectorListScreen = () => {
     setErrors({});
   };
 
-  return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.addButton} onPress={() => setModalVisible(true)}>
-          <Text style={styles.addButtonText}>+ Add</Text>
+return (
+<View style={styles.container}>
+  <View style={styles.header}>
+    <TouchableOpacity
+      style={styles.addButton}
+      onPress={() => setModalVisible(true)}
+    >
+      <Text style={styles.addButtonText}>+ Add</Text>
+    </TouchableOpacity>
+  </View>
+
+  <FlatList
+    data={newEmployees}
+    keyExtractor={(item) => item.id}
+    renderItem={({ item }) => (
+      <View style={styles.itemContainer}>
+        <View style={styles.avatar}>
+          <Text style={styles.avatarText}>{item.name.charAt(0)}</Text>
+        </View>
+        <Text style={styles.collectorText}>{item.email}</Text>
+        <TouchableOpacity onPress={() => handleDelete(item.id)}>
+          <Icon name="trash-can" size={24} color="black" />
         </TouchableOpacity>
       </View>
-      <FlatList
-        data={newEmployees}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <View style={styles.itemContainer}>
-            <View style={styles.avatar}><Text style={styles.avatarText}>{item.name.charAt(0)}</Text></View>
-            <Text style={styles.collectorText}>{item.email}</Text>
-            <TouchableOpacity onPress={() => handleDelete(item.id)}>
-              <Icon name="trash-can" size={24} color="black" />
-            </TouchableOpacity>
-          </View>
-        )}
-      />
-      <Modal visible={modalVisible} transparent animationType="slide">
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <TouchableOpacity onPress={() => setModalVisible(false)}>
-              <Icon name="close" size={24} color="black" />
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>Add Employee</Text>
-            <TextInput style={styles.input} placeholder="Name" value={newEmployee.name} onChangeText={(text) => setNewEmployee({ ...newEmployee, name: text })} />
-            {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
-            <TextInput style={styles.input} placeholder="Email" value={newEmployee.email} onChangeText={(text) => setNewEmployee({ ...newEmployee, email: text })} />
-            {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
-            <TextInput
-              style={styles.input}
-              placeholder="Phone Number"
-              value={`+60${newEmployee.phoneNumber}`}
-              onChangeText={(text) => {
-                if (!text.startsWith("+60")) {
-                  text = "+60";
-                }
-                const numberOnly = text.slice(3).replace(/\D/g, "");
-                setNewEmployee({ ...newEmployee, phoneNumber: numberOnly });
-              }}
-            />
-            {errors.phoneNumber && <Text style={styles.errorText}>{errors.phoneNumber}</Text>}
-            <TextInput style={styles.input} placeholder="Password" secureTextEntry value={newEmployee.password} onChangeText={(text) => setNewEmployee({ ...newEmployee, password: text })} />
-            {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
-            <TextInput style={styles.input} placeholder="Confirm Password" secureTextEntry value={newEmployee.confirmPassword} onChangeText={(text) => setNewEmployee({ ...newEmployee, confirmPassword: text })} />
-            {errors.confirmPassword && <Text style={styles.errorText}>{errors.confirmPassword}</Text>}
-            <TouchableOpacity style={styles.saveButton} onPress={validateAndAddEmployee}>
-              <Text style={styles.buttonText}>Save</Text>
-            </TouchableOpacity>
-          </View>
+    )}
+  />
+
+  <Modal visible={modalVisible} transparent animationType="slide">
+    <View style={styles.modalContainer}>
+      <View style={styles.modalContent}>
+        <TouchableOpacity
+          onPress={() => {
+            setModalVisible(false);
+            setErrors({});
+            setNewEmployee({
+              name: '',
+              email: '',
+              phoneNumber: '',
+              password: '',
+              confirmPassword: ''
+            });
+          }}
+        >
+          <Icon name="close" size={24} color="black" />
+        </TouchableOpacity>
+
+        <Text style={styles.modalTitle}>Add Employee</Text>
+
+        <TextInput
+          style={styles.input}
+          placeholder="Name"
+          value={newEmployee.name}
+          onChangeText={(text) => setNewEmployee({ ...newEmployee, name: text })}
+        />
+        {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
+
+        <TextInput
+          style={styles.input}
+          placeholder="Email"
+          value={newEmployee.email}
+          onChangeText={(text) => setNewEmployee({ ...newEmployee, email: text })}
+        />
+        {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
+
+        <TextInput
+          style={styles.input}
+          placeholder="Phone Number"
+          value={`+60${newEmployee.phoneNumber}`}
+          onChangeText={(text) => {
+            if (!text.startsWith("+60")) {
+              text = "+60";
+            }
+            const numberOnly = text.slice(3).replace(/\D/g, "");
+            setNewEmployee({ ...newEmployee, phoneNumber: numberOnly });
+          }}
+        />
+        {errors.phoneNumber && <Text style={styles.errorText}>{errors.phoneNumber}</Text>}
+
+        <View style={styles.inputContainer}>
+          <TextInput
+            style={styles.input}
+            placeholder="Password"
+            secureTextEntry={!passwordVisible}
+            value={newEmployee.password}
+            onChangeText={(text) => setNewEmployee({ ...newEmployee, password: text })}
+          />
+          <TouchableOpacity
+            onPress={() => setPasswordVisible(!passwordVisible)}
+            style={styles.eyeIcon}
+          >
+            <Icon name={passwordVisible ? "eye-off" : "eye"} size={20} color="gray" />
+          </TouchableOpacity>
         </View>
-      </Modal>
+        {errors.password ? (
+          <Text style={styles.errorText}>{errors.password}</Text>
+        ) : (
+          <Text style={styles.hintText}>
+            At least 8 characters and include a number and a special character.
+          </Text>
+        )}
+
+        <View style={styles.inputContainer}>
+          <TextInput
+            style={styles.input}
+            placeholder="Confirm Password"
+            secureTextEntry={!confirmPasswordVisible}
+            value={newEmployee.confirmPassword}
+            onChangeText={(text) => setNewEmployee({ ...newEmployee, confirmPassword: text })}
+          />
+          <TouchableOpacity
+            onPress={() => setConfirmPasswordVisible(!confirmPasswordVisible)}
+            style={styles.eyeIcon}
+          >
+            <Icon name={confirmPasswordVisible ? "eye-off" : "eye"} size={20} color="gray" />
+          </TouchableOpacity>
+        </View>
+        {errors.confirmPassword && <Text style={styles.errorText}>{errors.confirmPassword}</Text>}
+
+        <TouchableOpacity
+          style={styles.saveButton}
+          onPress={validateAndAddEmployee}
+        >
+          <Text style={styles.buttonText}>Save</Text>
+        </TouchableOpacity>
+      </View>
     </View>
-  );
-};
+  </Modal>
+</View>
+)};
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, backgroundColor: '#fff' },
-  header: { flexDirection: 'row', justifyContent: "flex-end", marginBottom: 16 },
-  addButton: { backgroundColor: "#5E4DCD", padding: 10, borderRadius: 5 },
-  addButtonText: { color: 'white', fontWeight: 'bold' },
-  itemContainer: { flexDirection: 'row', alignItems: 'center', padding: 10, borderBottomWidth: 1 },
-  avatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#D8BFD8', justifyContent: 'center', alignItems: 'center', marginRight: 10 },
-  avatarText: { fontSize: 18, fontWeight: 'bold', color: 'black' },
-  collectorText: { flex: 1, fontSize: 18 },
-  modalContainer: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,0.5)" },
-  modalContent: { width: "80%", backgroundColor: "#fff", padding: 20, borderRadius: 10 },
-  modalTitle: { fontSize: 18, fontWeight: "bold", marginBottom: 20 },
-  input: { width: "100%", height: 40, borderWidth: 1, borderColor: "#ccc", borderRadius: 5, paddingHorizontal: 10, marginBottom: 10 },
-  saveButton: { backgroundColor: "#5E4DCD", padding: 10, borderRadius: 5, alignItems: "center" },
-  buttonText: { color: "#fff", fontWeight: "bold" },
-  errorText: { color: "red", fontSize: 12, marginBottom: 10 }
+  container: {
+    flex: 1,
+    padding: 16,
+    backgroundColor: '#fff'
+  },
+
+  header: {
+    flexDirection: 'row',
+    justifyContent: "flex-end",
+    marginBottom: 16
+  },
+
+  addButton: {
+    backgroundColor: "#5E4DCD",
+    padding: 10,
+    borderRadius: 5
+  },
+
+  addButtonText: {
+    color: 'white',
+    fontWeight: 'bold'
+  },
+
+  itemContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+    borderBottomWidth: 1
+  },
+
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#D8BFD8',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10
+  },
+
+  avatarText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: 'black'
+  },
+
+  collectorText: {
+    flex: 1,
+    fontSize: 18
+  },
+
+  modalContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.5)"
+  },
+
+  modalContent: {
+    width: "80%",
+    backgroundColor: "#fff",
+    padding: 20,
+    borderRadius: 10
+  },
+
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 20,
+    color: 'black'
+  },
+
+  input: {
+    width: "90%",
+    height: 40,
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 5,
+    paddingHorizontal: 10,
+    marginBottom: 10
+  },
+
+  saveButton: {
+    backgroundColor: "#5E4DCD",
+    padding: 10,
+    borderRadius: 5,
+    alignItems: "center"
+  },
+
+  buttonText: {
+    color: "#fff",
+    fontWeight: "bold"
+  },
+
+  errorText: {
+    color: "red",
+    fontSize: 12,
+    marginBottom: 10
+  },
+
+  hintText: {
+    color: "grey",
+    fontSize: 12,
+    marginBottom: 10
+  },
+
+  inputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderColor: "#ccc",
+    width: "100%"
+  },
+
+  eyeIcon: {
+    padding: 10
+  },
 });
+
 
 export default CollectorListScreen;
 

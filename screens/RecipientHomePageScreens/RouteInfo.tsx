@@ -148,7 +148,7 @@ const RouteInfo = ({ initialDestination }) => {
     <View style={styles.container}>
       <MapView ref={mapRef} style={styles.map} showsUserLocation={true}>
         {origin && <Marker coordinate={origin} title="Current Location" />}
-        {destination && <Marker coordinate={destination} title="Destination" />}
+        {destination && <Marker coordinate={destination} title="Pickup location" />}
         {routeCoords.length > 0 && <Polyline coordinates={routeCoords} strokeWidth={4} strokeColor="blue" />}
       </MapView>
 

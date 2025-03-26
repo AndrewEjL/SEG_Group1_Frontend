@@ -20,6 +20,7 @@ import SelectLocation from './screens/GoogleMapsScreens/SelectLocation.tsx';
 import RHomeScreen from './screens/RecipientHomePageScreens/RHomeScreen.tsx';
 import RProfileScreen from './screens/RecipientHomePageScreens/RProfileScreen.tsx';
 import CollectorListScreen from './screens/RecipientHomePageScreens/CollectorListScreen.tsx';
+import RStatsScreen from './screens/RecipientHomePageScreens/RStatsScreen.tsx'
 
 // Define your navigation types
 type RootStackParamList = {
@@ -103,7 +104,7 @@ const App = () => {
     <UserProvider>
       <NavigationContainer>
         <Stack.Navigator 
-          initialRouteName="RProfile"
+          initialRouteName="Login"
           screenOptions={{
             headerShown: false
           }}
@@ -180,6 +181,10 @@ const App = () => {
             name="CollectorList"
             component={CollectorListScreen}
             options={{ headerShown: true, title: 'Collector List'}}
+          />
+          <Stack.Screen
+            name="RStats"
+            component={RStatsScreen}
           />
         </Stack.Navigator>
       </NavigationContainer>

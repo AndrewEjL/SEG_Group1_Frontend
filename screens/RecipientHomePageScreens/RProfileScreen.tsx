@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import { View, Text, TouchableOpacity, TextInput, Modal, StyleSheet, Alert } from "react-native";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
+import MenuIcon from "react-native-vector-icons/MaterialIcons";
 import { Dropdown } from "react-native-element-dropdown";
 import { Checkbox } from "react-native-paper";
-
 
 
 const EWasteTypes = [
@@ -39,6 +39,17 @@ const [tempUser, setTempUser] = useState(user);
 const [tempPassword, setTempPassword] = useState({ originPassword: "", password: "", confirmPassword: "" })
 const [errors, setErrors] = useState({ email: "", phoneNumber: "", address: "" });
 const [passwordErrors, setPasswordErrors] = useState({ originPassword: "", password: "", confirmPassword: "" });
+const [passwordVisibility, setPasswordVisibility] = useState({
+  origin: false,
+  new: false,
+  confirm: false,
+});
+
+const clearModal2Data= () => {
+    setTempPassword({originPassword: "", password: "", confirmPassword: ""});
+    setPasswordErrors({ originPassword: "", password: "", confirmPassword: "" });
+    setPasswordVisibility({origin: false,new: false,confirm: false});
+ }
 
 const validateEmail = (email) => {
   const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
@@ -210,7 +221,7 @@ const handleEWasteTypeSave = () => {
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Statistics</Text>
-        <TouchableOpacity style={styles.listItem}>
+        <TouchableOpacity style={styles.listItem} onPress={() => navigation.navigate("RStats")}>
           <Icon name="chart-pie" size={20} color="#5E4DCD" />
           <Text style={styles.listText}>Recycling Volume Statistics</Text>
         </TouchableOpacity>
@@ -231,16 +242,16 @@ const handleEWasteTypeSave = () => {
       {/* Bottom Navigation */}
       <View style={styles.bottomNav}>
         <TouchableOpacity style={styles.navItem} onPress={() => handleTabPress("RHome")}>
-          <Icon name="home" size={24} color="#666" />
-          <Text style={[styles.navText, styles.activeNavText]}>Home</Text>
+          <MenuIcon name="home" size={24} color="#666" />
+          <Text style={styles.navText}>Home</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem} onPress={() => handleTabPress("rewards")}>
-          <Icon name="package-variant" size={24} color="#666" />
-          <Text style={styles.navText}>Inventory</Text>
+        <TouchableOpacity style={styles.navItem} onPress={() => handleTabPress("RStats")}>
+          <MenuIcon name="bar-chart" size={24} color="#666" />
+          <Text style={styles.navText}>Stats</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem} onPress={() => handleTabPress("RProfile")}>
-          <Icon name="account" size={24} color="#5E4DCD" />
-          <Text style={styles.navText}>Profile</Text>
+          <MenuIcon name="person" size={24} color="#5E4DCD" />
+          <Text style={styles.activeNavText}>Profile</Text>
         </TouchableOpacity>
       </View>
       <Modal
@@ -295,33 +306,72 @@ const handleEWasteTypeSave = () => {
        >
          <View style={styles.modalContainer}>
            <View style={styles.modalContent}>
-             <TouchableOpacity onPress={() => setModal2Visible(false)} style={{ alignSelf: "flex-start" }}>
+             <TouchableOpacity onPress={() => {setModal2Visible(false);clearModal2Data();}} style={{ alignSelf: "flex-start" }}>
                  <Icon name="close" size={24} color="black" />
              </TouchableOpacity>
              <Text style={styles.modalTitle}>Change password</Text>
+             <View style={styles.inputContainer}>
              <TextInput
                placeholder="Origin Password"
                value={tempPassword.originPassword}
                onChangeText={(text) => setTempPassword({ ...tempPassword, originPassword: text })}
-               secureTextEntry
+               secureTextEntry = {!passwordVisibility.origin}
                style={styles.input}
              />
+             <TouchableOpacity
+               onPress={() =>
+                 setPasswordVisibility((prev) => ({
+                   ...prev,
+                   origin: !prev.origin,
+                 }))
+               }
+               style={styles.eyeIcon}
+             >
+               <Icon name={passwordVisibility.origin ? "eye-off" : "eye"} size={20} color="gray" />
+             </TouchableOpacity>
+             </View>
              {passwordErrors.originPassword ? <Text style={styles.errorText}>{passwordErrors.originPassword}</Text> : null}
+             <View style={styles.inputContainer}>
              <TextInput
                placeholder="New Password"
                value={tempPassword.password}
                onChangeText={(text) => setTempPassword({ ...tempPassword, password: text })}
-               secureTextEntry
+               secureTextEntry={!passwordVisibility.new}
                style={styles.input}
              />
+             <TouchableOpacity
+               onPress={() =>
+                 setPasswordVisibility((prev) => ({
+                   ...prev,
+                   new: !prev.new,
+                 }))
+               }
+               style={styles.eyeIcon}
+             >
+               <Icon name={passwordVisibility.new ? "eye-off" : "eye"} size={20} color="gray" />
+             </TouchableOpacity>
+             </View>
              {passwordErrors.password ? <Text style={styles.errorText}>{passwordErrors.password}</Text> : <Text style={styles.hintText}>At least 8 characters long, containing at least one number and one special character</Text>}
+             <View style={styles.inputContainer}>
              <TextInput
                placeholder="Confirm new Password"
                value={tempPassword.confirmPassword}
                onChangeText={(text) => setTempPassword({ ...tempPassword, confirmPassword: text })}
-               secureTextEntry
+               secureTextEntry={!passwordVisibility.confirm}
                style={styles.input}
              />
+             <TouchableOpacity
+               onPress={() =>
+                 setPasswordVisibility((prev) => ({
+                   ...prev,
+                   confirm: !prev.confirm,
+                 }))
+               }
+               style={styles.eyeIcon}
+             >
+               <Icon name={passwordVisibility.confirm ? "eye-off" : "eye"} size={20} color="gray" />
+             </TouchableOpacity>
+             </View>
              {passwordErrors.confirmPassword ? <Text style={styles.errorText}>{passwordErrors.confirmPassword}</Text> : null}
              <View style={styles.modalButtons}>
                <TouchableOpacity
@@ -418,7 +468,11 @@ const handleEWasteTypeSave = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff", padding: 20 },
+  container: {
+    flex: 1,
+    backgroundColor: "white",
+    padding: 20,
+  },
   profileHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -441,22 +495,57 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#e5ddff",
     marginBottom: 10,
-    marginTop:20,
+    marginTop: 20,
     marginLeft: 10,
   },
   userInfo: {
     flex: 1,
-    padding:20,
+    padding: 20,
     justifyContent: "center",
   },
-  username: { fontSize: 18, fontWeight: "bold" },
-  email: { fontSize: 14, color: "#666", marginBottom: 10 },
-  editProfileButton: { backgroundColor: "#5E4DCD", paddingVertical: 8, paddingHorizontal: 20, borderRadius: 20,width:"70%" , alignItems: "center",},
-  editProfileText: { color: "#fff", fontWeight: "bold" },
-  section: { marginBottom: 20, backgroundColor: "#f9f9f9", borderRadius: 10, padding: 10 },
-  sectionTitle: { fontSize: 16, fontWeight: "bold", color: "#666", marginBottom: 5 },
-  listItem: { flexDirection: "row", alignItems: "center", paddingVertical: 12 },
-  listText: { fontSize: 14, marginLeft: 10, color: "#333" },
+  username: {
+    fontSize: 18,
+    fontWeight: "bold",
+  },
+  email: {
+    fontSize: 14,
+    color: "#666",
+    marginBottom: 10,
+  },
+  editProfileButton: {
+    backgroundColor: "#5E4DCD",
+    paddingVertical: 8,
+    paddingHorizontal: 20,
+    borderRadius: 20,
+    width: "70%",
+    alignItems: "center",
+  },
+  editProfileText: {
+    color: "#fff",
+    fontWeight: "bold",
+  },
+  section: {
+    marginBottom: 20,
+    backgroundColor: "#f9f9f9",
+    borderRadius: 10,
+    padding: 10,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#666",
+    marginBottom: 5,
+  },
+  listItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+  },
+  listText: {
+    fontSize: 14,
+    marginLeft: 10,
+    color: "#333",
+  },
   bottomNav: {
     flexDirection: "row",
     justifyContent: "space-around",
@@ -480,7 +569,7 @@ const styles = StyleSheet.create({
   activeNavText: {
     color: "#5E4DCD",
   },
-modalContainer: {
+  modalContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
@@ -493,7 +582,13 @@ modalContainer: {
     borderRadius: 10,
     alignItems: "center",
   },
-  modalTitle: { fontSize: 18, fontWeight: "bold", marginBottom: 30, color: "black",marginTop: 20, },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 30,
+    color: "black",
+    marginTop: 20,
+  },
   input: {
     width: "97%",
     height: 40,
@@ -502,7 +597,7 @@ modalContainer: {
     borderRadius: 5,
     paddingHorizontal: 10,
     marginBottom: 10,
-    color:"black",
+    color: "black",
   },
   modalButtons: {
     flexDirection: "row",
@@ -517,21 +612,22 @@ modalContainer: {
     width: "40%",
     alignItems: "center",
     marginRight: 5,
-
   },
-
-  buttonText: { color: "#fff", fontWeight: "bold" },
+  buttonText: {
+    color: "#fff",
+    fontWeight: "bold",
+  },
   errorText: {
     color: "red",
     fontSize: 12,
     marginBottom: 10,
   },
- hintText: {
+  hintText: {
     color: "#4c4d4a",
     fontSize: 12,
     marginBottom: 10,
   },
- dropdown: {
+  dropdown: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
@@ -568,7 +664,16 @@ modalContainer: {
     color: "#000",
     fontSize: 14,
   },
+  inputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderColor: "#ccc",
+    width: "95%"
+  },
 
+  eyeIcon: {
+    padding: 5,
+  },
 });
 
 export default RProfileScreen;

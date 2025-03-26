@@ -6,7 +6,7 @@ import { useUser } from "../../contexts/UserContext";
 
 const { width, height } = Dimensions.get("window");
 
-const ClientRegistration = ({ navigation }) => {
+const CollectorRegistration = ({ navigation }) => {
   const { register } = useUser();
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
@@ -27,6 +27,17 @@ const isFormValid = useMemo(() => {
     confirmPassword.trim() !== ""
   );
 }, [username, email, phoneNumber, password, confirmPassword]);
+
+ const clearData = () => {
+    setUsername("");
+    setEmail("");
+    setPhoneNumber("")
+    setPassword("");
+    setConfirmPassword("");
+    setEmailError("");
+    setPasswordError("");
+    setConfirmPasswordError("")
+ }
 
   const handleSubmit = async () => {
     const existingEmails = ["test@example.com", "user@gmail.com"];
@@ -72,6 +83,7 @@ const isFormValid = useMemo(() => {
     } finally {
       setIsLoading(false);
     }
+    clearData();
   };
 
   return (
@@ -135,7 +147,7 @@ const isFormValid = useMemo(() => {
           size={width * 0.03}
           color={passwordError ? "red" : "blue"}
         />{" "}
-        {passwordError ? passwordError : "At least 8 characters, including a number and a special character."}
+        {passwordError || "At least 8 characters, including a number and a special character."}
       </HelperText>
 
       <TextInput
@@ -201,5 +213,5 @@ const styles = StyleSheet.create({
 
 });
 
-export default ClientRegistration;
+export default CollectorRegistration;
 
