@@ -59,7 +59,7 @@ const PickupDetails: React.FC<PickupDetailsProps> = ({ navigation, route }) => {
   console.log(displayItemByID)
   const { itemTypes, deviceCondition, itemsStatus, loadingName } = useItemTypes();
   const [pickup, setPickup] = useState<ScheduledPickup | null>(null);
-  const [listedItems, setListedItems] = useState<{ [key: string]: ListedItem }>({});
+  const [itemDetails, setItemDetails] = useState<{ [key: string]: ListedItem | null }>({});
   const [isLoading, setIsLoading] = useState(true);
 
   // useEffect(() => {
@@ -268,6 +268,19 @@ const styles = StyleSheet.create({
   errorText: {
     color: '#D32F2F',
     fontSize: 16,
+  },
+  statusContainer: {
+    marginTop: 8,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  statusText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '500',
+    textTransform: 'capitalize',
   },
 });
 

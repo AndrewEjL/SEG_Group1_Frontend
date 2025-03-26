@@ -1,8 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { createNativeStackNavigator, NativeStackNavigationProp, NativeStackScreenProps } from '@react-navigation/native-stack';
 import LoginScreen from './screens/LoginScreen.tsx';
 import SelectRegistrationRole from './screens/Login&RegistrationScreens/SelectRegistrationRole.tsx';
 import OrgRegistration  from './screens/Login&RegistrationScreens/organizationRegistration.tsx';
@@ -17,8 +16,10 @@ import EditLocation from './screens/EditLocation';
 import ClientRegistration from './screens/Login&RegistrationScreens/clientRegistration.tsx';
 import NavigationMap from './screens/GoogleMapsScreens/NavigationMap.tsx';
 import SelectLocation from './screens/GoogleMapsScreens/SelectLocation.tsx';
-import HomeRecipientScreen from './screens/HomeRecipientScreen.tsx';
-import HomeOrganizationScreen from './screens/HomeOrganizationScreen.tsx';
+import CProfileScreen from './screens/CProfileScreen';
+import PickupHistoryScreen from './screens/PickupHistoryScreen';
+import RewardsScreen from './screens/RewardsScreen';
+import RewardsHistory from './screens/RewardsHistory';
 
 // Define your navigation types
 type RootStackParamList = {
@@ -51,6 +52,10 @@ type RootStackParamList = {
   ClientRegistration: undefined;
   NavigationMap: undefined;
   SelectLocation: { onLocationSelect: (location: any) => void };
+  CProfileScreen: undefined;
+  PickupHistory: undefined;
+  rewards: undefined;
+  RewardsHistory: undefined;
 };
 
 // Type for navigation prop
@@ -175,7 +180,26 @@ const App = () => {
           />
           <Stack.Screen
             name="SelectLocation"
-            component={SelectLocation}
+            component={(props: NativeStackScreenProps<RootStackParamList, 'SelectLocation'>) => {
+              const { route, navigation } = props;
+              return <SelectLocation onLocationSelect={route.params?.onLocationSelect} />;
+            }}
+          />
+          <Stack.Screen
+            name="CProfileScreen"
+            component={CProfileScreen}
+          />
+          <Stack.Screen
+            name="PickupHistory"
+            component={PickupHistoryScreen}
+          />
+          <Stack.Screen
+            name="rewards"
+            component={RewardsScreen}
+          />
+          <Stack.Screen
+            name="RewardsHistory"
+            component={RewardsHistory}
           />
         </Stack.Navigator>
       </NavigationContainer>

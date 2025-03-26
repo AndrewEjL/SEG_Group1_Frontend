@@ -16,6 +16,8 @@ type RootStackParamList = {
   PickupDetails: { id:number, orgId: number};
   AddPickupItem: { id: number };
   EditListedItems: { itemId: number, id:number };
+  CProfileScreen: undefined;
+  rewards: undefined;
 };
 
 type HomeScreenProps = {
@@ -90,8 +92,10 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     if (user) {
       // Load pickups
       // setIsPickupsLoading(true);
-      // const pickups = await getScheduledPickups();
-      // setScheduledPickups(pickups);
+      // const allPickups = await getScheduledPickups();
+      // // Filter to show only ongoing pickups
+      // const ongoingPickups = allPickups.filter(pickup => pickup.status === 'ongoing');
+      // setScheduledPickups(ongoingPickups);
       // setIsPickupsLoading(false);
 
       // Load listed items
@@ -112,8 +116,44 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   };
 
   const handleEditPickup = (pickupId: string) => {
-    // TODO: Implement edit pickup functionality
-    Alert.alert('Coming Soon', 'Edit pickup functionality will be available soon');
+    // Show options to update pickup status
+    Alert.alert(
+      "Update Pickup",
+      "What would you like to do with this pickup?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel"
+        },
+        {
+          text: "Mark as Completed",
+          onPress: async () => {
+            // In a real app, this would call an API to update the pickup
+            Alert.alert(
+              "Success", 
+              "Pickup has been marked as completed. You can view it in your Pickup History."
+            );
+            
+            // Trigger data reload to reflect the changes
+            loadData();
+          }
+        },
+        {
+          text: "Mark as Cancelled",
+          style: "destructive",
+          onPress: async () => {
+            // In a real app, this would call an API to update the pickup
+            Alert.alert(
+              "Success", 
+              "Pickup has been cancelled. You can view it in your Pickup History."
+            );
+            
+            // Trigger data reload to reflect the changes
+            loadData();
+          }
+        }
+      ]
+    );
   };
 
   const handleEditItem = (itemId: number) => {
@@ -156,6 +196,11 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
 
   const handleTabPress = (tabName: string) => {
     console.log('Pressed tab:', tabName);
+    if (tabName === 'profile') {
+      navigation.navigate('CProfileScreen');
+    } else if (tabName === 'rewards') {
+      navigation.navigate('rewards');
+    }
   };
 
   

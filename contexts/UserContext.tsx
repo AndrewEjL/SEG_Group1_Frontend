@@ -18,6 +18,8 @@ export interface ScheduledPickup {
   facilityName: string;
   items: PickupItem[];
   listedItemIds: string[];  // Array of listed item IDs that are part of this pickup
+  status: 'ongoing' | 'completed' | 'cancelled'; // Status of the pickup
+  date: string; // Add date field to track when pickup was scheduled/completed/cancelled
   // Backend team can add more properties here (e.g., date, status, location, etc.)
 }
 
@@ -37,13 +39,36 @@ export interface ListedItem {
   address: string;
 }
 
+export interface RewardRedemption {
+  id: string;
+  name: string;
+  value: string;
+  pin: string;
+  date: string;
+  imageSource: any;
+}
+
+// Define GiftCard type for rewards system
+export interface GiftCard {
+  id: string;
+  name: string;
+  points: number;
+  image: any;
+  value: string;
+  category: string;
+  status: 'available' | 'unavailable';
+}
+
 export interface User {
   id: string;
   name: string;
   email: string;
   points: number;
+  address: string;   // Adding address field
+  phoneNumber: string;  // Adding phone number field
   scheduledPickups: string[];  // Array of pickup IDs - references to pickups in the database
   listedItems: string[];      // Array of listed item IDs
+  redeemedRewards?: RewardRedemption[];  // Array of redeemed rewards
 }
 
 /**
@@ -57,12 +82,19 @@ interface UserContextType {
   logout: () => void;
   register: (name: string, email: string, password: string, phoneNumber: string) => Promise<boolean>;
   updatePoints: (points: number) => Promise<boolean>;
+  updateUserPoints: (points: number) => void; // Add a quick method for updating points without API call
+  updateUserProfile: (data: { name?: string; email?: string; address?: string; phoneNumber?: string }) => Promise<boolean>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<boolean>;
   getScheduledPickups: () => Promise<ScheduledPickup[]>;
   getPickupDetails: (pickupId: string) => Promise<ScheduledPickup | null>;
   listItem: (item: Omit<ListedItem, 'id' | 'userId' | 'createdAt'>) => Promise<boolean>;
   getListedItems: () => Promise<ListedItem[]>;
   updateListedItem: (itemId: string, updatedItem: Omit<ListedItem, 'id' | 'userId' | 'createdAt'>) => Promise<boolean>;
   deleteListedItem: (itemId: string) => Promise<boolean>;
+  getHistoricalItemDetails: (itemId: string) => Promise<ListedItem | null>;
+  addRedeemedReward: (reward: RewardRedemption) => void; // Add a method to add a redeemed reward
+  getRedeemedRewards: () => RewardRedemption[]; // Add a method to get redeemed rewards
+  getGiftCards: () => GiftCard[]; // Add a method to get gift cards
 }
 
 /**
@@ -76,12 +108,16 @@ interface UserService {
   logout: () => Promise<void>;
   register: (name: string, email: string, password: string, phoneNumber: string) => Promise<boolean>;
   updatePoints: (userId: string, points: number) => Promise<boolean>;
+  updateUserProfile: (userId: string, data: { name?: string; email?: string; address?: string; phoneNumber?: string }) => Promise<boolean>;
+  changePassword: (userId: string, currentPassword: string, newPassword: string) => Promise<boolean>;
   getScheduledPickups: (userId: string) => Promise<ScheduledPickup[]>;
   getPickupDetails: (pickupId: string) => Promise<ScheduledPickup | null>;
   listItem: (userId: string, item: Omit<ListedItem, 'id' | 'userId' | 'createdAt'>) => Promise<boolean>;
   getListedItems: (userId: string) => Promise<ListedItem[]>;
   updateListedItem: (itemId: string, updatedItem: Omit<ListedItem, 'id' | 'userId' | 'createdAt'>) => Promise<boolean>;
   deleteListedItem: (itemId: string) => Promise<boolean>;
+  getHistoricalItemDetails: (itemId: string) => Promise<ListedItem | null>;
+  addRedeemedReward: (userId: string, reward: RewardRedemption) => Promise<boolean>; // Add method to save redeemed reward
 }
 
 /**
@@ -138,6 +174,36 @@ const mockListedItems: { [key: string]: ListedItem } = {
   },
 };
 
+// Historical record of all items, including those no longer in active listings
+// In a real database, these would be archived items with a "deleted" flag
+const mockHistoricalItems: { [key: string]: ListedItem } = {
+  // Include all current items
+  ...mockListedItems,
+  // Add items that are in historical pickups but no longer in active listings
+  'item5': {
+    id: 'item5',
+    userId: '1',
+    name: 'Dell Laptop',
+    type: 'Laptop',
+    condition: 'Working',
+    dimensions: { length: '35', width: '25', height: '2' },
+    quantity: '1',
+    createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // 30 days ago
+    address: 'Jalan Bakawali 54, Taman Johor Jaya, 81100 Johor Bahru, Johor, Malaysia',
+  },
+  'item6': {
+    id: 'item6',
+    userId: '1',
+    name: 'HP Printer',
+    type: 'Printer',
+    condition: 'Not Working',
+    dimensions: { length: '45', width: '35', height: '20' },
+    quantity: '1',
+    createdAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000), // 45 days ago
+    address: 'Jalan Perang, Taman Pelangi, 80400 Johor Bahru, Johor, Malaysia',
+  },
+};
+
 const mockPickups: { [key: string]: ScheduledPickup } = {
   'pickup1': {
     id: 'pickup1',
@@ -147,7 +213,9 @@ const mockPickups: { [key: string]: ScheduledPickup } = {
       { id: 'item2', name: 'S24' },
       { id: 'item3', name: 'S24 Plus' },
     ],
-    listedItemIds: ['item1', 'item2', 'item3']  // All items are listed items
+    listedItemIds: ['item1', 'item2', 'item3'],  // All items are listed items
+    status: 'ongoing',
+    date: new Date().toISOString() // Today
   },
   'pickup2': {
     id: 'pickup2',
@@ -155,9 +223,40 @@ const mockPickups: { [key: string]: ScheduledPickup } = {
     items: [
       { id: 'item4', name: 'iPhone 15' },
     ],
-    listedItemIds: ['item4']  // This item is a listed item
+    listedItemIds: ['item4'],  // This item is a listed item
+    status: 'ongoing',
+    date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() // 2 days ago
+  },
+  'pickup3': {
+    id: 'pickup3',
+    facilityName: 'Facility A',
+    items: [
+      { id: 'item5', name: 'Dell Laptop' },
+    ],
+    listedItemIds: ['item5'],
+    status: 'completed',
+    date: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString() // 15 days ago
+  },
+  'pickup4': {
+    id: 'pickup4',
+    facilityName: 'Facility C',
+    items: [
+      { id: 'item6', name: 'HP Printer' },
+    ],
+    listedItemIds: ['item6'],
+    status: 'cancelled',
+    date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days ago
   }
 };
+
+// Gift card data - moved from RewardsScreen
+const giftCardData: GiftCard[] = [
+  { id: '1', name: 'Touch \'n Go eWallet RM5', points: 50, image: require('../screens/assets/TnG_Icon.png'), value: 'RM5', category: 'Gift Cards', status: 'available' },
+  { id: '2', name: 'Touch \'n Go eWallet RM15', points: 150, image: require('../screens/assets/TnG_Icon.png'), value: 'RM15', category: 'Gift Cards', status: 'available' },
+  { id: '3', name: 'Touch \'n Go eWallet RM30', points: 300, image: require('../screens/assets/TnG_Icon.png'), value: 'RM30', category: 'Gift Cards', status: 'available' },
+  { id: '4', name: 'Touch \'n Go eWallet RM50', points: 500, image: require('../screens/assets/TnG_Icon.png'), value: 'RM50', category: 'Gift Cards', status: 'unavailable' },
+  { id: '5', name: 'Touch \'n Go eWallet RM100', points: 1000, image: require('../screens/assets/TnG_Icon.png'), value: 'RM100', category: 'Gift Cards', status: 'unavailable' },
+];
 
 /**
  * MOCK SERVICE IMPLEMENTATION - REPLACE WITH REAL DATABASE IMPLEMENTATION
@@ -176,8 +275,28 @@ const mockUserService: UserService = {
         name: 'John Doe',
         email: 'test@example.com',
         points: 150,
+        address: '123 Main St, City',
+        phoneNumber: '+601233335555',
         scheduledPickups: ['pickup1', 'pickup2'],
-        listedItems: ['item1']
+        listedItems: ['item1'],
+        redeemedRewards: [
+          {
+            id: 'reward1',
+            name: 'Touch \'n Go eWallet RM15',
+            value: 'RM15',
+            pin: '1234567890',
+            date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days ago
+            imageSource: null, // Will be set properly when displayed
+          },
+          {
+            id: 'reward2',
+            name: 'Touch \'n Go eWallet RM5',
+            value: 'RM5',
+            pin: '0987654321',
+            date: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(), // 14 days ago
+            imageSource: null, // Will be set properly when displayed
+          }
+        ]
       };
     }
     return null;
@@ -209,6 +328,20 @@ const mockUserService: UserService = {
     return true;
   },
 
+  updateUserProfile: async (userId: string, data: { name?: string; email?: string; address?: string; phoneNumber?: string }) => {
+    // Replace with real database update
+    await new Promise(resolve => setTimeout(resolve, 500));
+    return true;
+  },
+
+  changePassword: async (userId: string, currentPassword: string, newPassword: string) => {
+    // Replace with real password validation and update logic
+    await new Promise(resolve => setTimeout(resolve, 500));
+    // In a real implementation, you would verify the current password
+    // and update with the hashed new password in the database
+    return true;
+  },
+
   getScheduledPickups: async (userId: string) => {
     // Replace with real database query
     await new Promise(resolve => setTimeout(resolve, 500));
@@ -221,6 +354,12 @@ const mockUserService: UserService = {
     return mockPickups[pickupId] || null;
   },
 
+  getHistoricalItemDetails: async (itemId: string) => {
+    // In a real database, you would fetch from the historical records
+    await new Promise(resolve => setTimeout(resolve, 300));
+    return mockHistoricalItems[itemId] || null;
+  },
+
   listItem: async (userId: string, item: Omit<ListedItem, 'id' | 'userId' | 'createdAt'>) => {
     await new Promise(resolve => setTimeout(resolve, 500));
     const itemId = `item${Object.keys(mockListedItems).length + 1}`;
@@ -230,6 +369,8 @@ const mockUserService: UserService = {
       userId,
       createdAt: new Date(),
     };
+    // Also add to historical items collection
+    mockHistoricalItems[itemId] = mockListedItems[itemId];
     return true;
   },
 
@@ -246,6 +387,8 @@ const mockUserService: UserService = {
         ...mockListedItems[itemId],
         ...updatedItem,
       };
+      // Also update in historical items
+      mockHistoricalItems[itemId] = mockListedItems[itemId];
       return true;
     }
     return false;
@@ -256,19 +399,27 @@ const mockUserService: UserService = {
     
     // Check if the item exists
     if (mockListedItems[itemId]) {
-      // Check if the item is part of any pickup
-      const isInPickup = Object.values(mockPickups).some(pickup => 
-        pickup.listedItemIds.includes(itemId)
+      // Check if the item is part of any ONGOING pickup (allow deletion for completed/cancelled)
+      const isInActivePickup = Object.values(mockPickups).some(pickup => 
+        pickup.listedItemIds.includes(itemId) && pickup.status === 'ongoing'
       );
       
-      // Only allow deletion if the item is not in a pickup
-      if (!isInPickup) {
+      // Only allow deletion if the item is not in an active pickup
+      if (!isInActivePickup) {
+        // Keep a copy in the historical items before deleting from active listings
+        // In a real database, this would be a soft delete with a "deleted" flag
         delete mockListedItems[itemId];
         return true;
       }
     }
     return false;
   },
+
+  addRedeemedReward: async (userId: string, reward: RewardRedemption) => {
+    // In a real implementation, you would save this to the database
+    await new Promise(resolve => setTimeout(resolve, 300));
+    return true;
+  }
 };
 
 /**
@@ -336,6 +487,32 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  const updateUserProfile = async (data: { name?: string; email?: string; address?: string; phoneNumber?: string }) => {
+    if (!user) return false;
+    
+    try {
+      const success = await userService.updateUserProfile(user.id, data);
+      if (success) {
+        setUser(prev => prev ? { ...prev, ...data } : null);
+      }
+      return success;
+    } catch (error) {
+      console.error('Update user profile error:', error);
+      return false;
+    }
+  };
+
+  const changePassword = async (currentPassword: string, newPassword: string) => {
+    if (!user) return false;
+    
+    try {
+      return await userService.changePassword(user.id, currentPassword, newPassword);
+    } catch (error) {
+      console.error('Change password error:', error);
+      return false;
+    }
+  };
+
   const getScheduledPickups = async () => {
     if (!user) return [];
     try {
@@ -348,6 +525,10 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const getPickupDetails = async (pickupId: string) => {
     return userService.getPickupDetails(pickupId);
+  };
+
+  const getHistoricalItemDetails = async (itemId: string) => {
+    return userService.getHistoricalItemDetails(itemId);
   };
 
   const listItem = async (item: Omit<ListedItem, 'id' | 'userId' | 'createdAt'>) => {
@@ -388,6 +569,45 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  // Add a direct method to update points without an API call (for quicker UI updates)
+  const updateUserPoints = (points: number) => {
+    setUser(prev => prev ? { ...prev, points } : null);
+  };
+
+  // Add a method to add a redeemed reward
+  const addRedeemedReward = (reward: RewardRedemption) => {
+    setUser(prev => {
+      if (!prev) return null;
+      
+      // Create a new array with existing rewards + new reward
+      const updatedRewards = prev.redeemedRewards 
+        ? [...prev.redeemedRewards, reward] 
+        : [reward];
+      
+      // Create a new user object with the updated rewards
+      return {
+        ...prev,
+        redeemedRewards: updatedRewards
+      };
+    });
+
+    // In a production app, we would also save this to the database
+    if (user) {
+      userService.addRedeemedReward(user.id, reward)
+        .catch(error => console.error('Error saving redeemed reward:', error));
+    }
+  };
+
+  // Add a method to get redeemed rewards
+  const getRedeemedRewards = (): RewardRedemption[] => {
+    return user?.redeemedRewards || [];
+  };
+
+  // Add a method to get gift cards
+  const getGiftCards = (): GiftCard[] => {
+    return giftCardData;
+  };
+
   return (
     <UserContext.Provider value={{ 
       user, 
@@ -395,12 +615,19 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       logout, 
       register,
       updatePoints,
+      updateUserPoints,
+      updateUserProfile,
+      changePassword,
       getScheduledPickups,
       getPickupDetails,
       listItem,
       getListedItems,
       updateListedItem,
       deleteListedItem,
+      getHistoricalItemDetails,
+      addRedeemedReward,
+      getRedeemedRewards,
+      getGiftCards,
     }}>
       {children}
     </UserContext.Provider>
