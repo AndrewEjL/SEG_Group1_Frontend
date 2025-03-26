@@ -10,9 +10,9 @@ export const useItemTypes = () => {
     const fetchData = async () => {
       try {
         const [itemTypesResponse, deviceConditionResponse, itemStatusResponse] = await Promise.all([
-          fetch('http://10.100.17.161:8080/api/status/item_types/all'),
-          fetch('http://10.100.17.161:8080/api/status/device_condition/all'),
-          fetch('http://10.100.17.161:8080/api/status/item_status/all'),
+          fetch('http://10.100.17.243:8080/api/status/item_types/all'),
+          fetch('http://10.100.17.243:8080/api/status/device_condition/all'),
+          fetch('http://10.100.17.243:8080/api/status/item_status/all'),
           // fetch('http://192.168.0.183:8080/api/status/item_types/all'),
           // fetch('http://192.168.0.183:8080/api/status/device_condition/all'),
           // fetch('http://192.168.0.183:8080/api/status/item_status/all'),

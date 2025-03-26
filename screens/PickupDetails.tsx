@@ -1,12 +1,16 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Animated, Easing, Platform } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useUser, ScheduledPickup, ListedItem, PickupItem } from '../contexts/UserContext';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import type { RouteProp } from '@react-navigation/native';
+import { useRoute, type RouteProp } from '@react-navigation/native';
+import { useOrgItem } from './api/transaction/getTransaction';
+import { useOrganization } from './api/transaction/getOrganization';
+import { displayItemsByItemID } from './api/items/displayItemsByItemID';
+import { useItemTypes } from './api/items/itemTypes';
 
 type RootStackParamList = {
-  PickupDetails: { pickupId: string };
+  PickupDetails: { id: number, orgId: number };
 };
 
 type PickupDetailsProps = {
@@ -46,36 +50,42 @@ const LoadingIcon: React.FC = () => {
 };
 
 const PickupDetails: React.FC<PickupDetailsProps> = ({ navigation, route }) => {
-  const { pickupId } = route.params;
-  const { getPickupDetails, getListedItems } = useUser();
+  const { id, orgId } = route.params;
+  const { displayOrgItem, loading: loadingOrgItem } = useOrgItem(id, orgId)
+  const { displayOrg, loading: loadingOrg} = useOrganization();
+  const pickupItemID = displayOrgItem.map(item => item.pickup_item_id);
+  const { displayItems: displayItemByID, loading } = displayItemsByItemID(pickupItemID);
+  console.log(pickupItemID)
+  console.log(displayItemByID)
+  const { itemTypes, deviceCondition, itemsStatus, loadingName } = useItemTypes();
   const [pickup, setPickup] = useState<ScheduledPickup | null>(null);
   const [listedItems, setListedItems] = useState<{ [key: string]: ListedItem }>({});
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    loadPickupDetails();
-  }, [pickupId]);
+  // useEffect(() => {
+  //   loadPickupDetails();
+  // }, [pickupId]);
 
-  const loadPickupDetails = async () => {
-    setIsLoading(true);
-    try {
-      const details = await getPickupDetails(pickupId);
-      if (details) {
-        setPickup(details);
-        // Get all listed items and create a map for easy lookup
-        const allListedItems = await getListedItems();
-        const itemsMap = allListedItems.reduce((acc, item) => {
-          acc[item.id] = item;
-          return acc;
-        }, {} as { [key: string]: ListedItem });
-        setListedItems(itemsMap);
-      }
-    } catch (error) {
-      console.error('Error loading pickup details:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // const loadPickupDetails = async () => {
+  //   setIsLoading(true);
+  //   try {
+  //     const details = await getPickupDetails(pickupId);
+  //     if (details) {
+  //       setPickup(details);
+  //       // Get all listed items and create a map for easy lookup
+  //       const allListedItems = await getListedItems();
+  //       const itemsMap = allListedItems.reduce((acc, item) => {
+  //         acc[item.id] = item;
+  //         return acc;
+  //       }, {} as { [key: string]: ListedItem });
+  //       setListedItems(itemsMap);
+  //     }
+  //   } catch (error) {
+  //     console.error('Error loading pickup details:', error);
+  //   } finally {
+  //     setIsLoading(false);
+  //   }
+  // };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -91,53 +101,57 @@ const PickupDetails: React.FC<PickupDetailsProps> = ({ navigation, route }) => {
         <View style={styles.headerRight} />
       </View>
 
-      {isLoading ? (
+      {loadingOrgItem ? (
         <View style={styles.loadingContainer}>
           <LoadingIcon />
         </View>
-      ) : pickup ? (
-        <ScrollView 
-          style={styles.content}
-          contentContainerStyle={styles.scrollContentContainer}
-          showsVerticalScrollIndicator={true}
-          bounces={true}
-        >
-          {/* Facility Name */}
-          <View style={styles.facilityContainer}>
-            <Text style={styles.facilityLabel}>Facility</Text>
-            <Text style={styles.facilityName}>{pickup.facilityName}</Text>
-          </View>
+      ) : displayOrgItem.length > 0 ? (
+        // Get the organization only once (assuming all items belong to the same org)
+        (() => {
+          const organization = displayOrg.find((org) => org.organizationID === displayOrgItem[0]?.organization_id);
+          return (
+            <ScrollView 
+              style={styles.content}
+              contentContainerStyle={styles.scrollContentContainer}
+              showsVerticalScrollIndicator={true}
+              bounces={true}
+            >
+              {/* Facility Name (Rendered Only Once) */}
+              <View style={styles.facilityContainer}>
+                <Text style={styles.facilityLabel}>Facility</Text>
+                <Text style={styles.facilityName}>{organization?.organization_name}</Text>
+              </View>
 
-          {/* Items List */}
-          <View style={styles.itemsContainer}>
-            <Text style={styles.itemsLabel}>Items for Pickup</Text>
-            {pickup.items.map((pickupItem) => {
-              const item = listedItems[pickupItem.id];
-              return (
-                <View key={pickupItem.id} style={styles.itemCard}>
-                  <View style={styles.itemDetails}>
-                    <Text style={styles.itemName}>{item.name}</Text>
-                    <Text style={styles.itemSubtext}>
-                      {item.type} • {item.condition}
-                    </Text>
-                    <Text style={styles.itemDimensions}>
-                      Dimensions: {item.dimensions.length}×{item.dimensions.width}×{item.dimensions.height} cm
-                    </Text>
-                    <Text style={styles.itemQuantity}>
-                      Quantity: {item.quantity}
-                    </Text>
-                    <Text style={styles.itemAddress}>
-                      Address: {item.address}
-                    </Text>
-                  </View>
-                </View>
-              );
-            })}
-          </View>
-          
-          {/* Add padding at the bottom for better scrolling */}
-          <View style={styles.bottomPadding} />
-        </ScrollView>
+              {/* Items List */}
+              <View style={styles.itemsContainer}>
+                <Text style={styles.itemsLabel}>Items for Pickup</Text>
+                {displayItemByID.length > 0 ? (
+                  displayItemByID.map((item) => {
+                    const type = itemTypes.find((t) => t.id === item.item_type_id);
+                    const cond = deviceCondition.find((t) => t.id === item.device_condition_id);
+                    return(
+                      <View key={item.id} style={styles.itemCard}>
+                      <View style={styles.itemDetails}>
+                        <Text style={styles.itemName}>{item.item_name}</Text>
+                        <Text style={styles.itemSubtext}>{type?.name} • {cond?.name}</Text>
+                        <Text style={styles.itemDimensions}>
+                          Dimensions: {item.dimension_length}×{item.dimension_width}×{item.dimension_height} cm
+                        </Text>
+                        <Text style={styles.itemAddress}>Address: {item.pickup_location}</Text>
+                      </View>
+                    </View>
+                    )                    
+                  })
+                ) : (
+                  <Text style={styles.noItemsText}>No items available</Text>
+                )}
+              </View>
+                            
+              {/* Add padding at the bottom for better scrolling */}
+              <View style={styles.bottomPadding} />
+            </ScrollView>
+          );
+        })()
       ) : (
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>Pickup not found</Text>

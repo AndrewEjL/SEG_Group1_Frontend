@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
-const base_api = "http://10.100.17.161:8080/api/item";
-//const base_api = "http://192.168.0.183:8080/api/item";
+const base_api = "http://10.100.17.243:8080/api/item";
+// const base_api = "http://192.168.0.183:8080/api/item";
 
 export const updateItem = async (
     id:number,
+    itemName: String,
     updateData: any
 )=> {
     try{
-        const response = await fetch(`${base_api}/pickup_items/update/${id}`, {
+        const response = await fetch(`${base_api}/pickup_items/update/${id}/${itemName}`, {
             method: "PUT",
             headers: {
                 "Content-Type": "application/json",

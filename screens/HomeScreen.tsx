@@ -13,7 +13,7 @@ import { useOrganization } from './api/transaction/getOrganization';
 
 type RootStackParamList = {
   Home: {id: number};
-  PickupDetails: { pickupId: number };
+  PickupDetails: { id:number, orgId: number};
   AddPickupItem: { id: number };
   EditListedItems: { itemId: number, id:number };
 };
@@ -107,8 +107,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     return scheduledPickups.some(pickup => pickup.listedItemIds.includes(itemId));
   };
 
-  const handleViewPickup = (pickupId: number) => {
-    navigation.navigate('PickupDetails', { pickupId });
+  const handleViewPickup = (orgId: number) => {
+    navigation.navigate('PickupDetails', { id, orgId });
   };
 
   const handleEditPickup = (pickupId: string) => {
@@ -137,7 +137,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             const success = await deleteItem(itemId);
             if (success) {
               // Refresh the list after deletion
-              await loadData();
+              navigation.navigate('Home', {id});
             } else {
               Alert.alert(
                 "Error",
@@ -183,12 +183,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
               </View>
             ) : (
               displayTransactionOrg.map((pickup) => {
-                const organizationId = typeof pickup === "object" ? pickup.organization_id : pickup;
-                console.log("Organization ID:", organizationId);
                 const organization = displayOrg.find((org) => org.organizationID === pickup.organization_id);
-                console.log("displayOrg:", displayOrg);
-                console.log("Found organization:", organization);
-
 
                 return(
                 <View key={pickup.pickup_transaction_id} style={styles.tableRow}>              
@@ -199,7 +194,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                   <View style={styles.actionButtons}>
                     <TouchableOpacity 
                       style={styles.iconButton} 
-                      onPress={() => handleViewPickup(pickup.pickup_transaction_id)}
+                      onPress={() => handleViewPickup(pickup.organization_id)}
                     >
                       <Icon name="visibility" size={24} color="#666" />
                     </TouchableOpacity>

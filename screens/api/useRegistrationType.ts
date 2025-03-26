@@ -9,7 +9,7 @@ export const useRegistrationTypes = () => {
     const fetchRegistrationTypes = async () => {
       try {
         // campus ipv4
-        const response = await fetch('http://10.100.17.161:8080/api/status/registration_type/all');
+        const response = await fetch('http://10.100.17.243:8080/api/status/registration_type/all');
         // home
         // const response = await fetch('http://192.168.0.183:8080/api/status/registration_type/all');
         

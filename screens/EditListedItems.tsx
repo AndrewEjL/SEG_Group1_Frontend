@@ -16,7 +16,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 import { useUser, type ListedItem } from '../contexts/UserContext';
 import { useItemTypes } from './api/items/itemTypes';
-import { displayItemByItemID } from './api/items/displayItemsByItemID';
+import { displayItemByItemID } from './api/items/displayItemByItemID';
 import { updateItem } from './api/items/updateItem';
 
 type RootStackParamList = {
@@ -34,8 +34,7 @@ const EditListedItems: React.FC<EditListedItemsProps> = ({ navigation, route }) 
   const { itemId, id } = route.params;
   const { getListedItems, updateListedItem } = useUser();
   const { displayItemByID, loading } = displayItemByItemID(itemId);
-  const {itemTypes, deviceCondition, loadingName } = useItemTypes();
-  
+  const { itemTypes, deviceCondition, loadingName } = useItemTypes();
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -124,13 +123,8 @@ const EditListedItems: React.FC<EditListedItemsProps> = ({ navigation, route }) 
         dimension_height: parseFloat(dimensions.height),
         pickup_location: address,
       };
-
-      // if (itemId) {
-      //   console.error(userDonorID);
-      //   return;
-      // }
-
-      const success = await updateItem(userDonorID, updatedItem);
+      console.log(itemName);
+      const success = await updateItem(userDonorID, displayItemByID.item_name, updatedItem);
 
       if (success) {
         console.log(id)
