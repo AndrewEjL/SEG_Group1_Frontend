@@ -124,15 +124,15 @@ const handleChangePassword = () => {
 };
 
 const [states, setStates] = useState([
-  { name: "State 1", selected: true },
-  { name: "State 2", selected: false },
-  { name: "State 3", selected: false }
+  { name: "Johor", selected: true },
+  { name: "Selangor", selected: false },
+  { name: "Malacca", selected: false }
 ]);
 
 const stateCities = {
-  "State 1": [{ name: "City 1", selected: false }, { name: "City 2", selected: false }],
-  "State 2": [{ name: "City 3", selected: false }, { name: "City 4", selected: false }],
-  "State 3": [{ name: "City 5", selected: false }, { name: "City 6", selected: false }],
+  "Johor": [{ name: "Iskandar Puteri", selected: false }, { name: "Gelang patah", selected: false }],
+  "Selangor": [{ name: "Kajang", selected: false }, { name: "Klang", selected: false }],
+  "Malacca": [{ name: "Krubong", selected: false }, { name: "Ujong Pasir", selected: false }],
 };
 
 
