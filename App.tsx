@@ -107,7 +107,7 @@ const App = () => {
     <UserProvider>
       <NavigationContainer>
         <Stack.Navigator 
-          initialRouteName="Login"
+          initialRouteName="NavigationMap"
           screenOptions={{
             headerShown: false
           }}

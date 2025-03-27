@@ -1,7 +1,8 @@
 import React, { useRef, useState } from "react";
-import { View, TextInput, Text, Button, FlatList, TouchableOpacity, StyleSheet } from "react-native";
-import MapView, { Marker, Polyline } from "react-native-maps";
+import { View, TextInput, Text, Button, FlatList, TouchableOpacity, StyleSheet, Linking } from "react-native";
+import MapView, { LatLng, Marker, Polyline } from "react-native-maps";
 import polyline from "@mapbox/polyline";
+import { Link } from "@react-navigation/native";
 
 const GOOGLE_MAPS_API_KEY = "AIzaSyDqpBZYwzP8m_L8du5imDrLUQHYIUZFHtU";
 
@@ -124,6 +125,14 @@ const NavigationMap = () => {
     }
   };
 
+  const startNavigation = () => {
+    if (!destination) return;
+
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${destination.latitude},${destination.longitude}&travelmode=driving`
+
+    Linking.openURL(url).catch(err => console.error('An error with opening URL occured', err));
+  }
+
   return (
     <View style={styles.container}>
       <MapView
@@ -142,6 +151,7 @@ const NavigationMap = () => {
         {routeCoords.length > 0 && <Polyline coordinates={routeCoords} strokeWidth={4} strokeColor="blue" />}
       </MapView>
 
+      <Button title="Start Navigation" onPress={startNavigation} />
       <View style={styles.inputContainer}>
         <TextInput
           style={styles.input}
