@@ -11,7 +11,8 @@ import {
   TextInput,
   Button,
   TouchableWithoutFeedback,
-  KeyboardAvoidingView
+  KeyboardAvoidingView,
+  FlatList
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import MapView, { Marker } from 'react-native-maps';
@@ -50,6 +51,7 @@ const MapScreen: React.FC<MapScreenProps> = ({ navigation, route }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [locationSuggestions, setLocationSuggestions] = useState([]);
   
   // Map and location state
   const mapRef = useRef(null);
@@ -80,6 +82,25 @@ const MapScreen: React.FC<MapScreenProps> = ({ navigation, route }) => {
       keyboardDidHideListener.remove();
     };
   }, []);
+  const fetchAutocompleteSuggestions = async (input, setSuggestions) => {
+    if (!input) {
+      setSuggestions([]);
+      return;
+    }
+    const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(
+      input
+    )}&key=${GOOGLE_MAPS_API_KEY}&components=country:MY`;
+
+    try {
+      const response = await fetch(url);
+      const data = await response.json();
+      if (data.status === "OK") {
+        setSuggestions(data.predictions);
+      }
+    } catch (error) {
+      console.error("Error fetching autocomplete:", error);
+    }
+  };
 
   // Convert address to coordinates
   const fetchCoordinates = async () => {
@@ -173,7 +194,7 @@ const MapScreen: React.FC<MapScreenProps> = ({ navigation, route }) => {
         <Text style={styles.headerTitle}>Select Location</Text>
       </View>
 
-      <ScrollView 
+      <ScrollView
         style={styles.scrollContainer}
         contentContainerStyle={[
           styles.scrollContentContainer,
@@ -222,16 +243,21 @@ const MapScreen: React.FC<MapScreenProps> = ({ navigation, route }) => {
                   placeholder="Enter Address"
                   placeholderTextColor="#666666"
                   value={location.address}
-                  onChangeText={(text) => setLocation({ ...location, address: text })}
+                  onChangeText={(text) => {
+                      setLocation({ ...location, address: text });
+                      fetchAutocompleteSuggestions(text, setLocationSuggestions);
+                  }}
                 />
-                <TouchableOpacity 
-                  style={styles.searchButton} 
+
+                <TouchableOpacity
+                  style={styles.searchButton}
                   onPress={fetchCoordinates}
                   activeOpacity={0.7}
                 >
                   <Text style={styles.searchButtonText}>Search</Text>
                 </TouchableOpacity>
               </View>
+
             </View>
 
             {/* Confirmed Address Section */}
@@ -259,7 +285,25 @@ const MapScreen: React.FC<MapScreenProps> = ({ navigation, route }) => {
           </View>
         </TouchableWithoutFeedback>
       </ScrollView>
-
+              {locationSuggestions.length > 0 && (
+                <FlatList
+                  data={locationSuggestions}
+                  nestedScrollEnabled={true}
+                  keyExtractor={(item) => item.place_id}
+                  style={styles.flatlist}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity
+                      style={styles.suggestionItem}
+                      onPress={() => {
+                        setLocation({ ...location, address: item.description });
+                        setLocationSuggestions([]);
+                      }}
+                    >
+                      <Text style={styles.suggestionText}>{item.description}</Text>
+                    </TouchableOpacity>
+                  )}
+                />
+              )}
       {/* List Item Button - Fixed at bottom */}
       <View style={[
         styles.buttonContainer,
@@ -338,7 +382,7 @@ const styles = StyleSheet.create({
   searchContainer: {
     position: "absolute",
     width: "90%",
-    top: 15,
+    top: 5,
     left: "5%",
     backgroundColor: "white",
     padding: 12,
@@ -444,6 +488,26 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  suggestionItem: {
+    padding: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
+    backgroundColor: '#fff',
+  },
+  suggestionText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  flatlist: {
+      position: "absolute",
+      maxHeight: 250,
+      width: "60%",
+      left: "9%",
+      top: 150,
+      zIndex: 2,
+  },
+
+
 });
 
 export default MapScreen; 
