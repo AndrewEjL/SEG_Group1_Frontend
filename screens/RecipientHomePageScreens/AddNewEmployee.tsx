@@ -6,14 +6,12 @@ import { useUser } from "../../contexts/UserContext";
 
 const { width, height } = Dimensions.get("window");
 
-const ClientRegistration = ({ navigation }) => {
+const CollectorRegistration = ({ navigation }) => {
   const { register } = useUser();
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [passwordVisible, setPasswordVisible] = useState(false);
-  const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState("");
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
@@ -29,6 +27,17 @@ const isFormValid = useMemo(() => {
     confirmPassword.trim() !== ""
   );
 }, [username, email, phoneNumber, password, confirmPassword]);
+
+ const clearData = () => {
+    setUsername("");
+    setEmail("");
+    setPhoneNumber("")
+    setPassword("");
+    setConfirmPassword("");
+    setEmailError("");
+    setPasswordError("");
+    setConfirmPasswordError("")
+ }
 
   const handleSubmit = async () => {
     const existingEmails = ["test@example.com", "user@gmail.com"];
@@ -74,6 +83,7 @@ const isFormValid = useMemo(() => {
     } finally {
       setIsLoading(false);
     }
+    clearData();
   };
 
   return (
@@ -124,13 +134,7 @@ const isFormValid = useMemo(() => {
         mode="outlined"
         value={password}
         onChangeText={setPassword}
-        secureTextEntry={!passwordVisible}
-        right={
-          <TextInput.Icon
-            icon={passwordVisible ? "eye-off" : "eye"}
-            onPress={() => setPasswordVisible(!passwordVisible)}
-          />
-        }
+        secureTextEntry
         style={styles.input}
         error={passwordError !== ""}
       />
@@ -143,7 +147,7 @@ const isFormValid = useMemo(() => {
           size={width * 0.03}
           color={passwordError ? "red" : "blue"}
         />{" "}
-        {passwordError ? passwordError : "At least 8 characters, including a number and a special character."}
+        {passwordError || "At least 8 characters, including a number and a special character."}
       </HelperText>
 
       <TextInput
@@ -151,13 +155,7 @@ const isFormValid = useMemo(() => {
         mode="outlined"
         value={confirmPassword}
         onChangeText={setConfirmPassword}
-        secureTextEntry={!confirmPasswordVisible}
-        right={
-          <TextInput.Icon
-            icon={confirmPasswordVisible ? "eye-off" : "eye"}
-            onPress={() => setConfirmPasswordVisible(!passwordVisible)}
-          />
-        }
+        secureTextEntry
         style={styles.input}
         error={confirmPasswordError !== ""}
       />
@@ -215,5 +213,5 @@ const styles = StyleSheet.create({
 
 });
 
-export default ClientRegistration;
+export default CollectorRegistration;
 

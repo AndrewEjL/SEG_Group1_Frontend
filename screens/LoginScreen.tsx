@@ -14,6 +14,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useUser();
+  const [passwordVisible, setPasswordVisible] = useState(false);
 
   const handleSignIn = async () => {
     if (!email || !password) {
@@ -87,8 +88,14 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
                   setPassword(text);
                   setError('');
                 }}
-                secureTextEntry
+                secureTextEntry={!passwordVisible}
                 editable={!isLoading}
+                right={
+                  <TextInput.Icon
+                    icon={passwordVisible ? "eye-off" : "eye"}
+                    onPress={() => setPasswordVisible(!passwordVisible)}
+                  />
+                }
               />
             </View>
 
