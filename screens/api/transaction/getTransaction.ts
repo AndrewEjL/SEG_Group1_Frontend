@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Alert } from "react-native";
-const base_api = "http://10.100.17.243:8080/api/transaction";
-// const base_api = "http://192.168.0.183:8080/api/transaction";
+// const base_api = "http://10.100.17.243:8080/api/transaction";
+const base_api = "http://192.168.0.183:8080/api/transaction";
 
 export const useOrgItem = (id:number, orgID:number) => {
     const [displayOrgItem, setOrgItem] = useState<any[]>([]);

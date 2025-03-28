@@ -4,14 +4,18 @@ import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import MaterialIcon from "react-native-vector-icons/MaterialIcons";
 import { useUser } from '../contexts/UserContext';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useRoute } from "@react-navigation/native";
+import { useClient } from './api/user/getClient';
+import { updateUser } from "./api/user/updateUserProfile";
+import { updatePassword } from "./api/user/updatePassword";
 
 // Add type definitions for navigation
 type RootStackParamList = {
-  Home: undefined;
+  Home: { id: number };
   rewards: undefined;
   notifications: undefined;
   profile: undefined;
-  PickupHistory: undefined;
+  PickupHistory: {id: number};
   RewardsHistory: undefined;
 };
 
@@ -21,9 +25,16 @@ type CProfileScreenProps = {
 
 const CProfileScreen: React.FC<CProfileScreenProps> = ({ navigation }) => {
   const { user, updateUserProfile, changePassword } = useUser();
+  const route = useRoute();
+  const {id} = route.params;
+  const { displayClient, loading: loadingClient } = useClient(id); 
   
   const handleTabPress = (screen: keyof RootStackParamList) => {
-    navigation.navigate(screen);
+    if (screen === 'Home') {
+      navigation.navigate('Home', { id: id });
+    } else {
+      navigation.navigate(screen);
+    }
   };
 
 const [modal1Visible, setModal1Visible] = useState(false);
@@ -31,24 +42,22 @@ const [modal2Visible, setModal2Visible] = useState(false);
 const [tempUser, setTempUser] = useState({
   organization: '',
   email: '',
-  address: '',
   phoneNumber: '',
 });
-const [tempPassword, setTempPassword] = useState({ originPassword: "", password: "", confirmPassword: "" })
-const [errors, setErrors] = useState({ email: "", phoneNumber: "", address: "", organization: "" });
-const [passwordErrors, setPasswordErrors] = useState({ originPassword: "", password: "", confirmPassword: "" });
-
+const [tempPassword, setTempPassword] = useState({ originPassword: "",password: "", confirmPassword: "" })
+const [errors, setErrors] = useState({ email: "", phoneNumber: "", organization: "" });
+const [passwordErrors, setPasswordErrors] = useState({originPassword: "", password: "", confirmPassword: "" });
 // Initialize tempUser when user data is loaded
 useEffect(() => {
-  if (user) {
+  if(displayClient){
     setTempUser({
-      organization: user.name,
-      email: user.email,
-      address: user.address,
-      phoneNumber: user.phoneNumber,
+      organization: displayClient.user_name || '',
+      email: displayClient.email || '',
+      phoneNumber: displayClient.phone_number || '',
     });
+    
   }
-}, [user]);
+}, [displayClient]);
 
 const validateEmail = (email: string): boolean => {
   const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
@@ -64,12 +73,12 @@ const handlePhoneNumberChange = (text: string) => {
   setTempUser((prev) => ({ ...prev, phoneNumber: text }));
 };
 
-const validateAddress = () => {
-  return tempUser.address.trim().length > 0;
-};
+
 
 const handleSave = async () => {
-  let newErrors = { email: "", phoneNumber: "", address: "", organization: "" };
+  console.log("Hello world")
+
+  let newErrors = { email: "", phoneNumber: "", organization: "" };
 
   if (!validateEmail(tempUser.email)) {
     newErrors.email = "Invalid email format";
@@ -77,22 +86,19 @@ const handleSave = async () => {
   if (!tempUser.phoneNumber.startsWith("+60") || tempUser.phoneNumber.length < 10) {
     newErrors.phoneNumber = "Phone number must start with +60 and have at least 10 digits";
   }
-  if (!validateAddress()) {
-    newErrors.address = "Address cannot be empty";
-  }
   if (!tempUser.organization || tempUser.organization.trim() === "") {
     newErrors.organization = "Username cannot be empty";
   }
 
   setErrors(newErrors);
 
-  if (!newErrors.email && !newErrors.phoneNumber && !newErrors.address && !newErrors.organization) {
-    const success = await updateUserProfile({
-      name: tempUser.organization,
-      email: tempUser.email,
-      address: tempUser.address,
-      phoneNumber: tempUser.phoneNumber,
-    });
+  if (!newErrors.email && !newErrors.phoneNumber  && !newErrors.organization) {
+    const success = await updateUser(
+      id,
+      tempUser.organization,
+      tempUser.email,
+      tempUser.phoneNumber,
+    );
     
     if (success) {
       setModal1Visible(false);
@@ -108,6 +114,12 @@ const handleChangePassword = async () => {
 
   const passwordRegex = /^(?=.*[0-9])(?=.*[\W_]).{8,}$/;
 
+  if (!tempPassword.originPassword){
+    newErrors.originPassword = "Please enter your original password"
+  } else if (tempPassword.originPassword != displayClient?.password){
+    newErrors.originPassword = "Please enter correct origin password"
+  }
+
   if (!tempPassword.password) {
     newErrors.password = "New password cannot be empty";
   } else if (!passwordRegex.test(tempPassword.password)) {
@@ -121,15 +133,12 @@ const handleChangePassword = async () => {
   setPasswordErrors(newErrors);
 
   if (!newErrors.originPassword && !newErrors.password && !newErrors.confirmPassword) {
-    const success = await changePassword(tempPassword.originPassword, tempPassword.password);
+    const success = await updatePassword(id, tempPassword.password);
     
     if (success) {
       setTempPassword({ originPassword: "", password: "", confirmPassword: "" });
       setModal2Visible(false);
       Alert.alert("Success", "Password changed successfully!");
-    } else {
-      newErrors.originPassword = "Incorrect original password";
-      setPasswordErrors(newErrors);
     }
   }
 };
@@ -143,8 +152,8 @@ const handleChangePassword = async () => {
               <Icon name="account-circle" size={60} color="#a393eb" />
             </View>
             <View style={styles.userInfo}>
-              <Text style={styles.username}>{user.name}</Text>
-              <Text style={styles.email}>{user.email}</Text>
+              <Text style={styles.username}>{displayClient?.user_name}</Text>
+              <Text style={styles.email}>{displayClient?.email}</Text>
               <TouchableOpacity
                 style={styles.editProfileButton}
                 onPress={() => setModal1Visible(true)}
@@ -166,7 +175,7 @@ const handleChangePassword = async () => {
         <Text style={styles.sectionTitle}>Pickups</Text>
         <TouchableOpacity 
           style={styles.listItem}
-          onPress={() => navigation.navigate('PickupHistory')}
+          onPress={() => navigation.navigate('PickupHistory', {id: id})}
         >
           <Icon name="history" size={20} color="#5E4DCD" />
           <Text style={styles.listText}>Pickup History</Text>
@@ -241,14 +250,6 @@ const handleChangePassword = async () => {
               onChangeText={handlePhoneNumberChange}
             />
             {errors.phoneNumber ? <Text style={styles.errorText}>{errors.phoneNumber}</Text> : null}
-            <TextInput
-              style={styles.input}
-              placeholder="Address"
-              placeholderTextColor="#999999"
-              value={tempUser.address}
-              onChangeText={(text) => setTempUser({ ...tempUser, address: text })}
-            />
-            {errors.address ? <Text style={styles.errorText}>{errors.address}</Text> : null}
             <View style={styles.modalButtons}>
               <TouchableOpacity
                 style={styles.saveButton}

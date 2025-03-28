@@ -23,10 +23,11 @@ const GOOGLE_MAPS_API_KEY = "AIzaSyDqpBZYwzP8m_L8du5imDrLUQHYIUZFHtU";
 
 type RootStackParamList = {
   EditLocation: {
+    id: number,
     itemId: string;
     currentAddress: string;
   };
-  EditListedItems: { itemId: string };
+  EditListedItems: { id: number, itemId: string, updatedAddress?: String};
 };
 
 type EditLocationProps = {
@@ -35,7 +36,7 @@ type EditLocationProps = {
 };
 
 const EditLocation: React.FC<EditLocationProps> = ({ navigation, route }) => {
-  const { itemId, currentAddress } = route.params;
+  const { id, itemId, currentAddress, onLocationUpdate } = route.params;
   const { updateListedItem, getListedItems } = useUser();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -155,32 +156,41 @@ const EditLocation: React.FC<EditLocationProps> = ({ navigation, route }) => {
         setError("Please select a location first.");
         return;
     }
-    
-    if (!itemData) {
-        setError("Item data not found.");
-        return;
+
+    if (onLocationUpdate) {
+      onLocationUpdate(location.address);
+      navigation.goBack();
+      return;
     }
+    
+    // if (!itemData) {
+    //     setError("Item data not found.");
+    //     return;
+    // }
     
     setIsLoading(true);
     setError(null);
     
     try {
       // Call the updateListedItem function from UserContext
-      const success = await updateListedItem(itemId, {
-        name: itemData.name,
-        type: itemData.type,
-        condition: itemData.condition,
-        dimensions: itemData.dimensions,
-        quantity: itemData.quantity,
-        address: location.address,
-      });
+      // const success = await updateListedItem(itemId, {
+      //   name: itemData.name,
+      //   type: itemData.type,
+      //   condition: itemData.condition,
+      //   dimensions: itemData.dimensions,
+      //   quantity: itemData.quantity,
+      //   address: location.address,
+      // });
+
       
-      if (success) {
-        // Navigate back to edit screen on success
-        navigation.navigate('EditListedItems', { itemId });
-      } else {
-        setError('Failed to update location. Please try again.');
-      }
+      // if (success) {
+      //   // Navigate back to edit screen on success
+      //   navigation.navigate('EditListedItems', { itemId });
+      // } else {
+      //   setError('Failed to update location. Please try again.');
+      // }
+
+      navigation.navigate('EditListedItems', {id, itemId, updatedAddress: location.address});
     } catch (err) {
       setError('An error occurred. Please try again.');
       console.error('Error updating location:', err);
@@ -262,13 +272,13 @@ const EditLocation: React.FC<EditLocationProps> = ({ navigation, route }) => {
             </View>
 
             {/* Confirmed Address Section */}
-            <View style={styles.addressContainer}>
+            {/* <View style={styles.addressContainer}>
               <Text style={styles.confirmedText}>Confirmed Address:</Text>
               <Text style={styles.addressText}>{location.address}</Text>
-            </View>
+            </View> */}
             
             {/* Item Details Section */}
-            {itemData && (
+            {/* {itemData && (
               <View style={styles.itemDetailsContainer}>
                 <Text style={styles.itemDetailsTitle}>Item Details:</Text>
                 <Text style={styles.itemDetail}>Name: {itemData.name}</Text>
@@ -277,7 +287,7 @@ const EditLocation: React.FC<EditLocationProps> = ({ navigation, route }) => {
                 <Text style={styles.itemDetail}>Dimensions: {itemData.dimensions.length} x {itemData.dimensions.width} x {itemData.dimensions.height}</Text>
                 <Text style={styles.itemDetail}>Quantity: {itemData.quantity}</Text>
               </View>
-            )}
+            )} */}
 
             {/* Error message */}
             {error && (

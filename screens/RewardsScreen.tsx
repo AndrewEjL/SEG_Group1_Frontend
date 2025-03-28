@@ -14,15 +14,16 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useUser } from '../contexts/UserContext';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { GiftCard } from '../contexts/UserContext';
+import { useRoute } from '@react-navigation/native';
 
 // Create navigation type definitions similar to other screens
 type RootStackParamList = {
-  Home: undefined;
-  rewards: undefined;
-  notifications: undefined;
-  profile: undefined;
-  CProfileScreen: undefined;
-  RewardsHistory: undefined;
+  Home: { id:number };
+  rewards: { id:number };
+  notifications: { id:number };
+  profile: { id:number };
+  CProfileScreen: { id:number };
+  RewardsHistory: { id:number };
 };
 
 type RewardsScreenProps = {
@@ -30,6 +31,9 @@ type RewardsScreenProps = {
 };
 
 const RewardsScreen: React.FC<RewardsScreenProps> = ({ navigation }) => {
+  const route = useRoute();
+  const {id} = route.params;
+  console.log(id)
   const { user, updateUserPoints, addRedeemedReward, getGiftCards } = useUser();
   const [giftCardModalVisible, setGiftCardModalVisible] = useState(false);
   const [selectedGiftCard, setSelectedGiftCard] = useState<GiftCard | null>(null);
@@ -57,7 +61,7 @@ const RewardsScreen: React.FC<RewardsScreenProps> = ({ navigation }) => {
   }, [giftCards, activeCategory]);
 
   const handleTabPress = (screen: keyof RootStackParamList) => {
-    navigation.navigate(screen);
+    navigation.navigate(screen, id);
   };
 
   const openGiftCardDetails = (giftCard: GiftCard) => {

@@ -10,14 +10,15 @@ import { useItemTypes } from './api/items/itemTypes';
 import { useDeleteItem } from './api/items/deleteItem';
 import { grabTransactionOrg } from './api/transaction/grabTransactionOrg';
 import { useOrganization } from './api/transaction/getOrganization';
+import { useClient } from './api/user/getClient';
 
 type RootStackParamList = {
   Home: {id: number};
   PickupDetails: { id:number, orgId: number};
   AddPickupItem: { id: number };
   EditListedItems: { itemId: number, id:number };
-  CProfileScreen: undefined;
-  rewards: undefined;
+  CProfileScreen: { id:number };
+  rewards: { id:number };
 };
 
 type HomeScreenProps = {
@@ -71,6 +72,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const { displayTransactionOrg, loadingT1} = grabTransactionOrg(id)
   const { displayOrg, loading: loadingOrg} = useOrganization();
   const { deleteItem, loadingDelete, error } = useDeleteItem();
+  const { displayClient, loading: loadingClient } = useClient(id); 
   const [scheduledPickups, setScheduledPickups] = useState<ScheduledPickup[]>([]);
   const [listedItems, setListedItems] = useState<ListedItem[]>([]);
   const [isPickupsLoading, setIsPickupsLoading] = useState(true);
@@ -197,9 +199,9 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const handleTabPress = (tabName: string) => {
     console.log('Pressed tab:', tabName);
     if (tabName === 'profile') {
-      navigation.navigate('CProfileScreen');
+      navigation.navigate('CProfileScreen', {id});
     } else if (tabName === 'rewards') {
-      navigation.navigate('rewards');
+      navigation.navigate('rewards', {id});
     }
   };
 
@@ -213,7 +215,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         <Text style={styles.title}>E-Waste App</Text>
         <View style={styles.pointsContainer}>
           <Icon name="stars" size={20} color="#5E4DCD" />
-          <Text style={styles.points}>Points {user?.points || 0}</Text>
+          <Text style={styles.points}>Points {displayClient?.reward_points || 0}</Text>
         </View>
       </View>
 
@@ -229,7 +231,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             ) : (
               displayTransactionOrg.map((pickup) => {
                 const organization = displayOrg.find((org) => org.organizationID === pickup.organization_id);
-
+                console.log(pickup)
                 return(
                 <View key={pickup.pickup_transaction_id} style={styles.tableRow}>              
                   <Text style={styles.facilityText}>

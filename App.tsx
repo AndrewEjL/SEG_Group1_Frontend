@@ -20,6 +20,7 @@ import CProfileScreen from './screens/CProfileScreen';
 import PickupHistoryScreen from './screens/PickupHistoryScreen';
 import RewardsScreen from './screens/RewardsScreen';
 import RewardsHistory from './screens/RewardsHistory';
+import PickupHistoryDetails from './screens/PickupHistoryDetails.tsx';
 
 // Define your navigation types
 type RootStackParamList = {
@@ -140,18 +141,14 @@ const App = () => {
           <Stack.Screen
             name="Home"
             component={HomeScreen}
-          />
-          <Stack.Screen
-            name="HomeRecipient"
-            component={HomeRecipientScreen}
-          />
-           <Stack.Screen
-            name="HomeOrganization"
-            component={HomeOrganizationScreen}
-          />
+          />    
           <Stack.Screen
             name="PickupDetails"
             component={PickupDetails}
+          />
+          <Stack.Screen
+            name="PickupHistoryDetails"
+            component={PickupHistoryDetails}
           />
           <Stack.Screen
             name="AddPickupItem"

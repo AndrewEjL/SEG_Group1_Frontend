@@ -34,9 +34,9 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
               if (result.userType === "donor") {
                   navigation.navigate('Home', { id: result.id, userType: result.userType });
               } else if (result.userType === "recipient") {
-                  navigation.navigate("HomeRecipient");
+                  navigation.navigate("");
               } else if (result.userType === "organization") {
-                  navigation.navigate("HomeOrganization");
+                  navigation.navigate("");
               }
           } else {
               setError('Invalid email or password');

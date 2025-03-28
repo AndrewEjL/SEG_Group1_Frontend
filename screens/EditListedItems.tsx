@@ -21,8 +21,8 @@ import { updateItem } from './api/items/updateItem';
 
 type RootStackParamList = {
   Home: {id: number};
-  EditListedItems: { userDonorID: number };
-  EditLocation: { itemId: number; currentAddress: number };
+  EditListedItems: { id:number, userDonorID: number, itemID: number, updatedAddress?: String};
+  EditLocation: { id:number, itemId: number; currentAddress: String, onLocationUpdate?: (address:String) => void };
 };
 
 type EditListedItemsProps = {
@@ -49,10 +49,11 @@ const EditListedItems: React.FC<EditListedItemsProps> = ({ navigation, route }) 
   });
   const [quantity, setQuantity] = useState('');
   const [address, setAddress] = useState('');
+  const [hasUpdatedLocation, setHasUpdatedLocation] = useState(false);
 
   // Load item data when component mounts
   useEffect(() => {
-    if(displayItemByID){
+    if(displayItemByID && !hasUpdatedLocation){
       const item = displayItemByID;
       setUserDonorID(item.user_donor_id || 0);
       setItemName(item.item_name);
@@ -66,7 +67,8 @@ const EditListedItems: React.FC<EditListedItemsProps> = ({ navigation, route }) 
       setAddress(item.pickup_location || '');
       setIsLoading(false);
     }
-  }, [displayItemByID]);
+    
+  }, [displayItemByID, hasUpdatedLocation]);
 
   const handleDimensionChange = (value: string, dimension: 'length' | 'width' | 'height') => {
     // Only allow numbers and limit to 3 digits
@@ -87,6 +89,26 @@ const EditListedItems: React.FC<EditListedItemsProps> = ({ navigation, route }) 
   //     setQuantity(numericValue);
   //   }
   // };
+
+  useEffect(()=>{
+    if(route.params?.updatedAddress){
+      setAddress(route.params.updatedAddress);
+      setHasUpdatedLocation(true)
+    }
+  }, [route.params?.updatedAddress]);
+
+  const handleEditLocation = () => {
+    navigation.navigate('EditLocation', { 
+      id,
+      itemId,
+      currentAddress: address,
+      onLocationUpdate: (newAddress: string) => {
+        setAddress(newAddress);
+        setHasUpdatedLocation(true);
+      }
+    });
+  };
+  
 
   const handleUpdate = async () => {
     // Basic validation
@@ -319,7 +341,7 @@ const EditListedItems: React.FC<EditListedItemsProps> = ({ navigation, route }) 
                 </Text>
                 <TouchableOpacity 
                   style={styles.editLocationButton}
-                  onPress={() => navigation.navigate('EditLocation', { itemId, currentAddress: address })}
+                  onPress={handleEditLocation}
                 >
                   <Text style={styles.editLocationButtonText}>Edit Location</Text>
                 </TouchableOpacity>

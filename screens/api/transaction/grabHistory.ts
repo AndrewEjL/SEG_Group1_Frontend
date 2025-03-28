@@ -3,14 +3,14 @@ import { Alert } from "react-native";
 // const base_api= "http://10.100.17.243:8080/api/transaction";
 const base_api = "http://192.168.0.183:8080/api/transaction";
 
-export const grabTransactionOrg = (id:number) => {
-    const [displayTransactionOrg, setTransaction] = useState([]);
-    const [loadingT1, setLoading] = useState(true);
+export const grabHistory = (id:number) => {
+    const [displayHistory, setHistory] = useState([]);
+    const [loading, setLoading] = useState(true);
       
     useEffect(() => {
-      const fetchTransactionOrg = async () => {
+      const fetchHistory = async () => {
         try {
-            const response = await fetch(`${base_api}/pickup_transaction/distinctOrg/${id}`);
+            const response = await fetch(`${base_api}/pickup_transaction/history/${id}`);
               
             if (!response.ok) {
                 throw new Error(`HTTP error! Status: ${response.status}`);
@@ -18,7 +18,7 @@ export const grabTransactionOrg = (id:number) => {
         
             const data = await response.json();
             console.log("Fetched Transactions:", data);
-            setTransaction(data);
+            setHistory(data);
         } catch (err) {
             console.error("Fetch error:", err);
         } finally {
@@ -26,8 +26,8 @@ export const grabTransactionOrg = (id:number) => {
         }
       };
       if (id) {
-        fetchTransactionOrg();
+        fetchHistory();
       }
     }, [id]);
-    return { displayTransactionOrg, loadingT1};
+    return { displayHistory, loading};
 };
