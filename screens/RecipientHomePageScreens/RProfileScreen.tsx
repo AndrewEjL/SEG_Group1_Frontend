@@ -4,7 +4,22 @@ import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import MenuIcon from "react-native-vector-icons/MaterialIcons";
 import { Dropdown } from "react-native-element-dropdown";
 import { Checkbox } from "react-native-paper";
+import { useUser } from '../../contexts/UserContext';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
+// Add type definitions for navigation
+type RootStackParamList = {
+  RHome: undefined;
+  RStats: undefined;
+  RProfile: undefined;
+  CollectorList: undefined;
+  Login: undefined;
+  // Add other screens as needed
+};
+
+type RProfileScreenProps = {
+  navigation: NativeStackNavigationProp<RootStackParamList, 'RProfile'>;
+};
 
 const EWasteTypes = [
   { type: 'Select Type', selected: false },
@@ -19,172 +34,199 @@ const EWasteTypes = [
 ];
 
 
-const RProfileScreen = ({ navigation }) => {
-  const handleTabPress = (screen) => {
+const RProfileScreen: React.FC<RProfileScreenProps> = ({ navigation }) => {
+  const { user, logout } = useUser();
+  
+  const handleTabPress = (screen: keyof RootStackParamList) => {
     navigation.navigate(screen);
   };
-const [user, setUser] = useState({
-  organization: "Org Name",
-  email: "text@example.com",
-  address: "123 Main St, City",
-  phoneNumber: "+601233335555",
-  password: "test_1111",
-});
 
-const [modal1Visible, setModal1Visible] = useState(false);
-const [modal2Visible, setModal2Visible] = useState(false);
-const [modal3Visible, setModal3Visible] = useState(false);
-const [modal4Visible, setModal4Visible] = useState(false);
-const [tempUser, setTempUser] = useState(user);
-const [tempPassword, setTempPassword] = useState({ originPassword: "", password: "", confirmPassword: "" })
-const [errors, setErrors] = useState({ email: "", phoneNumber: "", address: "" });
-const [passwordErrors, setPasswordErrors] = useState({ originPassword: "", password: "", confirmPassword: "" });
-const [passwordVisibility, setPasswordVisibility] = useState({
-  origin: false,
-  new: false,
-  confirm: false,
-});
+  // Create a local state to store user profile data that can be edited
+  const [localUser, setLocalUser] = useState({
+    organization: user?.name || "Organization Name",
+    email: user?.email || "email@example.com",
+    address: user?.address || "Address",
+    phoneNumber: user?.phoneNumber || "+601233335555",
+    password: "test_1111",
+  });
 
-const clearModal2Data= () => {
-    setTempPassword({originPassword: "", password: "", confirmPassword: ""});
-    setPasswordErrors({ originPassword: "", password: "", confirmPassword: "" });
-    setPasswordVisibility({origin: false,new: false,confirm: false});
- }
+  const [modal1Visible, setModal1Visible] = useState(false);
+  const [modal2Visible, setModal2Visible] = useState(false);
+  const [modal3Visible, setModal3Visible] = useState(false);
+  const [modal4Visible, setModal4Visible] = useState(false);
+  const [tempUser, setTempUser] = useState(localUser);
+  const [tempPassword, setTempPassword] = useState({ originPassword: "", password: "", confirmPassword: "" });
+  const [errors, setErrors] = useState({ email: "", phoneNumber: "", address: "" });
+  const [passwordErrors, setPasswordErrors] = useState({ originPassword: "", password: "", confirmPassword: "" });
+  const [passwordVisibility, setPasswordVisibility] = useState({
+    origin: false,
+    new: false,
+    confirm: false,
+  });
 
-const validateEmail = (email) => {
-  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-  return emailRegex.test(email);
-};
-
-const handlePhoneNumberChange = (text) => {
-  if (!text.startsWith("+60")) {
-    text = "+60" + text.replace(/[^0-9]/g, "");
-  } else {
-    text = text.replace(/[^0-9+]/g, "");
-  }
-  setTempUser((prev) => ({ ...prev, phoneNumber: text }));
-};
-
-const validateAddress = () => {
-  return tempUser.address.trim().length > 0;
-};
-
-const handleSave = () => {
-  let newErrors = { email: "", phoneNumber: "", address: "" };
-
-  if (!validateEmail(tempUser.email)) {
-    newErrors.email = "Invalid email format";
-  }
-  if (!tempUser.phoneNumber.startsWith("+60") || tempUser.phoneNumber.length < 10) {
-    newErrors.phoneNumber = "Phone number must start with +60 and have at least 10 digits";
-  }
-  if (!validateAddress()) {
-    newErrors.address = "Address cannot be empty";
+  const clearModal2Data= () => {
+      setTempPassword({originPassword: "", password: "", confirmPassword: ""});
+      setPasswordErrors({ originPassword: "", password: "", confirmPassword: "" });
+      setPasswordVisibility({origin: false,new: false,confirm: false});
   }
 
-  setErrors(newErrors);
-
-  if (!newErrors.email && !newErrors.phoneNumber && !newErrors.address) {
-    setUser(tempUser);
-    setModal1Visible(false);
-    Alert.alert("Success", "Profile updated successfully!");
-  }
-};
-
-const handleChangePassword = () => {
-  let newErrors = { originPassword: "", password: "", confirmPassword: "" };
-
-  if (tempPassword.originPassword !== user.password) {
-    newErrors.originPassword = "Incorrect original password";
-  }
-
-  const passwordRegex = /^(?=.*[0-9])(?=.*[\W_]).{8,}$/;
-
-  if (!tempPassword.password) {
-    newErrors.password = "New password cannot be empty";
-  } else if (!passwordRegex.test(tempPassword.password)) {
-    newErrors.password = "Password must be at least 8 characters long, containing at least one number and one special character";
-  }
-
-  if (tempPassword.confirmPassword !== tempPassword.password) {
-    newErrors.confirmPassword = "Confirm password does not match new password";
-  }
-
-  setPasswordErrors(newErrors);
-
-  if (!newErrors.originPassword && !newErrors.password && !newErrors.confirmPassword) {
-    setUser((prevUser) => ({
-      ...prevUser,
-      password: tempPassword.password,
-    }));
-    setTempPassword({ originPassword: "", password: "", confirmPassword: "" });
-    setModal2Visible(false);
-    Alert.alert("Success", "Password changed successfully!");
-  }
-};
-
-const [states, setStates] = useState([
-  { name: "Johor", selected: true },
-  { name: "Selangor", selected: false },
-  { name: "Malacca", selected: false }
-]);
-
-const stateCities = {
-  "Johor": [{ name: "Iskandar Puteri", selected: false }, { name: "Gelang patah", selected: false }],
-  "Selangor": [{ name: "Kajang", selected: false }, { name: "Klang", selected: false }],
-  "Malacca": [{ name: "Krubong", selected: false }, { name: "Ujong Pasir", selected: false }],
-};
-
-
-const selectedState = states.find(state => state.selected)?.name || "State 1";
-
-const [cities, setCities] = useState(stateCities[selectedState] || []);
-
-
-const [tempSelectedState, setTempSelectedState] = useState(selectedState);
-const [tempCities, setTempCities] = useState(cities);
-
-const handleTempStateChange = (newStateName) => {
-  setTempSelectedState(newStateName);
-  setTempCities(stateCities[newStateName] || []);
-};
-
-const toggleTempCitySelection = (index) => {
-  setTempCities(tempCities.map((city, i) =>
-    i === index ? { ...city, selected: !city.selected } : city
-  ));
-};
-
-const handleStateCitiesChange = () => {
-  setStates(states.map(state => ({
-    ...state,
-    selected: state.name === tempSelectedState
-  })));
-  setCities(tempCities);
-  setModal3Visible(false);
-  Alert.alert("Success", "Service area updated!");
-};
-
-
-const [ewasteTypes, setEWasteTypes] = useState(EWasteTypes);
-const [tempEWasteTypes, setTempEWasteTypes] = useState(ewasteTypes);
-
-const handleEWasteTypeChange = (type) => {
-    setTempEWasteTypes((prevTypes) => {
-      return prevTypes.map((item) => {
-        if (item.type === type) {
-          return { ...item, selected: !item.selected };
-        }
-        return item;
-      });
-    });
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    return emailRegex.test(email);
   };
 
-const handleEWasteTypeSave = () => {
-    setEWasteTypes(tempEWasteTypes);
-    Alert.alert("Success", "E-waste types updated!");
-    setModal4Visible(false);
-};
+  const handlePhoneNumberChange = (text: string) => {
+    if (!text.startsWith("+60")) {
+      text = "+60" + text.replace(/[^0-9]/g, "");
+    } else {
+      text = text.replace(/[^0-9+]/g, "");
+    }
+    setTempUser((prev) => ({ ...prev, phoneNumber: text }));
+  };
+
+  const validateAddress = () => {
+    return tempUser.address.trim().length > 0;
+  };
+
+  const handleSave = () => {
+    let newErrors = { email: "", phoneNumber: "", address: "" };
+
+    if (!validateEmail(tempUser.email)) {
+      newErrors.email = "Invalid email format";
+    }
+    if (!tempUser.phoneNumber.startsWith("+60") || tempUser.phoneNumber.length < 10) {
+      newErrors.phoneNumber = "Phone number must start with +60 and have at least 10 digits";
+    }
+    if (!validateAddress()) {
+      newErrors.address = "Address cannot be empty";
+    }
+
+    setErrors(newErrors);
+
+    if (!newErrors.email && !newErrors.phoneNumber && !newErrors.address) {
+      setLocalUser(tempUser);
+      setModal1Visible(false);
+      Alert.alert("Success", "Profile updated successfully!");
+    }
+  };
+
+  const handleChangePassword = () => {
+    let newErrors = { originPassword: "", password: "", confirmPassword: "" };
+
+    if (tempPassword.originPassword !== localUser.password) {
+      newErrors.originPassword = "Incorrect original password";
+    }
+
+    const passwordRegex = /^(?=.*[0-9])(?=.*[\W_]).{8,}$/;
+
+    if (!tempPassword.password) {
+      newErrors.password = "New password cannot be empty";
+    } else if (!passwordRegex.test(tempPassword.password)) {
+      newErrors.password = "Password must be at least 8 characters long, containing at least one number and one special character";
+    }
+
+    if (tempPassword.confirmPassword !== tempPassword.password) {
+      newErrors.confirmPassword = "Confirm password does not match new password";
+    }
+
+    setPasswordErrors(newErrors);
+
+    if (!newErrors.originPassword && !newErrors.password && !newErrors.confirmPassword) {
+      setLocalUser((prevUser) => ({
+        ...prevUser,
+        password: tempPassword.password,
+      }));
+      setTempPassword({ originPassword: "", password: "", confirmPassword: "" });
+      setModal2Visible(false);
+      Alert.alert("Success", "Password changed successfully!");
+    }
+  };
+
+  const [states, setStates] = useState([
+    { name: "Johor", selected: true },
+    { name: "Selangor", selected: false },
+    { name: "Malacca", selected: false }
+  ]);
+
+  const stateCities = {
+    "Johor": [{ name: "Iskandar Puteri", selected: false }, { name: "Gelang patah", selected: false }],
+    "Selangor": [{ name: "Kajang", selected: false }, { name: "Klang", selected: false }],
+    "Malacca": [{ name: "Krubong", selected: false }, { name: "Ujong Pasir", selected: false }],
+  };
+
+
+  const selectedState = states.find(state => state.selected)?.name || "State 1";
+
+  const [cities, setCities] = useState(stateCities[selectedState] || []);
+
+
+  const [tempSelectedState, setTempSelectedState] = useState(selectedState);
+  const [tempCities, setTempCities] = useState(cities);
+
+  const handleTempStateChange = (newStateName) => {
+    setTempSelectedState(newStateName);
+    setTempCities(stateCities[newStateName] || []);
+  };
+
+  const toggleTempCitySelection = (index) => {
+    setTempCities(tempCities.map((city, i) =>
+      i === index ? { ...city, selected: !city.selected } : city
+    ));
+  };
+
+  const handleStateCitiesChange = () => {
+    setStates(states.map(state => ({
+      ...state,
+      selected: state.name === tempSelectedState
+    })));
+    setCities(tempCities);
+    setModal3Visible(false);
+    Alert.alert("Success", "Service area updated!");
+  };
+
+
+  const [ewasteTypes, setEWasteTypes] = useState(EWasteTypes);
+  const [tempEWasteTypes, setTempEWasteTypes] = useState(ewasteTypes);
+
+  const handleEWasteTypeChange = (type) => {
+      setTempEWasteTypes((prevTypes) => {
+        return prevTypes.map((item) => {
+          if (item.type === type) {
+            return { ...item, selected: !item.selected };
+          }
+          return item;
+        });
+      });
+    };
+
+  const handleEWasteTypeSave = () => {
+      setEWasteTypes(tempEWasteTypes);
+      Alert.alert("Success", "E-waste types updated!");
+      setModal4Visible(false);
+  };
+
+  const handleLogout = async () => {
+    Alert.alert(
+      "Logout",
+      "Are you sure you want to logout?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel"
+        },
+        {
+          text: "Logout",
+          onPress: async () => {
+            await logout();
+            navigation.reset({
+              index: 0,
+              routes: [{ name: 'Login' }],
+            });
+          }
+        }
+      ]
+    );
+  };
 
 
 
@@ -196,8 +238,8 @@ const handleEWasteTypeSave = () => {
           <Icon name="account-circle" size={60} color="#a393eb" />
         </View>
         <View style={styles.userInfo}>
-          <Text style={styles.username}>{user.organization}</Text>
-          <Text style={styles.email}>{user.email}</Text>
+          <Text style={styles.username}>{user?.name || localUser.organization}</Text>
+          <Text style={styles.email}>{user?.email || localUser.email}</Text>
           <TouchableOpacity
             style={styles.editProfileButton}
             onPress={() => setModal1Visible(true)}
@@ -216,6 +258,10 @@ const handleEWasteTypeSave = () => {
         <TouchableOpacity style={styles.listItem} onPress={() => setModal2Visible(true)}>
           <Icon name="key" size={20} color="#5E4DCD" />
           <Text style={styles.listText}>Change password</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.listItem} onPress={handleLogout}>
+          <Icon name="logout" size={20} color="#D32F2F" />
+          <Text style={[styles.listText, styles.logoutText]}>Logout</Text>
         </TouchableOpacity>
       </View>
 
@@ -262,7 +308,7 @@ const handleEWasteTypeSave = () => {
       >
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
-            <TouchableOpacity onPress={() => {setModal1Visible(false);setTempUser(user);}} style={{ alignSelf: "flex-start" }}>
+            <TouchableOpacity onPress={() => {setModal1Visible(false);setTempUser(localUser);}} style={{ alignSelf: "flex-start" }}>
                 <Icon name="close" size={24} color="#333333" />
             </TouchableOpacity>
             <Text style={styles.modalTitle}>Edit Profile</Text>
@@ -552,6 +598,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginLeft: 10,
     color: "#333333",
+  },
+  logoutText: {
+    color: "#D32F2F",
   },
   bottomNav: {
     flexDirection: "row",
