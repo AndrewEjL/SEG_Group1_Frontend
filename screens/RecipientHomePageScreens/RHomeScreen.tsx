@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, Modal } from "react-native";
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, Modal, ScrollView } from "react-native";
 import Icon from "react-native-vector-icons/MaterialIcons";
 import { Dropdown } from "react-native-element-dropdown";
 import RouteInfo from "./RouteInfo.tsx";
@@ -87,7 +87,7 @@ const RHomeScreen = ({ navigation }) => {
             <Text style={styles.itemText}>{item.itemName}</Text>
             <View style={styles.iconRow}>
               <TouchableOpacity onPress={() => viewPickupDetails(item)}>
-                <Icon name="visibility" size={20} color="black" />
+                <Icon name="visibility" size={20} color="#333333" />
               </TouchableOpacity>
               <TouchableOpacity style={styles.acceptButton} onPress={() => acceptPickup(item)}>
                 <Text style={styles.acceptText}>Accept</Text>
@@ -113,7 +113,7 @@ const RHomeScreen = ({ navigation }) => {
             <Text style={styles.collectorText}>Collector: {item.collector}</Text>
             <View style={styles.iconRow}>
               <TouchableOpacity onPress={() => viewPendingPickupStatus(item)}>
-                <Icon name="hourglass-empty" size={20} color="black" />
+                <Icon name="hourglass-empty" size={20} color="#333333" />
               </TouchableOpacity>
             </View>
           </View>
@@ -131,11 +131,11 @@ const RHomeScreen = ({ navigation }) => {
           <Text style={styles.activeNavText}>Home</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem} onPress={() => handleTabPress("RStats")}>
-          <Icon name="bar-chart" size={24} color="#666" />
+          <Icon name="bar-chart" size={24} color="#666666" />
           <Text style={styles.navText}>Stats</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem} onPress={() => handleTabPress("RProfile")}>
-          <Icon name="person" size={24} color="#666" />
+          <Icon name="person" size={24} color="#666666" />
           <Text style={styles.navText}>Profile</Text>
         </TouchableOpacity>
       </View>
@@ -144,23 +144,26 @@ const RHomeScreen = ({ navigation }) => {
         <View style={styles.modalContainer}>
           <View style={styles.modal1Content}>
               <TouchableOpacity onPress={() => setModal1Visible(false)} style={{ alignSelf: "flex-start" }}>
-                <Icon name="close" size={24} color="black" />
+                <Icon name="close" size={24} color="#333333" />
               </TouchableOpacity>
               <Text style={styles.modalTitle}>Pickup details</Text>
 
              {selectedPickup && (
-              <View>
-              <View style={styles.mapWrapper}>
-              <RouteInfo  initialDestination={selectedPickup.address}/>
-              </View>
-              <Text style={styles.label}><Text style={styles.bold}>Pickup No:</Text> {selectedPickup.pickUpNo}</Text>
-              <Text style={styles.label}><Text style={styles.bold}>Item Name:</Text> {selectedPickup.itemName}</Text>
-              <Text style={styles.label}><Text style={styles.bold}>Type:</Text> {selectedPickup.type}</Text>
-              <Text style={styles.label}><Text style={styles.bold}>Condition:</Text> {selectedPickup.condition}</Text>
-              <Text style={styles.label}><Text style={styles.bold}>Size:</Text> {selectedPickup.length} x {selectedPickup.width} x {selectedPickup.height}</Text>
-              <Text style={styles.label}><Text style={styles.bold}>Quantity:</Text> {selectedPickup.quantity}</Text>
-              <Text style={styles.label}><Text style={styles.bold}>Address:</Text> {selectedPickup.address}</Text>
-            </View> )}
+              <ScrollView style={styles.modalScrollView}>
+                <View style={styles.mapWrapper}>
+                  <RouteInfo initialDestination={selectedPickup.address}/>
+                </View>
+                <View style={styles.detailsContainer}>
+                  <Text style={styles.label}><Text style={styles.bold}>Pickup No:</Text> {selectedPickup.pickUpNo}</Text>
+                  <Text style={styles.label}><Text style={styles.bold}>Item Name:</Text> {selectedPickup.itemName}</Text>
+                  <Text style={styles.label}><Text style={styles.bold}>Type:</Text> {selectedPickup.type}</Text>
+                  <Text style={styles.label}><Text style={styles.bold}>Condition:</Text> {selectedPickup.condition}</Text>
+                  <Text style={styles.label}><Text style={styles.bold}>Size:</Text> {selectedPickup.length} x {selectedPickup.width} x {selectedPickup.height}</Text>
+                  <Text style={styles.label}><Text style={styles.bold}>Quantity:</Text> {selectedPickup.quantity}</Text>
+                  <Text style={styles.label}><Text style={styles.bold}>Address:</Text> {selectedPickup.address}</Text>
+                </View>
+              </ScrollView>
+             )}
           </View>
         </View>
       </Modal>
@@ -168,7 +171,7 @@ const RHomeScreen = ({ navigation }) => {
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
             <TouchableOpacity onPress={() => setModal2Visible(false)} style={{ alignSelf: "flex-start" }}>
-              <Icon name="close" size={24} color="black" />
+              <Icon name="close" size={24} color="#333333" />
             </TouchableOpacity>
             <Text style={styles.modalTitle}>Assign to</Text>
             <Text style={styles.label}>Select Collector</Text>
@@ -198,7 +201,7 @@ const RHomeScreen = ({ navigation }) => {
           <View style={styles.modalContent}>
 
             <TouchableOpacity onPress={() => setModal3Visible(false)} style={{ alignSelf: "flex-start" }}>
-              <Icon name="close" size={24} color="black" />
+              <Icon name="close" size={24} color="#333333" />
             </TouchableOpacity>
 
             <Text style={styles.modalTitle}>Pending Pickup Details</Text>
@@ -208,19 +211,19 @@ const RHomeScreen = ({ navigation }) => {
                   <View style={styles.statusContainer}>
                      {selectedPickup.status === "Out for pickup" && (
                        <>
-                         <Icon name="local-shipping" size={80} color="blue" />
+                         <Icon name="local-shipping" size={80} color="#5E4DCD" />
                          <Text style={styles.statusText}>Collector out for pickup</Text>
                        </>
                      )}
                      {selectedPickup.status === "Collected" && (
                        <>
-                         <Icon name="move-to-inbox" size={80} color="orange" />
+                         <Icon name="move-to-inbox" size={80} color="#F9A826" />
                          <Text style={styles.statusText}>Collector received</Text>
                        </>
                      )}
                      {selectedPickup.status === "Recycled" && (
                        <>
-                         <Icon name="check-circle-outline" size={80} color="green" />
+                         <Icon name="check-circle-outline" size={80} color="#4CAF50" />
                          <Text style={styles.statusText}>Company received, completed pickup</Text>
                        </>
                      )}
@@ -276,10 +279,11 @@ const styles = StyleSheet.create({
   },
   itemText: {
     fontSize: 16,
+    color: "#333333",
   },
   collectorText: {
     fontSize: 14,
-    color: "gray",
+    color: "#555555",
   },
   iconRow: {
     flexDirection: "row",
@@ -293,6 +297,7 @@ const styles = StyleSheet.create({
   },
   acceptText: {
     color: "white",
+    fontWeight: "500",
   },
   flatList: {
     backgroundColor: "#f0f0f0",
@@ -316,11 +321,12 @@ const styles = StyleSheet.create({
   },
   navText: {
     fontSize: 12,
-    color: "#666",
+    color: "#666666",
     marginTop: 4,
   },
   activeNavText: {
     color: "#5E4DCD",
+    fontWeight: "500",
   },
   modalContainer: {
     flex: 1,
@@ -334,33 +340,34 @@ const styles = StyleSheet.create({
     padding: 20,
     borderRadius: 10,
     alignItems: "center",
-
   },
   modal1Content: {
-    maxWidth:"90%",
+    width: '90%',
+    maxWidth: 400,
     backgroundColor: "white",
-    padding: 20,
+    padding: 15,
     borderRadius: 10,
     alignItems: "center",
+    maxHeight: '90%',
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: "bold",
     marginBottom: 10,
-    color:"black",
+    color: "#333333",
   },
   label: {
     alignSelf: "flex-start",
     fontSize: 14,
-    marginTop: 10 ,
-    color:"black",
+    marginTop: 10,
+    color: "#333333",
   },
   bold: {
     alignSelf: "flex-start",
     fontSize: 14,
-    marginTop: 10 ,
+    marginTop: 10,
     fontWeight: "bold",
-    color:"black",
+    color: "#333333",
   },
   assignButton: {
     backgroundColor: "#5E4DCD",
@@ -384,19 +391,19 @@ const styles = StyleSheet.create({
     backgroundColor: "white",
   },
   itemTextStyle: {
-    color: "#000",
+    color: "#333333",
     fontSize: 16,
   },
   placeholderStyle: {
-    color: "#161717",
+    color: "#555555",
     fontSize: 16,
   },
   selectedTextStyle: {
-    color: "#2645f0",
+    color: "#5E4DCD",
     fontSize: 16,
   },
   inputSearchStyle: {
-    color: "#000",
+    color: "#333333",
     fontSize: 16,
   },
   statusContainer: {
@@ -409,7 +416,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     fontSize: 18,
     fontWeight: "bold",
-    color: "#333",
+    color: "#333333",
   },
   emptyContainer: {
     alignItems: "center",
@@ -418,11 +425,22 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
-    color: "gray",
+    color: "#666666",
   },
+  modalScrollView: {
+    width: '100%',
+    maxHeight: '90%',
+  },
+  
+  detailsContainer: {
+    width: '100%',
+    paddingTop: 10,
+    paddingBottom: 20,
+  },
+
   mapWrapper: {
-    height: 400,
-    width: 350,
+    height: 500,
+    width: '100%',
     position: 'relative',
     marginTop: 10,
     marginBottom: 10,
@@ -430,6 +448,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: '#E0E0E0',
+    backgroundColor: '#f0f0f0',
   },
 });
 

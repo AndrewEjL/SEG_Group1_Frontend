@@ -66,6 +66,7 @@ export interface User {
   points: number;
   address: string;   // Adding address field
   phoneNumber: string;  // Adding phone number field
+  role: 'client' | 'organization';  // Add role field to distinguish user types
   scheduledPickups: string[];  // Array of pickup IDs - references to pickups in the database
   listedItems: string[];      // Array of listed item IDs
   redeemedRewards?: RewardRedemption[];  // Array of redeemed rewards
@@ -277,6 +278,7 @@ const mockUserService: UserService = {
         points: 150,
         address: '123 Main St, City',
         phoneNumber: '+601233335555',
+        role: 'client', // Client user
         scheduledPickups: ['pickup1', 'pickup2'],
         listedItems: ['item1'],
         redeemedRewards: [
@@ -297,6 +299,19 @@ const mockUserService: UserService = {
             imageSource: null, // Will be set properly when displayed
           }
         ]
+      };
+    } else if (email === 'org@example.com' && password === 'password') {
+      return {
+        id: '2',
+        name: 'Recycle Organization',
+        email: 'org@example.com',
+        points: 0,
+        address: '456 Business Ave, City',
+        phoneNumber: '+601244445555',
+        role: 'organization', // Organization user
+        scheduledPickups: [],
+        listedItems: [],
+        redeemedRewards: []
       };
     }
     return null;

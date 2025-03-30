@@ -82,7 +82,7 @@ return (
         </View>
         <Text style={styles.collectorText}>{item.email}</Text>
         <TouchableOpacity onPress={() => handleDelete(item.id)}>
-          <Icon name="trash-can" size={24} color="black" />
+          <Icon name="trash-can" size={24} color="#333333" />
         </TouchableOpacity>
       </View>
     )}
@@ -104,7 +104,7 @@ return (
             });
           }}
         >
-          <Icon name="close" size={24} color="black" />
+          <Icon name="close" size={24} color="#333333" />
         </TouchableOpacity>
 
         <Text style={styles.modalTitle}>Add Employee</Text>
@@ -114,6 +114,7 @@ return (
           placeholder="Name"
           value={newEmployee.name}
           onChangeText={(text) => setNewEmployee({ ...newEmployee, name: text })}
+          placeholderTextColor="#999999"
         />
         {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
 
@@ -122,6 +123,7 @@ return (
           placeholder="Email"
           value={newEmployee.email}
           onChangeText={(text) => setNewEmployee({ ...newEmployee, email: text })}
+          placeholderTextColor="#999999"
         />
         {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
 
@@ -136,6 +138,7 @@ return (
             const numberOnly = text.slice(3).replace(/\D/g, "");
             setNewEmployee({ ...newEmployee, phoneNumber: numberOnly });
           }}
+          placeholderTextColor="#999999"
         />
         {errors.phoneNumber && <Text style={styles.errorText}>{errors.phoneNumber}</Text>}
 
@@ -146,12 +149,13 @@ return (
             secureTextEntry={!passwordVisible}
             value={newEmployee.password}
             onChangeText={(text) => setNewEmployee({ ...newEmployee, password: text })}
+            placeholderTextColor="#999999"
           />
           <TouchableOpacity
             onPress={() => setPasswordVisible(!passwordVisible)}
             style={styles.eyeIcon}
           >
-            <Icon name={passwordVisible ? "eye-off" : "eye"} size={20} color="gray" />
+            <Icon name={passwordVisible ? "eye-off" : "eye"} size={20} color="#555555" />
           </TouchableOpacity>
         </View>
         {errors.password ? (
@@ -169,12 +173,13 @@ return (
             secureTextEntry={!confirmPasswordVisible}
             value={newEmployee.confirmPassword}
             onChangeText={(text) => setNewEmployee({ ...newEmployee, confirmPassword: text })}
+            placeholderTextColor="#999999"
           />
           <TouchableOpacity
             onPress={() => setConfirmPasswordVisible(!confirmPasswordVisible)}
             style={styles.eyeIcon}
           >
-            <Icon name={confirmPasswordVisible ? "eye-off" : "eye"} size={20} color="gray" />
+            <Icon name={confirmPasswordVisible ? "eye-off" : "eye"} size={20} color="#555555" />
           </TouchableOpacity>
         </View>
         {errors.confirmPassword && <Text style={styles.errorText}>{errors.confirmPassword}</Text>}
@@ -219,7 +224,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 10,
-    borderBottomWidth: 1
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0'
   },
 
   avatar: {
@@ -235,12 +241,13 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: 'black'
+    color: '#333333'
   },
 
   collectorText: {
     flex: 1,
-    fontSize: 18
+    fontSize: 18,
+    color: '#333333'
   },
 
   modalContainer: {
@@ -261,7 +268,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "bold",
     marginBottom: 20,
-    color: 'black'
+    color: '#333333'
   },
 
   input: {
@@ -271,7 +278,8 @@ const styles = StyleSheet.create({
     borderColor: "#ccc",
     borderRadius: 5,
     paddingHorizontal: 10,
-    marginBottom: 10
+    marginBottom: 10,
+    color: '#333333'
   },
 
   saveButton: {
@@ -287,13 +295,13 @@ const styles = StyleSheet.create({
   },
 
   errorText: {
-    color: "red",
+    color: "#E53935",
     fontSize: 12,
     marginBottom: 10
   },
 
   hintText: {
-    color: "grey",
+    color: "#555555",
     fontSize: 12,
     marginBottom: 10
   },
