@@ -1,4 +1,4 @@
-# SEG Group1 Frontend - OpenStreetMap Integration
+# E-Waste Recycling Tracker
 
 ## 📱 Try the App
 
@@ -19,6 +19,13 @@ This project demonstrates several technical skills and competencies valuable in 
 - **UI/UX Design**: Creating intuitive, responsive mobile interfaces
 - **Authentication Flow**: Implementation of login/registration systems
 
+## Purpose of App
+
+This app main function is to be a scheduling system for scheduling pick ups for people who want to recycle E-Waste. There are 3 main users
+
+- **Client/User**: List their E-Waste they want to Recycle
+- **Manager**: See's the Listing and accepts those they want, appoint a a collector to pick it up
+- **Collector**: Gets assigned these pickups, with details of location so they can travel there
 
 ## Google Maps to OpenStreetMap Migration
 
