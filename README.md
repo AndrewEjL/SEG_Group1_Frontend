@@ -5,7 +5,7 @@
 ### Download APK for Android
 You can download and install the app directly on your Android device:
 
-1. Download the APK from the link provided in the https://github.com/AndrewEjL/SEG_Group1_Frontend/releases/tag/v0.2
+1. Download the APK from the link provided in the https://github.com/AndrewEjL/SEG_Group1_Frontend/releases
 
 ## 💼 For Potential Employers
 
