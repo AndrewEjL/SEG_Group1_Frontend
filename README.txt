@@ -1,0 +1,1 @@
+If want to test please run the spring boot application on campus, because the ip address set on frontend is campus ip address. we are not having server yet

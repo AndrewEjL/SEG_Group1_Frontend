@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Alert } from 'react-native';
-// const base_api_user = "http://10.100.17.243:8080/api/user";
-// const base_api_organization = "http://10.100.17.243:8080/api/organization";
-const base_api_user = "http://192.168.0.183:8080/api/user";
-const base_api_organization = "http://192.168.0.183:8080/api/organization";
+const base_api_user = "http://10.100.17.243:8080/api/user";
+const base_api_organization = "http://10.100.17.243:8080/api/organization";
+// const base_api_user = "http://192.168.0.183:8080/api/user";
+// const base_api_organization = "http://192.168.0.183:8080/api/organization";
 
 export const login = async (email: String, pass: String) => {
     try {

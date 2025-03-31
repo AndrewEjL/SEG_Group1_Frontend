@@ -1,5 +1,5 @@
-// const base_api = "http://10.100.17.243:8080/api/organization";
-const base_api = "http://192.168.0.183:8080/api/organization";
+const base_api = "http://10.100.17.243:8080/api/organization";
+// const base_api = "http://192.168.0.183:8080/api/organization";
 
 // check email
 export const checkEmailExists = async (email: string): Promise<boolean> => {

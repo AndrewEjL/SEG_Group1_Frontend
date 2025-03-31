@@ -12,15 +12,15 @@ import { updatePassword } from "./api/user/updatePassword";
 // Add type definitions for navigation
 type RootStackParamList = {
   Home: { id: number };
-  rewards: undefined;
-  notifications: undefined;
-  profile: undefined;
+  rewards: { id: number };
+  notifications: { id: number };
+  CProfileScreen: { id: number };
   PickupHistory: {id: number};
-  RewardsHistory: undefined;
+  RewardsHistory: { id: number };
 };
 
 type CProfileScreenProps = {
-  navigation: NativeStackNavigationProp<RootStackParamList, 'profile'>;
+  navigation: NativeStackNavigationProp<RootStackParamList, 'CProfileScreen'>;
 };
 
 const CProfileScreen: React.FC<CProfileScreenProps> = ({ navigation }) => {
@@ -33,7 +33,7 @@ const CProfileScreen: React.FC<CProfileScreenProps> = ({ navigation }) => {
     if (screen === 'Home') {
       navigation.navigate('Home', { id: id });
     } else {
-      navigation.navigate(screen);
+      navigation.navigate(screen, {id: id});
     }
   };
 
@@ -102,6 +102,7 @@ const handleSave = async () => {
     
     if (success) {
       setModal1Visible(false);
+      handleTabPress("CProfileScreen");
       Alert.alert("Success", "Profile updated successfully!");
     } else {
       Alert.alert("Error", "Failed to update profile. Please try again.");
@@ -186,7 +187,7 @@ const handleChangePassword = async () => {
         <Text style={styles.sectionTitle}>Rewards</Text>
         <TouchableOpacity 
           style={styles.listItem}
-          onPress={() => navigation.navigate('RewardsHistory')}
+          onPress={() => navigation.navigate('RewardsHistory', id)}
         >
           <Icon name="star" size={20} color="#5E4DCD" />
           <Text style={styles.listText}>Rewards History</Text>
@@ -207,7 +208,7 @@ const handleChangePassword = async () => {
           <MaterialIcon name="notifications" size={24} color="#666" />
           <Text style={styles.navText}>Notifications</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem} onPress={() => handleTabPress("profile")}>
+        <TouchableOpacity style={styles.navItem} onPress={() => handleTabPress("CProfileScreen")}>
           <MaterialIcon name="person" size={24} color="#5E4DCD" />
           <Text style={[styles.navText, styles.activeNavText]}>Profile</Text>
         </TouchableOpacity>

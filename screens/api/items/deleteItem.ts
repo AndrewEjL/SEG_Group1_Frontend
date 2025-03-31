@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-// const base_api = "http://10.100.17.243:8080/api/item";
-const base_api = "http://192.168.0.183:8080/api/item";
+const base_api = "http://10.100.17.243:8080/api/item";
+// const base_api = "http://192.168.0.183:8080/api/item";
 
 export const useDeleteItem = () => {
     const [displayItems, setDisplayItems] = useState([]);
