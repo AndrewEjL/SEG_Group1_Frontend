@@ -333,7 +333,7 @@ const mockPickups: { [key: string]: ScheduledPickup } = {
       { id: 'item1', name: 'S24 Ultra' },
       { id: 'item10', name: 'Samsung Galaxy Tab S9' },
     ],
-    listedItemIds: ['item1', 'item10'],  // Both items are at the same address
+    listedItemIds: ['item1', 'item10'],  // Only include specific item IDs, no wildcards
     status: 'ongoing',
     date: new Date().toISOString(), // Today
     organizationId: '2', // Assign to the organization
@@ -427,6 +427,85 @@ const mockCollectors = [
   { id: 'collector3', name: 'Michael Brown', email: 'michael@example.com', phoneNumber: '+60123456781'},
 ];
 
+// Add this near the top with other mock data
+const mockUsers: { [key: string]: User } = {
+  '1': {
+    id: '1',
+    name: 'John Doe',
+    email: 'test@example.com',
+    points: 150,
+    address: '123 Main St, City',
+    phoneNumber: '+601233335555',
+    role: 'client',
+    scheduledPickups: ['pickup1', 'pickup2', 'pickup3', 'pickup4', 'pickup5', 'pickup6'],
+    listedItems: ['item1', 'item2', 'item3', 'item4', 'item7', 'item8', 'item9', 'item10', 'item11'],
+    redeemedRewards: [
+      {
+        id: 'reward1',
+        name: 'Touch \'n Go eWallet RM15',
+        value: 'RM15',
+        pin: '1234567890',
+        date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+        imageSource: null,
+      },
+      {
+        id: 'reward2',
+        name: 'Touch \'n Go eWallet RM5',
+        value: 'RM5',
+        pin: '0987654321',
+        date: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(),
+        imageSource: null,
+      }
+    ]
+  },
+  '2': {
+    id: '2',
+    name: 'GreenTech Recyclers',
+    email: 'org@example.com',
+    points: 0,
+    address: '456 Business Ave, City',
+    phoneNumber: '+601244445555',
+    role: 'organization',
+    scheduledPickups: ['pickup1', 'pickup5', 'pickup6'],
+    listedItems: [],
+    redeemedRewards: [],
+    collectorEmployees: ['collector1', 'collector2', 'collector3']
+  },
+  '3': {
+    id: '3',
+    name: 'EcoLife Solutions',
+    email: 'eco@example.com',
+    points: 0,
+    address: '789 Sustainability St, City',
+    phoneNumber: '+601244446666',
+    role: 'organization',
+    scheduledPickups: ['pickup2'],
+    listedItems: [],
+    redeemedRewards: [],
+    collectorEmployees: ['collector1', 'collector2']
+  },
+  '4': {
+    id: '4',
+    name: 'ReNew Electronics',
+    email: 'renew@example.com',
+    points: 0,
+    address: '101 Innovation Blvd, City',
+    phoneNumber: '+601244447777',
+    role: 'organization',
+    scheduledPickups: ['pickup3', 'pickup4'],
+    listedItems: [],
+    redeemedRewards: [],
+    collectorEmployees: ['collector3']
+  }
+};
+
+const mockUserPasswords: { [key: string]: string } = {
+  '1': 'password', // test@example.com
+  '2': 'password', // org@example.com
+  '3': 'password', // eco@example.com
+  '4': 'password', // renew@example.com
+};
+
 /**
  * MOCK SERVICE IMPLEMENTATION - REPLACE WITH REAL DATABASE IMPLEMENTATION
  * Backend team: Replace this entire mockUserService with your real service implementation
@@ -438,79 +517,16 @@ const mockUserService: UserService = {
     // Replace with real authentication logic
     await new Promise(resolve => setTimeout(resolve, 1000));
     
-    if (email === 'test@example.com' && password === 'password') {
-      return {
-        id: '1',
-        name: 'John Doe',
-        email: 'test@example.com',
-        points: 150,
-        address: '123 Main St, City',
-        phoneNumber: '+601233335555',
-        role: 'client', // Client user
-        scheduledPickups: ['pickup1', 'pickup2', 'pickup3', 'pickup4', 'pickup5', 'pickup6'], // All pickups for this client
-        listedItems: ['item1', 'item2', 'item3', 'item4', 'item7', 'item8', 'item9', 'item10', 'item11'], // All listed items for this client
-        redeemedRewards: [
-          {
-            id: 'reward1',
-            name: 'Touch \'n Go eWallet RM15',
-            value: 'RM15',
-            pin: '1234567890',
-            date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days ago
-            imageSource: null, // Will be set properly when displayed
-          },
-          {
-            id: 'reward2',
-            name: 'Touch \'n Go eWallet RM5',
-            value: 'RM5',
-            pin: '0987654321',
-            date: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(), // 14 days ago
-            imageSource: null, // Will be set properly when displayed
-          }
-        ]
-      };
-    } else if (email === 'org@example.com' && password === 'password') {
-      return {
-        id: '2',
-        name: 'GreenTech Recyclers',
-        email: 'org@example.com',
-        points: 0,
-        address: '456 Business Ave, City',
-        phoneNumber: '+601244445555',
-        role: 'organization', // Organization user
-        scheduledPickups: ['pickup1', 'pickup5', 'pickup6'], // Pickups assigned to this organization
-        listedItems: [],
-        redeemedRewards: [],
-        collectorEmployees: ['collector1', 'collector2', 'collector3'] // Reference to collectors
-      };
-    } else if (email === 'eco@example.com' && password === 'password') {
-      return {
-        id: '3',
-        name: 'EcoLife Solutions',
-        email: 'eco@example.com',
-        points: 0,
-        address: '789 Sustainability St, City',
-        phoneNumber: '+601244446666',
-        role: 'organization',
-        scheduledPickups: ['pickup2'],
-        listedItems: [],
-        redeemedRewards: [],
-        collectorEmployees: ['collector1', 'collector2']
-      };
-    } else if (email === 'renew@example.com' && password === 'password') {
-      return {
-        id: '4',
-        name: 'ReNew Electronics',
-        email: 'renew@example.com',
-        points: 0,
-        address: '101 Innovation Blvd, City',
-        phoneNumber: '+601244447777',
-        role: 'organization',
-        scheduledPickups: ['pickup3', 'pickup4'],
-        listedItems: [],
-        redeemedRewards: [],
-        collectorEmployees: ['collector3']
-      };
+    // Find user by email in the mockUsers object
+    const user = Object.values(mockUsers).find(u => u.email === email);
+    if (!user) return null;
+    
+    // Check password against mockUserPasswords
+    if (mockUserPasswords[user.id] === password) {
+      // Return a deep copy of the user object to prevent reference issues
+      return JSON.parse(JSON.stringify(user));
     }
+    
     return null;
   },
 
@@ -523,41 +539,84 @@ const mockUserService: UserService = {
     // Replace with real registration logic that connects to your database
     await new Promise(resolve => setTimeout(resolve, 1000));
     
-    // In a real implementation, you would:
-    // 1. Check if the email already exists
-    // 2. Hash the password
-    // 3. Create a new user record in the database
-    // 4. Return success/failure
+    // Check if email already exists
+    if (Object.values(mockUsers).some(user => user.email === email)) {
+      return false;
+    }
     
-    // For now, we'll just simulate success
-    console.log('Registered user:', { name, email, phoneNumber });
+    // Generate new user ID
+    const newUserId = String(Object.keys(mockUsers).length + 1);
+    
+    // Create new user
+    mockUsers[newUserId] = {
+      id: newUserId,
+      name,
+      email,
+      points: 0,
+      address: '', // Will be updated later
+      phoneNumber,
+      role: 'client',
+      scheduledPickups: [],
+      listedItems: [],
+      redeemedRewards: []
+    };
+    
+    // Store password
+    mockUserPasswords[newUserId] = password;
+    
     return true;
   },
 
   updatePoints: async (userId: string, points: number) => {
     // Replace with real database update
     await new Promise(resolve => setTimeout(resolve, 500));
-    return true;
+    
+    // Update points in mock data
+    if (mockUsers[userId]) {
+      mockUsers[userId].points = points;
+      return true;
+    }
+    return false;
   },
 
   updateUserProfile: async (userId: string, data: { name?: string; email?: string; address?: string; phoneNumber?: string }) => {
     // Replace with real database update
     await new Promise(resolve => setTimeout(resolve, 500));
-    return true;
+    
+    // Update user profile in mock data
+    if (mockUsers[userId]) {
+      mockUsers[userId] = {
+        ...mockUsers[userId],
+        ...(data.name && { name: data.name }),
+        ...(data.email && { email: data.email }),
+        ...(data.address && { address: data.address }),
+        ...(data.phoneNumber && { phoneNumber: data.phoneNumber }),
+      };
+      return true;
+    }
+    return false;
   },
 
   changePassword: async (userId: string, currentPassword: string, newPassword: string) => {
     // Replace with real password validation and update logic
     await new Promise(resolve => setTimeout(resolve, 500));
-    // In a real implementation, you would verify the current password
-    // and update with the hashed new password in the database
-    return true;
+    
+    // Check if current password matches
+    if (mockUserPasswords[userId] === currentPassword) {
+      // Update the password in the mock data
+      mockUserPasswords[userId] = newPassword;
+      return true;
+    }
+    
+    return false;
   },
 
   getScheduledPickups: async (userId: string) => {
     // Replace with real database query
     await new Promise(resolve => setTimeout(resolve, 500));
-    return Object.values(mockPickups);
+    
+    // Filter pickups to only return those belonging to the user
+    return Object.values(mockPickups).filter(pickup => pickup.clientId === userId);
   },
 
   getPickupDetails: async (pickupId: string) => {
@@ -574,15 +633,37 @@ const mockUserService: UserService = {
 
   listItem: async (userId: string, item: Omit<ListedItem, 'id' | 'userId' | 'createdAt'>) => {
     await new Promise(resolve => setTimeout(resolve, 500));
-    const itemId = `item${Object.keys(mockListedItems).length + 1}`;
+    
+    // Generate a truly unique ID that doesn't conflict with existing IDs
+    // Instead of counting the number of items, we'll use a timestamp with a random suffix
+    const timestamp = new Date().getTime();
+    const random = Math.floor(Math.random() * 10000);
+    const itemId = `item_${timestamp}_${random}`;
+    
+    // Add the item to the listed items collection
     mockListedItems[itemId] = {
       ...item,
       id: itemId,
       userId,
       createdAt: new Date(),
     };
+    
     // Also add to historical items collection
     mockHistoricalItems[itemId] = mockListedItems[itemId];
+    
+    // Important: We're NOT adding this item to any pickup yet
+    // It will only be added to a pickup when an organization accepts it
+    
+    // Update the user's listedItems array
+    if (mockUsers[userId]) {
+      if (!mockUsers[userId].listedItems) {
+        mockUsers[userId].listedItems = [];
+      }
+      mockUsers[userId].listedItems.push(itemId);
+    }
+    
+    console.log(`Created new item: ${itemId} - ${item.name}`);
+    
     return true;
   },
 
@@ -637,8 +718,8 @@ const mockUserService: UserService = {
     // Simulates getting items that are available for pickup (not yet assigned to any organization)
     await new Promise(resolve => setTimeout(resolve, 500));
     
-    // Return items that are not part of any ongoing pickup
-    return Object.values(mockListedItems).filter(item => {
+    // Return all items that are not part of any ongoing pickup, regardless of user
+    const availableItems = Object.values(mockListedItems).filter(item => {
       // Check if the item is not in any ongoing pickup
       const isInAnyOngoingPickup = Object.values(mockPickups).some(pickup => 
         pickup.listedItemIds.includes(item.id) && pickup.status === 'ongoing'
@@ -647,6 +728,11 @@ const mockUserService: UserService = {
       // Return true if the item is not in any ongoing pickup
       return !isInAnyOngoingPickup;
     });
+    
+    console.log(`Available items for pickup: ${availableItems.length}`, 
+      availableItems.map(i => `${i.id}:${i.name}`));
+    
+    return availableItems;
   },
   
   getPendingPickups: async (organizationId: string) => {
@@ -664,7 +750,12 @@ const mockUserService: UserService = {
     
     // Get the item details
     const item = mockListedItems[itemId];
-    if (!item) return false;
+    if (!item) {
+      console.error(`Item ${itemId} not found in mockListedItems`);
+      return false;
+    }
+    
+    console.log(`Accepting pickup for item: ${itemId} - ${item.name}`);
     
     // Check if there's an existing ongoing pickup with the same address
     const existingPickup = Object.values(mockPickups).find(pickup => 
@@ -672,22 +763,30 @@ const mockUserService: UserService = {
       pickup.organizationId === organizationId &&
       pickup.collector === collectorName &&
       // Check if any item in this pickup has the same address
-      pickup.listedItemIds.some(id => mockListedItems[id]?.address === item.address)
+      pickup.listedItemIds.some(id => {
+        const pickupItem = mockListedItems[id];
+        return pickupItem && pickupItem.address === item.address;
+      })
     );
     
     if (existingPickup) {
-      // Add the item to the existing pickup
-      existingPickup.items.push({ id: item.id, name: item.name });
-      existingPickup.listedItemIds.push(item.id);
+      console.log(`Adding item ${itemId} to existing pickup ${existingPickup.id}`);
+      // Check if the item is already in the pickup
+      if (!existingPickup.listedItemIds.includes(itemId)) {
+        // Add the item to the existing pickup
+        existingPickup.items.push({ id: item.id, name: item.name });
+        existingPickup.listedItemIds.push(item.id);
+      }
       return true;
     } else {
+      console.log(`Creating new pickup for item ${itemId}`);
       // Create a new pickup for this item
-      const pickupId = `pickup${Object.keys(mockPickups).length + 1}`;
+      const pickupId = `pickup_${new Date().getTime()}_${Math.floor(Math.random() * 10000)}`;
       const organization = mockOrganizations[organizationId];
       
       mockPickups[pickupId] = {
         id: pickupId,
-        facilityName: organization?.name || 'Unknown Organization', // Use the actual organization name
+        facilityName: organization?.name || 'Unknown Organization',
         items: [{ id: item.id, name: item.name }],
         listedItemIds: [item.id],
         status: 'ongoing',
@@ -697,6 +796,22 @@ const mockUserService: UserService = {
         clientId: item.userId,
         pickupStatus: 'Out for pickup'
       };
+      
+      // Update the user's scheduledPickups array
+      if (mockUsers[item.userId]) {
+        if (!mockUsers[item.userId].scheduledPickups) {
+          mockUsers[item.userId].scheduledPickups = [];
+        }
+        mockUsers[item.userId].scheduledPickups.push(pickupId);
+      }
+      
+      // Update the organization's scheduledPickups array
+      if (mockUsers[organizationId]) {
+        if (!mockUsers[organizationId].scheduledPickups) {
+          mockUsers[organizationId].scheduledPickups = [];
+        }
+        mockUsers[organizationId].scheduledPickups.push(pickupId);
+      }
       
       return true;
     }
@@ -1151,7 +1266,8 @@ export const DevAutoLogin: React.FC = () => {
   const { login } = useUser();
   
   React.useEffect(() => {
-    login('test@example.com', 'password');
+    // Disabled for production
+    // login('test@example.com', 'password');
   }, []);
   
   return null;
@@ -1162,7 +1278,8 @@ export const DevOrgAutoLogin: React.FC = () => {
   const { login } = useUser();
   
   React.useEffect(() => {
-    login('org@example.com', 'password');
+    // Disabled for production
+    // login('org@example.com', 'password');
   }, []);
   
   return null;

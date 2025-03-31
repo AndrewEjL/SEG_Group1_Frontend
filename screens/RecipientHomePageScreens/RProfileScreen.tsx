@@ -35,7 +35,7 @@ const EWasteTypes = [
 
 
 const RProfileScreen: React.FC<RProfileScreenProps> = ({ navigation }) => {
-  const { user, logout } = useUser();
+  const { user, logout, changePassword } = useUser();
   
   const handleTabPress = (screen: keyof RootStackParamList) => {
     navigation.navigate(screen);
@@ -47,7 +47,6 @@ const RProfileScreen: React.FC<RProfileScreenProps> = ({ navigation }) => {
     email: user?.email || "email@example.com",
     address: user?.address || "Address",
     phoneNumber: user?.phoneNumber || "+601233335555",
-    password: "test_1111",
   });
 
   const [modal1Visible, setModal1Visible] = useState(false);
@@ -64,10 +63,10 @@ const RProfileScreen: React.FC<RProfileScreenProps> = ({ navigation }) => {
     confirm: false,
   });
 
-  const clearModal2Data= () => {
-      setTempPassword({originPassword: "", password: "", confirmPassword: ""});
-      setPasswordErrors({ originPassword: "", password: "", confirmPassword: "" });
-      setPasswordVisibility({origin: false,new: false,confirm: false});
+  const clearModal2Data = () => {
+    setTempPassword({originPassword: "", password: "", confirmPassword: ""});
+    setPasswordErrors({ originPassword: "", password: "", confirmPassword: "" });
+    setPasswordVisibility({origin: false, new: false, confirm: false});
   }
 
   const validateEmail = (email: string): boolean => {
@@ -110,14 +109,11 @@ const RProfileScreen: React.FC<RProfileScreenProps> = ({ navigation }) => {
     }
   };
 
-  const handleChangePassword = () => {
+  const handleChangePassword = async () => {
     let newErrors = { originPassword: "", password: "", confirmPassword: "" };
 
-    if (tempPassword.originPassword !== localUser.password) {
-      newErrors.originPassword = "Incorrect original password";
-    }
-
-    const passwordRegex = /^(?=.*[0-9])(?=.*[\W_]).{8,}$/;
+    // Password validation regex - at least 8 chars, 1 number, 1 special char
+    const passwordRegex = /^(?=.*[0-9])(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$/;
 
     if (!tempPassword.password) {
       newErrors.password = "New password cannot be empty";
@@ -131,14 +127,26 @@ const RProfileScreen: React.FC<RProfileScreenProps> = ({ navigation }) => {
 
     setPasswordErrors(newErrors);
 
-    if (!newErrors.originPassword && !newErrors.password && !newErrors.confirmPassword) {
-      setLocalUser((prevUser) => ({
-        ...prevUser,
-        password: tempPassword.password,
-      }));
-      setTempPassword({ originPassword: "", password: "", confirmPassword: "" });
-      setModal2Visible(false);
-      Alert.alert("Success", "Password changed successfully!");
+    if (!newErrors.password && !newErrors.confirmPassword) {
+      // Call the changePassword method from UserContext
+      const success = await changePassword(tempPassword.originPassword, tempPassword.password);
+      
+      if (success) {
+        // Clear the form
+        setTempPassword({ originPassword: "", password: "", confirmPassword: "" });
+        setPasswordVisibility({ origin: false, new: false, confirm: false });
+        
+        // Close the modal
+        setModal2Visible(false);
+        
+        // Show success message
+        Alert.alert("Success", "Password changed successfully!");
+      } else {
+        setPasswordErrors(prev => ({
+          ...prev,
+          originPassword: "Incorrect current password"
+        }));
+      }
     }
   };
 

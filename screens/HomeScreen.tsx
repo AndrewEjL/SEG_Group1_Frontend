@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, Animated, Easing, ScrollView, Alert } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useUser, DevAutoLogin, ScheduledPickup, type ListedItem } from '../contexts/UserContext';
+import { useUser, ScheduledPickup, type ListedItem } from '../contexts/UserContext';
 import { useFocusEffect } from '@react-navigation/native';
 
 type RootStackParamList = {
@@ -106,7 +106,10 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
 
   // Helper function to check if an item is in any scheduled pickup
   const isItemInPickup = (itemId: string) => {
-    return scheduledPickups.some(pickup => pickup.listedItemIds.includes(itemId));
+    return scheduledPickups.some(pickup => 
+      pickup.listedItemIds.includes(itemId) && 
+      pickup.status === 'ongoing'
+    );
   };
 
   const handleViewPickup = (pickupId: string) => {
@@ -202,7 +205,6 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <DevAutoLogin />
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>E-Waste App</Text>

@@ -3,7 +3,7 @@ import { View, Text, FlatList, TouchableOpacity, StyleSheet, Modal, ScrollView, 
 import Icon from "react-native-vector-icons/MaterialIcons";
 import { Dropdown } from "react-native-element-dropdown";
 import RouteInfo from "./RouteInfo.tsx";
-import { useUser, DevOrgAutoLogin, type ListedItem, type ScheduledPickup } from "../../contexts/UserContext";
+import { useUser, type ListedItem, type ScheduledPickup } from "../../contexts/UserContext";
 import { useFocusEffect } from "@react-navigation/native";
 import { Checkbox } from "react-native-paper";
 
@@ -194,9 +194,6 @@ const RHomeScreen: React.FC<RHomeScreenProps> = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.safeContainer}>
-      {/* DEV ONLY - Auto login as org user */}
-      <DevOrgAutoLogin />
-      
       {/* Header section */}
       <View style={styles.headerSection}>
         <View style={styles.headerRow}>

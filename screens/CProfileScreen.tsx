@@ -43,10 +43,10 @@ const [passwordErrors, setPasswordErrors] = useState({ originPassword: "", passw
 useEffect(() => {
   if (user) {
     setTempUser({
-      organization: user.name,
-      email: user.email,
-      address: user.address,
-      phoneNumber: user.phoneNumber,
+      organization: user.name || '',
+      email: user.email || '',
+      address: user.address || '',
+      phoneNumber: user.phoneNumber || '',
     });
   }
 }, [user]);
