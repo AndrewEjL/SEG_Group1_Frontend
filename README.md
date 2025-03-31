@@ -1,97 +1,126 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# SEG Group1 Frontend - OpenStreetMap Integration
 
-# Getting Started
+## 📱 Try the App
 
-> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
+### Download APK for Android
+You can download and install the app directly on your Android device:
 
-## Step 1: Start Metro
+1. Download the APK from the link provided in the https://github.com/AndrewEjL/SEG_Group1_Frontend/releases/tag/v0.2
 
-First, you will need to run **Metro**, the JavaScript build tool for React Native.
+## 💼 For Potential Employers
 
-To start the Metro dev server, run the following command from the root of your React Native project:
+This project demonstrates several technical skills and competencies valuable in software development:
 
-```sh
-# Using npm
-npm start
+- **Cross-Platform Mobile Development**: Built with React Native for both iOS and Android platforms
+- **TypeScript Integration**: Strong typing system for catching errors early and enhancing code quality
+- **Geospatial Programming**: Integration with mapping and routing services (OpenStreetMap, OSRM)
+- **API Integration**: Geocoding, routing, and address lookup via RESTful API calls
+- **State Management**: Using React Context API for global state management
+- **UI/UX Design**: Creating intuitive, responsive mobile interfaces
+- **Authentication Flow**: Implementation of login/registration systems
 
-# OR using Yarn
-yarn start
+To see these skills in action, download the Android APK using the download link in the [releases README](./releases/README.md) and explore the application's features using the test accounts provided.
+
+## Google Maps to OpenStreetMap Migration
+
+This project has been updated to use OpenStreetMap instead of Google Maps API for all mapping functionality. The migration provides the following benefits:
+
+- **Free and open-source**: No API keys or payment required
+- **No expiration**: Will not expire or require renewal
+- **Full routing capabilities**: Supports routing between locations through OSRM
+- **Geocoding**: Address lookup and reverse geocoding through Nominatim
+
+## Implementation Details
+
+### Map Components
+
+The following components have been updated to use OpenStreetMap:
+
+1. **MapScreen.tsx**: Main map component for selecting a location
+2. **NavigationMap.tsx**: Component for routing between locations 
+3. **SelectLocation.tsx**: Simplified location selection component
+
+### Technologies Used
+
+- **react-native-maps** with `PROVIDER_DEFAULT`: For map display
+- **Nominatim API**: For geocoding (converting addresses to coordinates and vice versa)
+- **OSRM (Open Source Routing Machine)**: For calculating routes between locations
+- **@mapbox/polyline**: For decoding route polylines
+
+## Usage Notes
+
+### Rate Limiting
+
+Nominatim has a usage policy that includes rate limiting (1 request per second). Be mindful of this when making multiple requests in quick succession.
+
+## Test Accounts
+
+You can use the following test accounts to explore different aspects of the application:
+
+### Regular User
+- **Email**: test@example.com
+- **Password**: password
+
+### Organization User
+- **Email**: org@example.com
+- **Password**: password 
+
+## Features
+
+- **User-side features**:
+  - List electronic waste items for pickup
+  - Track the status of your listed items
+  - View history of previous recycling activity
+  - Manage your user profile and account settings
+
+- **Organization-side features**:
+  - View available items for pickup
+  - Schedule and manage pickups
+  - Assign collectors to routes
+  - Process and track e-waste collection
+
+- **Collector features**:
+  - View optimized pickup routes
+  - Navigate between pickup locations
+  - Mark pickups as complete
+
+## Technical Information
+
+- Built with React Native and TypeScript
+- Uses React Navigation for navigation
+- Incorporates OpenStreetMap and OSRM for mapping and routing
+- Implements Context API for state management
+
+### Attribution
+
+OpenStreetMap requires attribution when using their services. This has been added to all map components with:
+
+```jsx
+<View style={styles.attributionContainer}>
+  <Text style={styles.attributionText}>© OpenStreetMap contributors</Text>
+</View>
 ```
 
-## Step 2: Build and run your app
+### User Agent
 
-With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
+All requests to Nominatim include a User-Agent header as required by their usage policy:
 
-### Android
-
-```sh
-# Using npm
-npm run android
-
-# OR using Yarn
-yarn android
+```javascript
+headers: {
+  'Accept-Language': 'en',
+  'User-Agent': 'SEG_Group1_Frontend/1.0'
+}
 ```
 
-### iOS
+## Future Improvements
 
-For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
+- Add caching for geocoding results to reduce API calls
+- Implement a fallback mechanism for when Nominatim is unavailable
+- Consider hosting your own Nominatim instance for higher request volumes
 
-The first time you create a new project, run the Ruby bundler to install CocoaPods itself:
+## Resources
 
-```sh
-bundle install
-```
-
-Then, and every time you update your native dependencies, run:
-
-```sh
-bundle exec pod install
-```
-
-For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
-
-```sh
-# Using npm
-npm run ios
-
-# OR using Yarn
-yarn ios
-```
-
-If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
-
-This is one way to run your app — you can also build it directly from Android Studio or Xcode.
-
-## Step 3: Modify your app
-
-Now that you have successfully run the app, let's make changes!
-
-Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
-
-When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
-
-- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
-- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
-
-## Congratulations! :tada:
-
-You've successfully run and modified your React Native App. :partying_face:
-
-### Now what?
-
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
-
-# Troubleshooting
-
-If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
-
-# Learn More
-
-To learn more about React Native, take a look at the following resources:
-
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+- [OpenStreetMap](https://www.openstreetmap.org/)
+- [Nominatim Documentation](https://nominatim.org/release-docs/latest/)
+- [OSRM API Documentation](http://project-osrm.org/docs/v5.5.1/api/)
+- [Leaflet (alternative for web apps)](https://leafletjs.com/)
