@@ -1,24 +1,47 @@
 import React, { useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert, Modal, TextInput } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useUser } from '../../contexts/UserContext';
 
-const existingEmails = ["test@example.com", "user@gmail.com"];
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const passwordRegex = /^(?=.*[0-9])(?=.*[\W_]).{8,}$/;
 
+interface Employee {
+  id: string;
+  name: string;
+  email: string;
+  phoneNumber: string;
+  password: string;
+  confirmPassword?: string;
+}
+
+interface EmployeeErrors {
+  name?: string;
+  email?: string;
+  phoneNumber?: string;
+  password?: string;
+  confirmPassword?: string;
+}
+
 const CollectorListScreen = () => {
-  const [newEmployees, setNewEmployees] = useState([
-    { id: '1', name: 'John Doe', email: 'test@example.com', phoneNumber: '1234567890', password: 'Pass@1234' },
+  const { getCollectors, addCollector, removeCollector } = useUser();
+  const [existingEmails, setExistingEmails] = useState<string[]>(["john@example.com", "jane@example.com", "michael@example.com"]);
+  const [newEmployees, setNewEmployees] = useState<Employee[]>([
+    { id: 'collector1', name: 'John Doe', email: 'john@example.com', phoneNumber: '123456789', password: 'Pass@1234' },
+    { id: 'collector2', name: 'Jane Smith', email: 'jane@example.com', phoneNumber: '123456780', password: 'Pass@1234' },
+    { id: 'collector3', name: 'Michael Brown', email: 'michael@example.com', phoneNumber: '123456781', password: 'Pass@1234' },
   ]);
 
   const [modalVisible, setModalVisible] = useState(false);
-  const [newEmployee, setNewEmployee] = useState({ name: '', email: '', phoneNumber: '', password: '', confirmPassword: '' });
-  const [errors, setErrors] = useState({});
+  const [newEmployee, setNewEmployee] = useState<Employee>({ 
+    id: '', name: '', email: '', phoneNumber: '', password: '', confirmPassword: '' 
+  });
+  const [errors, setErrors] = useState<EmployeeErrors>({});
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
 
 
-const handleDelete = (id) => {
+const handleDelete = async (id: string) => {
   Alert.alert(
     "Confirm Deletion",
     "Are you sure you want to delete this employee?",
@@ -30,8 +53,21 @@ const handleDelete = (id) => {
       {
         text: "Delete",
         style: "destructive",
-        onPress: () => {
-          setNewEmployees((prev) => prev.filter((item) => item.id !== id));
+        onPress: async () => {
+          // Remove from mock data
+          const success = await removeCollector(id);
+          if (success) {
+            // Also remove from local state
+            setNewEmployees((prev) => prev.filter((item) => item.id !== id));
+            // Remove from existingEmails list
+            const employee = newEmployees.find(emp => emp.id === id);
+            if (employee) {
+              setExistingEmails(prev => prev.filter(email => email !== employee.email));
+            }
+            Alert.alert("Success", "Collector removed successfully");
+          } else {
+            Alert.alert("Error", "Failed to remove collector");
+          }
         },
       },
     ]
@@ -39,8 +75,8 @@ const handleDelete = (id) => {
 };
 
 
-  const validateAndAddEmployee = () => {
-    let validationErrors = {};
+  const validateAndAddEmployee = async () => {
+    let validationErrors: EmployeeErrors = {};
     if (!newEmployee.name.trim()) validationErrors.name = "Name is required.";
     if (!newEmployee.email.trim()) validationErrors.email = "Email is required.";
     else if (!emailRegex.test(newEmployee.email)) validationErrors.email = "Invalid email format.";
@@ -55,10 +91,41 @@ const handleDelete = (id) => {
       return;
     }
 
-    setNewEmployees([...newEmployees, { ...newEmployee, id: (newEmployees.length + 1).toString() }]);
-    setNewEmployee({ name: '', email: '', phoneNumber: '', password: '', confirmPassword: '' });
-    setModalVisible(false);
-    setErrors({});
+    // Strip the +60 prefix if it exists
+    const phoneNumber = newEmployee.phoneNumber.startsWith('+60') 
+      ? newEmployee.phoneNumber.slice(3) 
+      : newEmployee.phoneNumber;
+    
+    // Add the collector to the global mock data first
+    const success = await addCollector(
+      newEmployee.name,
+      newEmployee.email,
+      phoneNumber,
+      newEmployee.password
+    );
+    
+    if (success) {
+      // Generate a collector ID in the format 'collectorX' where X is a number
+      const collectorId = `collector${newEmployees.length + 4}`;
+      
+      // Add the new employee to local state
+      setNewEmployees([...newEmployees, { 
+        ...newEmployee, 
+        id: collectorId,
+        phoneNumber: phoneNumber
+      }]);
+      
+      // Add to existingEmails
+      setExistingEmails([...existingEmails, newEmployee.email]);
+      
+      // Reset form
+      setNewEmployee({ id: '', name: '', email: '', phoneNumber: '', password: '', confirmPassword: '' });
+      setModalVisible(false);
+      setErrors({});
+      Alert.alert("Success", "Collector added successfully");
+    } else {
+      Alert.alert("Error", "Failed to add collector. The email might already be in use.");
+    }
   };
 
 return (
@@ -80,7 +147,11 @@ return (
         <View style={styles.avatar}>
           <Text style={styles.avatarText}>{item.name.charAt(0)}</Text>
         </View>
-        <Text style={styles.collectorText}>{item.email}</Text>
+        <View style={styles.collectorInfo}>
+          <Text style={styles.collectorName}>{item.name}</Text>
+          <Text style={styles.collectorEmail}>{item.email}</Text>
+          <Text style={styles.collectorPhone}>+60{item.phoneNumber}</Text>
+        </View>
         <TouchableOpacity onPress={() => handleDelete(item.id)}>
           <Icon name="trash-can" size={24} color="#333333" />
         </TouchableOpacity>
@@ -96,6 +167,7 @@ return (
             setModalVisible(false);
             setErrors({});
             setNewEmployee({
+              id: '',
               name: '',
               email: '',
               phoneNumber: '',
@@ -130,12 +202,11 @@ return (
         <TextInput
           style={styles.input}
           placeholder="Phone Number"
-          value={`+60${newEmployee.phoneNumber}`}
+          value={newEmployee.phoneNumber ? `+60${newEmployee.phoneNumber}` : ""}
           onChangeText={(text) => {
-            if (!text.startsWith("+60")) {
-              text = "+60";
-            }
-            const numberOnly = text.slice(3).replace(/\D/g, "");
+            const numberOnly = text.startsWith("+60") 
+              ? text.slice(3).replace(/\D/g, "") 
+              : text.replace(/\D/g, "");
             setNewEmployee({ ...newEmployee, phoneNumber: numberOnly });
           }}
           placeholderTextColor="#999999"
@@ -244,10 +315,25 @@ const styles = StyleSheet.create({
     color: '#333333'
   },
 
-  collectorText: {
+  collectorInfo: {
     flex: 1,
-    fontSize: 18,
-    color: '#333333'
+    justifyContent: 'center',
+  },
+  
+  collectorName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333333',
+  },
+  
+  collectorEmail: {
+    fontSize: 14,
+    color: '#333333',
+  },
+  
+  collectorPhone: {
+    fontSize: 12,
+    color: '#666666',
   },
 
   modalContainer: {
@@ -272,7 +358,7 @@ const styles = StyleSheet.create({
   },
 
   input: {
-    width: "90%",
+    width: "100%",
     height: 40,
     borderWidth: 1,
     borderColor: "#ccc",
@@ -310,10 +396,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     borderColor: "#ccc",
-    width: "100%"
+    width: "100%",
+    position: "relative"
   },
 
   eyeIcon: {
+    position: "absolute",
+    right: 0,
     padding: 10
   },
 });

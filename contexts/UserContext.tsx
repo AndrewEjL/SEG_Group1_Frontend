@@ -912,13 +912,32 @@ const mockUserService: UserService = {
     const emailExists = mockCollectors.some(c => c.email === email);
     if (emailExists) return false;
     
+    // Make sure phone number has the right format (with country code)
+    const formattedPhone = phoneNumber.startsWith('+') 
+      ? phoneNumber 
+      : `+60${phoneNumber}`;
+    
+    // Create a unique collector ID
     const collectorId = `collector${mockCollectors.length + 1}`;
+    
+    // Add to mockCollectors array
     mockCollectors.push({
       id: collectorId,
       name,
       email,
-      phoneNumber
+      phoneNumber: formattedPhone
     });
+    
+    // Add to the organization's collectorEmployees list
+    if (mockUsers[organizationId]) {
+      if (!mockUsers[organizationId].collectorEmployees) {
+        mockUsers[organizationId].collectorEmployees = [];
+      }
+      mockUsers[organizationId].collectorEmployees.push(collectorId);
+    }
+    
+    // For demonstration purposes, log the collector
+    console.log(`Added new collector: ${name} (${collectorId}) to organization ${organizationId}`);
     
     return true;
   },
@@ -926,9 +945,24 @@ const mockUserService: UserService = {
   removeCollector: async (collectorId: string) => {
     await new Promise(resolve => setTimeout(resolve, 500));
     
+    // Find the collector to be removed
     const index = mockCollectors.findIndex(c => c.id === collectorId);
     if (index !== -1) {
-      mockCollectors.splice(index, 1);
+      // Remove from mockCollectors array
+      const removedCollector = mockCollectors.splice(index, 1)[0];
+      console.log(`Removed collector: ${removedCollector.name} (${collectorId})`);
+      
+      // Also remove from all organizations' collectorEmployees lists
+      Object.values(mockUsers).forEach(user => {
+        if (user.role === 'organization' && user.collectorEmployees) {
+          const collectorIndex = user.collectorEmployees.indexOf(collectorId);
+          if (collectorIndex !== -1) {
+            user.collectorEmployees.splice(collectorIndex, 1);
+            console.log(`Removed collector ${collectorId} from organization ${user.name}`);
+          }
+        }
+      });
+      
       return true;
     }
     return false;
