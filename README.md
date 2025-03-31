@@ -1,5 +1,27 @@
 # SEG Group1 Frontend - OpenStreetMap Integration
 
+## 📱 Try the App
+
+### Download APK for Android
+You can download and install the app directly on your Android device:
+
+1. Download the APK from the link provided in the [releases directory](./releases)
+2. Follow the [installation instructions](./releases/README.md)
+
+## 💼 For Potential Employers
+
+This project demonstrates several technical skills and competencies valuable in software development:
+
+- **Cross-Platform Mobile Development**: Built with React Native for both iOS and Android platforms
+- **TypeScript Integration**: Strong typing system for catching errors early and enhancing code quality
+- **Geospatial Programming**: Integration with mapping and routing services (OpenStreetMap, OSRM)
+- **API Integration**: Geocoding, routing, and address lookup via RESTful API calls
+- **State Management**: Using React Context API for global state management
+- **UI/UX Design**: Creating intuitive, responsive mobile interfaces
+- **Authentication Flow**: Implementation of login/registration systems
+
+To see these skills in action, download the Android APK using the download link in the [releases README](./releases/README.md) and explore the application's features using the test accounts provided.
+
 ## Google Maps to OpenStreetMap Migration
 
 This project has been updated to use OpenStreetMap instead of Google Maps API for all mapping functionality. The migration provides the following benefits:
