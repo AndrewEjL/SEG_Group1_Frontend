@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, Animated, Easing, ScrollView, Alert } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useUser, DevAutoLogin, ScheduledPickup, type ListedItem } from '../contexts/UserContext';
+import { useUser, ScheduledPickup, type ListedItem } from '../contexts/UserContext';
 import { useFocusEffect } from '@react-navigation/native';
 
 type RootStackParamList = {
@@ -56,11 +56,12 @@ const LoadingIcon: React.FC = () => {
 };
 
 const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
-  const { user, getScheduledPickups, getListedItems, deleteListedItem } = useUser();
+  const { user, getScheduledPickups, getListedItems, deleteListedItem, getOrganizationName } = useUser();
   const [scheduledPickups, setScheduledPickups] = useState<ScheduledPickup[]>([]);
   const [listedItems, setListedItems] = useState<ListedItem[]>([]);
   const [isPickupsLoading, setIsPickupsLoading] = useState(true);
   const [isItemsLoading, setIsItemsLoading] = useState(true);
+  const [organizationNames, setOrganizationNames] = useState<{[key: string]: string}>({});
 
   // Load data when component mounts
   useEffect(() => {
@@ -82,6 +83,17 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       // Filter to show only ongoing pickups
       const ongoingPickups = allPickups.filter(pickup => pickup.status === 'ongoing');
       setScheduledPickups(ongoingPickups);
+      
+      // Load organization names for pickups
+      const orgNames: {[key: string]: string} = {};
+      for (const pickup of ongoingPickups) {
+        if (pickup.organizationId) {
+          const orgName = await getOrganizationName(pickup.organizationId);
+          orgNames[pickup.id] = orgName;
+        }
+      }
+      setOrganizationNames(orgNames);
+      
       setIsPickupsLoading(false);
 
       // Load listed items
@@ -94,7 +106,10 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
 
   // Helper function to check if an item is in any scheduled pickup
   const isItemInPickup = (itemId: string) => {
-    return scheduledPickups.some(pickup => pickup.listedItemIds.includes(itemId));
+    return scheduledPickups.some(pickup => 
+      pickup.listedItemIds.includes(itemId) && 
+      pickup.status === 'ongoing'
+    );
   };
 
   const handleViewPickup = (pickupId: string) => {
@@ -190,7 +205,6 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <DevAutoLogin />
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>E-Waste App</Text>
@@ -209,9 +223,25 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
               <View style={styles.loadingContainer}>
                 <LoadingIcon />
               </View>
+            ) : scheduledPickups.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>No scheduled pickups</Text>
+              </View>
             ) : scheduledPickups.map((pickup) => (
               <View key={pickup.id} style={styles.tableRow}>
-                <Text style={styles.facilityText}>{pickup.facilityName}</Text>
+                <View style={styles.pickupInfo}>
+                  <Text style={styles.facilityText}>{pickup.facilityName}</Text>
+                  {pickup.organizationId && organizationNames[pickup.id] && (
+                    <Text style={styles.organizationText}>
+                      By: {organizationNames[pickup.id]}
+                    </Text>
+                  )}
+                  {pickup.collector && (
+                    <Text style={styles.collectorText}>
+                      Collector: {pickup.collector}
+                    </Text>
+                  )}
+                </View>
                 <View style={styles.actionButtons}>
                   <TouchableOpacity 
                     style={styles.iconButton} 
@@ -410,9 +440,23 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0',
   },
+  pickupInfo: {
+    flex: 1,
+  },
   facilityText: {
     fontSize: 16,
     color: '#333',
+    fontWeight: '500',
+  },
+  organizationText: {
+    fontSize: 14,
+    color: '#5E4DCD',
+    marginTop: 2,
+  },
+  collectorText: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 2,
   },
   itemText: {
     fontSize: 16,
@@ -473,13 +517,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
+    paddingVertical: 24,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   emptyText: {
-    color: '#666',
-    fontSize: 16,
+    color: '#757575',
+    fontSize: 14,
   },
   itemDetails: {
     flexDirection: 'column',

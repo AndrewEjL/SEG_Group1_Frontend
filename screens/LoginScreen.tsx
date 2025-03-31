@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { useUser } from '../contexts/UserContext';
 import { TextInput } from 'react-native-paper';
@@ -13,8 +13,18 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useUser();
+  const { login, user } = useUser();
   const [passwordVisible, setPasswordVisible] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      if (user.role === 'organization') {
+        navigation.navigate('RHome');
+      } else {
+        navigation.navigate('Home');
+      }
+    }
+  }, [user, navigation]);
 
   const handleSignIn = async () => {
     if (!email || !password) {
@@ -27,9 +37,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
 
     try {
       const success = await login(email, password);
-      if (success) {
-        navigation.navigate('Home');
-      } else {
+      if (!success) {
         setError('Invalid email or password');
       }
     } catch (err) {

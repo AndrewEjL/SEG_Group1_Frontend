@@ -13,6 +13,7 @@ type RootStackParamList = {
   profile: undefined;
   PickupHistory: undefined;
   RewardsHistory: undefined;
+  Login: undefined;
 };
 
 type CProfileScreenProps = {
@@ -20,7 +21,7 @@ type CProfileScreenProps = {
 };
 
 const CProfileScreen: React.FC<CProfileScreenProps> = ({ navigation }) => {
-  const { user, updateUserProfile, changePassword } = useUser();
+  const { user, updateUserProfile, changePassword, logout } = useUser();
   
   const handleTabPress = (screen: keyof RootStackParamList) => {
     navigation.navigate(screen);
@@ -42,10 +43,10 @@ const [passwordErrors, setPasswordErrors] = useState({ originPassword: "", passw
 useEffect(() => {
   if (user) {
     setTempUser({
-      organization: user.name,
-      email: user.email,
-      address: user.address,
-      phoneNumber: user.phoneNumber,
+      organization: user.name || '',
+      email: user.email || '',
+      address: user.address || '',
+      phoneNumber: user.phoneNumber || '',
     });
   }
 }, [user]);
@@ -134,6 +135,29 @@ const handleChangePassword = async () => {
   }
 };
 
+const handleLogout = async () => {
+  Alert.alert(
+    "Logout",
+    "Are you sure you want to logout?",
+    [
+      {
+        text: "Cancel",
+        style: "cancel"
+      },
+      {
+        text: "Logout",
+        onPress: async () => {
+          await logout();
+          navigation.reset({
+            index: 0,
+            routes: [{ name: 'Login' }],
+          });
+        }
+      }
+    ]
+  );
+};
+
   return (
     <View style={styles.container}>
       {user && (
@@ -181,6 +205,18 @@ const handleChangePassword = async () => {
         >
           <Icon name="star" size={20} color="#5E4DCD" />
           <Text style={styles.listText}>Rewards History</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Logout Button */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Account</Text>
+        <TouchableOpacity 
+          style={styles.listItem}
+          onPress={handleLogout}
+        >
+          <Icon name="logout" size={20} color="#D32F2F" />
+          <Text style={[styles.listText, styles.logoutText]}>Logout</Text>
         </TouchableOpacity>
       </View>
 
@@ -475,7 +511,9 @@ modalContainer: {
     fontSize: 16,
     color: "#333",
   },
-
+  logoutText: {
+    color: "#D32F2F",
+  },
 });
 
 export default CProfileScreen;
