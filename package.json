@@ -2,17 +2,12 @@
   "name": "EwasteUI",
   "version": "0.0.1",
   "private": true,
-  "homepage": "https://YOUR_GITHUB_USERNAME.github.io/SEG_Group1_Frontend",
   "scripts": {
     "android": "react-native run-android",
     "ios": "react-native run-ios",
     "lint": "eslint .",
     "start": "react-native start",
-    "test": "jest",
-    "web": "webpack-dev-server --config web/webpack.config.js --mode development --open",
-    "build-web": "webpack --config web/webpack.config.js --mode production",
-    "predeploy": "npm run build-web",
-    "deploy": "gh-pages -d web/dist"
+    "test": "jest"
   },
   "dependencies": {
     "@mapbox/polyline": "^1.2.1",
@@ -49,21 +44,11 @@
     "@types/jest": "^29.5.13",
     "@types/react": "^19.0.0",
     "@types/react-test-renderer": "^19.0.0",
-    "babel-loader": "^10.0.0",
-    "css-loader": "^7.1.2",
     "eslint": "^8.19.0",
-    "file-loader": "^6.2.0",
-    "gh-pages": "^6.3.0",
-    "html-webpack-plugin": "^5.6.3",
     "jest": "^29.6.3",
     "prettier": "2.8.8",
     "react-test-renderer": "19.0.0",
-    "style-loader": "^4.0.0",
-    "typescript": "5.0.4",
-    "url-loader": "^4.1.1",
-    "webpack": "^5.98.0",
-    "webpack-cli": "^6.0.1",
-    "webpack-dev-server": "^5.2.1"
+    "typescript": "5.0.4"
   },
   "engines": {
     "node": ">=18"
