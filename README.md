@@ -19,7 +19,6 @@ This project demonstrates several technical skills and competencies valuable in 
 - **UI/UX Design**: Creating intuitive, responsive mobile interfaces
 - **Authentication Flow**: Implementation of login/registration systems
 
-To see these skills in action, download the Android APK using the download link in the [releases README](./releases/README.md) and explore the application's features using the test accounts provided.
 
 ## Google Maps to OpenStreetMap Migration
 
