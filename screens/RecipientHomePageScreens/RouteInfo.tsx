@@ -1,31 +1,64 @@
 import React, { useRef, useState, useEffect } from "react";
-import { View, TextInput, Text, TouchableOpacity, StyleSheet, Dimensions, Keyboard, KeyboardAvoidingView, Platform, ScrollView } from "react-native";
-import MapView, { Marker, Polyline } from "react-native-maps";
-import polyline from "@mapbox/polyline";
+import { View, TextInput, Text, TouchableOpacity, StyleSheet, Dimensions, Keyboard, KeyboardAvoidingView, Platform, ScrollView, Alert } from "react-native";
+import MapView, { Marker, Polyline, PROVIDER_DEFAULT, Region } from "react-native-maps";
 
-const GOOGLE_MAPS_API_KEY = "AIzaSyDqpBZYwzP8m_L8du5imDrLUQHYIUZFHtU";
+// OpenStreetMap nominatim API for geocoding
+const NOMINATIM_BASE_URL = "https://nominatim.openstreetmap.org";
+// OSRM API for routing - public endpoint, no API key required
+const OSRM_BASE_URL = "https://router.project-osrm.org";
+
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
 
-const RouteInfo = ({ initialDestination }) => {
-  const mapRef = useRef(null);
-  const [origin, setOrigin] = useState(null);
+// Type definitions
+interface Coordinates {
+  lat: number;
+  lon: number;
+}
+
+interface LocationCoords {
+  latitude: number;
+  longitude: number;
+}
+
+interface RouteInfoData {
+  distance: string;
+  duration: number;
+}
+
+interface LocationSuggestion {
+  place_id: string;
+  description: string;
+  lat: number;
+  lon: number;
+}
+
+interface RouteInfoProps {
+  initialDestination: string;
+}
+
+const RouteInfo: React.FC<RouteInfoProps> = ({ initialDestination }) => {
+  const mapRef = useRef<MapView | null>(null);
+  const [origin, setOrigin] = useState<LocationCoords | null>(null);
   const [originText, setOriginText] = useState("");
-  const [routeCoords, setRouteCoords] = useState([]);
-  const [routeInfo, setRouteInfo] = useState(null);
-  const [destination, setDestination] = useState(null);
-  const [originSuggestions, setOriginSuggestions] = useState([]);
+  const [routeCoords, setRouteCoords] = useState<LocationCoords[]>([]);
+  const [routeInfo, setRouteInfo] = useState<RouteInfoData | null>(null);
+  const [destination, setDestination] = useState<LocationCoords | null>(null);
+  const [originSuggestions, setOriginSuggestions] = useState<LocationSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
   useEffect(() => {
     if (initialDestination) {
       getCoordinatesFromAddress(initialDestination).then((coords) => {
         if (coords) {
-          setDestination({ latitude: coords.lat, longitude: coords.lng });
+          setDestination({
+            latitude: coords.lat,
+            longitude: coords.lon
+          });
 
           if (mapRef.current) {
             mapRef.current.animateToRegion({
               latitude: coords.lat,
-              longitude: coords.lng,
+              longitude: coords.lon,
               latitudeDelta: 0.05,
               longitudeDelta: 0.05,
             });
@@ -35,13 +68,25 @@ const RouteInfo = ({ initialDestination }) => {
     }
   }, [initialDestination]);
 
-  const getCoordinatesFromAddress = async (address) => {
-    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${GOOGLE_MAPS_API_KEY}`;
+  const getCoordinatesFromAddress = async (address: string): Promise<Coordinates | null> => {
     try {
-      const response = await fetch(url);
+      // Use Nominatim for geocoding (OpenStreetMap's geocoding service)
+      const url = `${NOMINATIM_BASE_URL}/search?format=json&q=${encodeURIComponent(address)}&limit=1&addressdetails=1`;
+      
+      const response = await fetch(url, {
+        headers: {
+          'Accept-Language': 'en-US,en',
+          'User-Agent': 'ReactNativeApp/1.0'
+        }
+      });
+      
       const data = await response.json();
-      if (data.status === "OK") {
-        return data.results[0].geometry.location;
+      
+      if (data && data.length > 0) {
+        return {
+          lat: parseFloat(data[0].lat),
+          lon: parseFloat(data[0].lon)
+        };
       }
     } catch (error) {
       console.error("Error fetching coordinates:", error);
@@ -49,22 +94,40 @@ const RouteInfo = ({ initialDestination }) => {
     return null;
   };
 
-  const fetchAutocompleteSuggestions = async (input, setSuggestions) => {
-    if (!input) {
+  const fetchAutocompleteSuggestions = async (input: string, setSuggestions: React.Dispatch<React.SetStateAction<LocationSuggestion[]>>) => {
+    if (!input || input.length < 3) {
       setSuggestions([]);
       setShowSuggestions(false);
       return;
     }
-    const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(
-      input
-    )}&key=${GOOGLE_MAPS_API_KEY}&components=country:MY`;
-
+    
     try {
-      const response = await fetch(url);
+      // Use Nominatim for autocomplete suggestions
+      const url = `${NOMINATIM_BASE_URL}/search?format=json&q=${encodeURIComponent(input)}&countrycodes=my&limit=5`;
+      
+      const response = await fetch(url, {
+        headers: {
+          'Accept-Language': 'en-US,en',
+          'User-Agent': 'ReactNativeApp/1.0'
+        }
+      });
+      
       const data = await response.json();
-      if (data.status === "OK") {
-        setSuggestions(data.predictions);
+      
+      if (data && data.length > 0) {
+        // Transform data to a format similar to what we had with Google
+        const suggestions = data.map((item: any) => ({
+          place_id: item.place_id,
+          description: item.display_name,
+          lat: parseFloat(item.lat),
+          lon: parseFloat(item.lon)
+        }));
+        
+        setSuggestions(suggestions);
         setShowSuggestions(true);
+      } else {
+        setSuggestions([]);
+        setShowSuggestions(false);
       }
     } catch (error) {
       console.error("Error fetching autocomplete:", error);
@@ -72,81 +135,82 @@ const RouteInfo = ({ initialDestination }) => {
     }
   };
 
-  const getCoordinatesFromPlaceID = async (placeID) => {
-    const url = `https://maps.googleapis.com/maps/api/geocode/json?place_id=${placeID}&key=${GOOGLE_MAPS_API_KEY}`;
-
-    try {
-      const response = await fetch(url);
-      const data = await response.json();
-      if (data.status === "OK") {
-        return { latitude: data.results[0].geometry.location.lat, longitude: data.results[0].geometry.location.lng };
-      }
-    } catch (error) {
-      console.error("Error fetching coordinates:", error);
-    }
-    return null;
-  };
-
-  const handleSelectOrigin = async (place) => {
+  const handleSelectOrigin = (place: LocationSuggestion) => {
     setOriginText(place.description);
     setOriginSuggestions([]);
     setShowSuggestions(false);
     Keyboard.dismiss();
-    const coords = await getCoordinatesFromPlaceID(place.place_id);
-    if (coords) {
-      setOrigin(coords);
-    }
+    
+    // Place already has coordinates
+    setOrigin({
+      latitude: place.lat,
+      longitude: place.lon
+    });
   };
 
   const fetchRoute = async () => {
-    if (!origin || !destination) return;
-
-    const url = `https://routes.googleapis.com/directions/v2:computeRoutes`;
-    const body = {
-      origin: { location: { latLng: { latitude: origin.latitude, longitude: origin.longitude } } },
-      destination: { location: { latLng: { latitude: destination.latitude, longitude: destination.longitude } } },
-      travelMode: "DRIVE",
-      routingPreference: "TRAFFIC_AWARE",
-      computeAlternativeRoutes: false,
-      routeModifiers: { avoidTolls: false, avoidHighways: false, avoidFerries: false },
-      languageCode: "en-US",
-      units: "IMPERIAL",
-    };
+    if (!origin || !destination) {
+      Alert.alert("Missing Locations", "Please select both current location and destination");
+      return;
+    }
 
     try {
-      let response = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Goog-Api-Key": GOOGLE_MAPS_API_KEY,
-          "X-Goog-FieldMask": "routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline",
-        },
-        body: JSON.stringify(body),
-      });
+      // Debugging origin and destination
+      console.log("Origin:", origin);
+      console.log("Destination:", destination);
+      
+      // Use OSRM for routing - format: lat,lng for OSRM (different from ORS)
+      const url = `${OSRM_BASE_URL}/route/v1/driving/${origin.longitude},${origin.latitude};${destination.longitude},${destination.latitude}?overview=full&geometries=geojson`;
+      
+      console.log("Sending request to OSRM:", url);
 
-      let data = await response.json();
-      if (data.routes && data.routes.length > 0) {
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("OSRM error:", response.status, errorText);
+        Alert.alert("Route Error", `Failed to get route: ${response.status}`);
+        return;
+      }
+
+      const data = await response.json();
+      console.log("OSRM response:", JSON.stringify(data).substring(0, 200) + "...");
+      
+      if (data && data.code === 'Ok' && data.routes && data.routes.length > 0) {
         const route = data.routes[0];
-        const decodedPolyline = polyline.decode(route.polyline.encodedPolyline).map((point) => ({
-          latitude: point[0],
-          longitude: point[1],
+        
+        // Extract coordinates and convert to the format MapView expects
+        const coordinates = route.geometry.coordinates.map((coord: [number, number]) => ({
+          latitude: coord[1],
+          longitude: coord[0]
         }));
-
-        setRouteCoords(decodedPolyline);
+        
+        console.log(`Route found with ${coordinates.length} points`);
+        setRouteCoords(coordinates);
+        
+        // Extract route info
+        const distance = (route.distance / 1000).toFixed(2); // Convert to km
+        const duration = Math.round(route.duration / 60); // Convert to minutes
+        
         setRouteInfo({
-          distance: (route.distanceMeters / 1000).toFixed(2),
-          duration: Math.round(parseInt(route.duration.replace("s", ""), 10) / 60),
+          distance,
+          duration
         });
 
+        // Fit map to the route
         if (mapRef.current) {
-          mapRef.current.fitToCoordinates(decodedPolyline, {
+          mapRef.current.fitToCoordinates(coordinates, {
             edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
             animated: true,
           });
         }
+      } else {
+        console.error("No route found in response:", data);
+        Alert.alert("Route Error", "No route found between these locations");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching route:", error);
+      Alert.alert("Error", `Failed to fetch route: ${error.message || "Unknown error"}`);
     }
   };
 
@@ -185,6 +249,7 @@ const RouteInfo = ({ initialDestination }) => {
         <MapView 
           ref={mapRef} 
           style={styles.map} 
+          provider={PROVIDER_DEFAULT}
           showsUserLocation={true}
           initialRegion={{
             latitude: 1.4927, // Default location (Malaysia)
@@ -197,6 +262,10 @@ const RouteInfo = ({ initialDestination }) => {
           {destination && <Marker coordinate={destination} title="Pickup location" />}
           {routeCoords.length > 0 && <Polyline coordinates={routeCoords} strokeWidth={4} strokeColor="blue" />}
         </MapView>
+        {/* OSM Attribution */}
+        <View style={styles.attributionContainer}>
+          <Text style={styles.attributionText}>© OpenStreetMap contributors</Text>
+        </View>
       </View>
       
       {/* Controls */}
@@ -222,8 +291,12 @@ const RouteInfo = ({ initialDestination }) => {
         )}
         
         <TouchableOpacity 
-          style={styles.getRouteButton} 
+          style={[
+            styles.getRouteButton, 
+            (!origin || !destination) && styles.disabledButton
+          ]} 
           onPress={fetchRoute}
+          disabled={!origin || !destination}
         >
           <Text style={styles.getRouteButtonText}>Get Route</Text>
         </TouchableOpacity>
@@ -243,10 +316,23 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 250, // Map height
     backgroundColor: '#f0f0f0',
+    position: 'relative',
   },
   map: {
     width: '100%',
     height: '100%',
+  },
+  attributionContainer: {
+    position: "absolute",
+    bottom: 5,
+    right: 5,
+    backgroundColor: "rgba(255, 255, 255, 0.7)",
+    padding: 3,
+    borderRadius: 3,
+  },
+  attributionText: {
+    fontSize: 10,
+    color: "#333",
   },
   controlsContainer: {
     width: '100%',
@@ -302,6 +388,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 5,
     marginBottom: 10,
+  },
+  disabledButton: {
+    backgroundColor: "#cccccc",
+    opacity: 0.7,
   },
   getRouteButtonText: {
     color: "white",
