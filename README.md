@@ -54,6 +54,44 @@ The following components have been updated to use OpenStreetMap:
 
 Nominatim has a usage policy that includes rate limiting (1 request per second). Be mindful of this when making multiple requests in quick succession.
 
+## Test Accounts
+
+You can use the following test accounts to explore different aspects of the application:
+
+### Regular User
+- **Email**: test@example.com
+- **Password**: password
+
+### Organization User
+- **Email**: org@example.com
+- **Password**: password 
+
+## Features
+
+- **User-side features**:
+  - List electronic waste items for pickup
+  - Track the status of your listed items
+  - View history of previous recycling activity
+  - Manage your user profile and account settings
+
+- **Organization-side features**:
+  - View available items for pickup
+  - Schedule and manage pickups
+  - Assign collectors to routes
+  - Process and track e-waste collection
+
+- **Collector features**:
+  - View optimized pickup routes
+  - Navigate between pickup locations
+  - Mark pickups as complete
+
+## Technical Information
+
+- Built with React Native and TypeScript
+- Uses React Navigation for navigation
+- Incorporates OpenStreetMap and OSRM for mapping and routing
+- Implements Context API for state management
+
 ### Attribution
 
 OpenStreetMap requires attribution when using their services. This has been added to all map components with:
