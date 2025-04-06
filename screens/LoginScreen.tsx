@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { useUser } from '../contexts/UserContext';
 import { TextInput } from 'react-native-paper';
@@ -15,6 +15,18 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const { login, user } = useUser();
+  const [passwordVisible, setPasswordVisible] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      if (user.role === 'organization') {
+        navigation.navigate('RHome');
+      } else {
+        navigation.navigate('Home');
+      }
+    }
+  }, [user, navigation]);
 
   const handleSignIn = async () => {
       if (!email || !password) {
@@ -99,8 +111,14 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
                   setPassword(text);
                   setError('');
                 }}
-                secureTextEntry
+                secureTextEntry={!passwordVisible}
                 editable={!isLoading}
+                right={
+                  <TextInput.Icon
+                    icon={passwordVisible ? "eye-off" : "eye"}
+                    onPress={() => setPasswordVisible(!passwordVisible)}
+                  />
+                }
               />
             </View>
 

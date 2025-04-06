@@ -3,17 +3,15 @@ import { View, ScrollView, Text, StyleSheet, Dimensions, Alert } from "react-nat
 import { TextInput, Button, HelperText } from "react-native-paper";
 import Icon from "react-native-vector-icons/MaterialIcons";
 import { useUser } from "../../contexts/UserContext";
-import { checkEmailExists, registerUser } from "../api/registerClient";
 
 const { width, height } = Dimensions.get("window");
 
-const ClientRegistration = ({ navigation }) => {
+const CollectorRegistration = ({ navigation }) => {
+  const { register } = useUser();
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [passwordVisible, setPasswordVisible] = useState(false);
-  const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState("");
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
@@ -30,19 +28,32 @@ const isFormValid = useMemo(() => {
   );
 }, [username, email, phoneNumber, password, confirmPassword]);
 
-  const handleSubmit = async () => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;//valid email format
-    const passwordRegex = /^(?=.*[0-9])(?=.*[\W_]).{8,}$/;// at least 8 characters, including a number and a special character.
-
+ const clearData = () => {
+    setUsername("");
+    setEmail("");
+    setPhoneNumber("")
+    setPassword("");
+    setConfirmPassword("");
     setEmailError("");
     setPasswordError("");
-    setConfirmPasswordError("");
+    setConfirmPasswordError("")
+ }
+
+  const handleSubmit = async () => {
+    const existingEmails = ["test@example.com", "user@gmail.com"];
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;//valid email format
+    const passwordRegex = /^(?=.*[0-9])(?=.*[\W_]).{8,}$/;// at least 8 characters, including a number and a special character.
 
     if (!emailRegex.test(email)) {
       setEmailError("Invalid email format.");
       return;
     }
-
+    if (existingEmails.includes(email)) {
+      setEmailError("Email is already in use.");
+      return;
+    } else {
+      setEmailError("");
+    }
     if (!passwordRegex.test(password)) {
         setPasswordError("Password must be at least 8 characters long and include a number and a special character.");
         return;
@@ -57,14 +68,8 @@ const isFormValid = useMemo(() => {
 
     setIsLoading(true);
     try {
-      const emailExists = await checkEmailExists(email);
-      if(emailExists){
-        setEmailError("Email already exist");
-        setIsLoading(false);
-        return;
-      }
-
-      const success = await registerUser(username, email, password, `+60${phoneNumber}`);
+      // Call the register function from UserContext
+      const success = await register(username, email, password, phoneNumber);
       
       if (success) {
         Alert.alert("Success", "Your account has been registered, you may login now.");
@@ -78,6 +83,7 @@ const isFormValid = useMemo(() => {
     } finally {
       setIsLoading(false);
     }
+    clearData();
   };
 
   return (
@@ -128,13 +134,7 @@ const isFormValid = useMemo(() => {
         mode="outlined"
         value={password}
         onChangeText={setPassword}
-        secureTextEntry={!passwordVisible}
-        right={
-          <TextInput.Icon
-            icon={passwordVisible ? "eye-off" : "eye"}
-            onPress={() => setPasswordVisible(!passwordVisible)}
-          />
-        }
+        secureTextEntry
         style={styles.input}
         error={passwordError !== ""}
       />
@@ -147,7 +147,7 @@ const isFormValid = useMemo(() => {
           size={width * 0.03}
           color={passwordError ? "red" : "blue"}
         />{" "}
-        {passwordError ? passwordError : "At least 8 characters, including a number and a special character."}
+        {passwordError || "At least 8 characters, including a number and a special character."}
       </HelperText>
 
       <TextInput
@@ -155,13 +155,7 @@ const isFormValid = useMemo(() => {
         mode="outlined"
         value={confirmPassword}
         onChangeText={setConfirmPassword}
-        secureTextEntry={!confirmPasswordVisible}
-        right={
-          <TextInput.Icon
-            icon={confirmPasswordVisible ? "eye-off" : "eye"}
-            onPress={() => setConfirmPasswordVisible(!passwordVisible)}
-          />
-        }
+        secureTextEntry
         style={styles.input}
         error={confirmPasswordError !== ""}
       />
@@ -219,5 +213,5 @@ const styles = StyleSheet.create({
 
 });
 
-export default ClientRegistration;
+export default CollectorRegistration;
 

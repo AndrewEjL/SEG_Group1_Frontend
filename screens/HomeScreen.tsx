@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, Animated, Easing, ScrollView, Alert } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useUser, DevAutoLogin, ScheduledPickup, type ListedItem } from '../contexts/UserContext';
+import { useUser, ScheduledPickup, type ListedItem } from '../contexts/UserContext';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRoute } from '@react-navigation/native';
 import { displayItem } from './api/items/displayItems';
@@ -65,7 +65,7 @@ const LoadingIcon: React.FC = () => {
 
 const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const route = useRoute();
-  const { user, getScheduledPickups, getListedItems, deleteListedItem } = useUser();
+  const { user, getScheduledPickups, getListedItems, deleteListedItem, getOrganizationName } = useUser();
   const { itemTypes, deviceCondition, itemsStatus, loadingName } = useItemTypes();
   const {id} = route.params;
   const { displayItems, loading } = displayItem(id);
@@ -77,6 +77,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const [listedItems, setListedItems] = useState<ListedItem[]>([]);
   const [isPickupsLoading, setIsPickupsLoading] = useState(true);
   const [isItemsLoading, setIsItemsLoading] = useState(true);
+  const [organizationNames, setOrganizationNames] = useState<{[key: string]: string}>({});
 
   // Load data when component mounts
   useEffect(() => {
@@ -110,7 +111,10 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
 
   // Helper function to check if an item is in any scheduled pickup
   const isItemInPickup = (itemId: string) => {
-    return scheduledPickups.some(pickup => pickup.listedItemIds.includes(itemId));
+    return scheduledPickups.some(pickup => 
+      pickup.listedItemIds.includes(itemId) && 
+      pickup.status === 'ongoing'
+    );
   };
 
   const handleViewPickup = (orgId: number) => {
@@ -209,7 +213,6 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <DevAutoLogin />
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>E-Waste App</Text>
@@ -420,9 +423,23 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0',
   },
+  pickupInfo: {
+    flex: 1,
+  },
   facilityText: {
     fontSize: 16,
     color: '#333',
+    fontWeight: '500',
+  },
+  organizationText: {
+    fontSize: 14,
+    color: '#5E4DCD',
+    marginTop: 2,
+  },
+  collectorText: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 2,
   },
   itemText: {
     fontSize: 16,
@@ -483,13 +500,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
+    paddingVertical: 24,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   emptyText: {
-    color: '#666',
-    fontSize: 16,
+    color: '#757575',
+    fontSize: 14,
   },
   itemDetails: {
     flexDirection: 'column',

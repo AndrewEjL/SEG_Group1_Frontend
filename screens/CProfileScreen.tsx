@@ -17,6 +17,7 @@ type RootStackParamList = {
   CProfileScreen: { id: number };
   PickupHistory: {id: number};
   RewardsHistory: { id: number };
+  Login: undefined;
 };
 
 type CProfileScreenProps = {
@@ -144,6 +145,52 @@ const handleChangePassword = async () => {
   }
 };
 
+const handleLogout = async () => {
+  Alert.alert(
+    "Logout",
+    "Are you sure you want to logout?",
+    [
+      {
+        text: "Cancel",
+        style: "cancel"
+      },
+      {
+        text: "Logout",
+        onPress: async () => {
+          await logout();
+          navigation.reset({
+            index: 0,
+            routes: [{ name: 'Login' }],
+          });
+        }
+      }
+    ]
+  );
+};
+
+const handleLogout = async () => {
+  Alert.alert(
+    "Logout",
+    "Are you sure you want to logout?",
+    [
+      {
+        text: "Cancel",
+        style: "cancel"
+      },
+      {
+        text: "Logout",
+        onPress: async () => {
+          await logout();
+          navigation.reset({
+            index: 0,
+            routes: [{ name: 'Login' }],
+          });
+        }
+      }
+    ]
+  );
+};
+
   return (
     <View style={styles.container}>
       {user && (
@@ -191,6 +238,18 @@ const handleChangePassword = async () => {
         >
           <Icon name="star" size={20} color="#5E4DCD" />
           <Text style={styles.listText}>Rewards History</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Logout Button */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Account</Text>
+        <TouchableOpacity 
+          style={styles.listItem}
+          onPress={handleLogout}
+        >
+          <Icon name="logout" size={20} color="#D32F2F" />
+          <Text style={[styles.listText, styles.logoutText]}>Logout</Text>
         </TouchableOpacity>
       </View>
 
@@ -477,7 +536,9 @@ modalContainer: {
     fontSize: 16,
     color: "#333",
   },
-
+  logoutText: {
+    color: "#D32F2F",
+  },
 });
 
 export default CProfileScreen;

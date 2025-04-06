@@ -16,6 +16,10 @@ import EditLocation from './screens/EditLocation';
 import ClientRegistration from './screens/Login&RegistrationScreens/clientRegistration.tsx';
 import NavigationMap from './screens/GoogleMapsScreens/NavigationMap.tsx';
 import SelectLocation from './screens/GoogleMapsScreens/SelectLocation.tsx';
+import RHomeScreen from './screens/RecipientHomePageScreens/RHomeScreen.tsx';
+import RProfileScreen from './screens/RecipientHomePageScreens/RProfileScreen.tsx';
+import CollectorListScreen from './screens/RecipientHomePageScreens/CollectorListScreen.tsx';
+import RStatsScreen from './screens/RecipientHomePageScreens/RStatsScreen.tsx';
 import CProfileScreen from './screens/CProfileScreen';
 import PickupHistoryScreen from './screens/PickupHistoryScreen';
 import RewardsScreen from './screens/RewardsScreen';
@@ -197,6 +201,23 @@ const App = () => {
           <Stack.Screen
             name="RewardsHistory"
             component={RewardsHistory}
+          />
+          <Stack.Screen
+            name="RHome"
+            component={RHomeScreen}
+          />
+          <Stack.Screen
+            name="RProfile"
+            component={RProfileScreen}
+          />
+          <Stack.Screen
+            name="CollectorList"
+            component={CollectorListScreen}
+            options={{ headerShown: true, title: 'Collector List'}}
+          />
+          <Stack.Screen
+            name="RStats"
+            component={RStatsScreen}
           />
         </Stack.Navigator>
       </NavigationContainer>
