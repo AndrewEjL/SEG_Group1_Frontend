@@ -496,6 +496,19 @@ const mockUsers: { [key: string]: User } = {
     listedItems: [],
     redeemedRewards: [],
     collectorEmployees: ['collector3']
+  },
+  '5': {
+    id: '5',
+    name: 'collector3',
+    email: 'collector@example.com',
+    points: 0,
+    address: '101 Innovation Blvd, City',
+    phoneNumber: '+60124444771',
+    role: 'collector',
+    underCompany : 'ReNew Electronics',
+    scheduledPickups: ['pickup3', 'pickup4'],
+    listedItems: [],
+    redeemedRewards: [],
   }
 };
 
@@ -504,6 +517,7 @@ const mockUserPasswords: { [key: string]: string } = {
   '2': 'password', // org@example.com
   '3': 'password', // eco@example.com
   '4': 'password', // renew@example.com
+  '5': 'password', // collector@example.com
 };
 
 /**

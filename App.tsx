@@ -24,6 +24,9 @@ import CProfileScreen from './screens/CProfileScreen';
 import PickupHistoryScreen from './screens/PickupHistoryScreen';
 import RewardsScreen from './screens/RewardsScreen';
 import RewardsHistory from './screens/RewardsHistory';
+import CLProfileScreen from './screens/CollectorScreens/CLProfileScreen.tsx'
+import CLHomeScreen from './screens/CollectorScreens/CLHomeScreen.tsx'
+
 
 // Define your navigation types
 type RootStackParamList = {
@@ -111,7 +114,7 @@ const App = () => {
     <UserProvider>
       <NavigationContainer>
         <Stack.Navigator 
-          initialRouteName="Login"
+          initialRouteName="CLHome"
           screenOptions={{
             headerShown: false
           }}
@@ -211,6 +214,14 @@ const App = () => {
           <Stack.Screen
             name="RStats"
             component={RStatsScreen}
+          />
+          <Stack.Screen
+            name="CLProfile"
+            component={CLProfileScreen}
+          />
+          <Stack.Screen
+            name="CLHome"
+            component={CLHomeScreen}
           />
         </Stack.Navigator>
       </NavigationContainer>
