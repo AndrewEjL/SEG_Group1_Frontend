@@ -26,6 +26,7 @@ import RewardsScreen from './screens/RewardsScreen';
 import RewardsHistory from './screens/RewardsHistory';
 import CLProfileScreen from './screens/CollectorScreens/CLProfileScreen.tsx'
 import CLHomeScreen from './screens/CollectorScreens/CLHomeScreen.tsx'
+import CLHistoryScreen from './screens/CollectorScreens/CLHistoryScreen.tsx'
 
 
 // Define your navigation types
@@ -114,7 +115,7 @@ const App = () => {
     <UserProvider>
       <NavigationContainer>
         <Stack.Navigator 
-          initialRouteName="CLHome"
+          initialRouteName="CLHistory"
           screenOptions={{
             headerShown: false
           }}
@@ -222,6 +223,10 @@ const App = () => {
           <Stack.Screen
             name="CLHome"
             component={CLHomeScreen}
+          />
+          <Stack.Screen
+            name="CLHistory"
+            component={CLHistoryScreen}
           />
         </Stack.Navigator>
       </NavigationContainer>

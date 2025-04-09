@@ -187,7 +187,7 @@ return (
           <MenuIcon name="home" size={24} color="#666666" />
           <Text style={styles.navText}>Home</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem} onPress={() => handleTabPress("RStats")}>
+        <TouchableOpacity style={styles.navItem} onPress={() => handleTabPress("CLHistory")}>
           <MenuIcon name="history" size={24} color="#666666" />
           <Text style={styles.navText}>History</Text>
         </TouchableOpacity>

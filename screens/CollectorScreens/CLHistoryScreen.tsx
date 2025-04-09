@@ -2,30 +2,26 @@ import React, { useEffect, useState } from "react";
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, Modal, ScrollView, Alert, SafeAreaView, Dimensions , Linking,TextInput} from "react-native";
 import Icon from "react-native-vector-icons/MaterialIcons";
 import { Dropdown } from "react-native-element-dropdown";
-import RouteInfo from "./RouteInfo.tsx";
+import RouteInfo from "../RecipientHomePageScreens/RouteInfo.tsx";
 
 type NavigationProp = {
   navigate: (screen: string) => void;
 };
 
-type CLHomeScreenProps = {
+type CLHistoryScreenProps = {
   navigation: NavigationProp;
 };
 
-const CLHomeScreen: React.FC<CLHomeScreenProps> = ({ navigation }) => {
+const CLHistoryScreen: React.FC<CLHistoryScreenProps> = ({ navigation }) => {
 
-  // State for pending pickups (pickups that are in progress)
-  const [pendingPickups, setPendingPickups] = useState<any[]>([]);
   const [completedPickups, setCompletedPickups] = useState<any[]>([]);
 
   // State for UI components
   const [modal1Visible, setModal1Visible] = useState(false);
-  const [modal2Visible, setModal2Visible] = useState(false);
-  const [modal3Visible, setModal3Visible] = useState(false);
+
   const [selectedPickup, setSelectedPickup] = useState<any | null>(null); // Mock data type
   const [loading, setLoading] = useState<boolean>(true);
-  const [weightInput, setWeightInput] = useState<string>('');
-  const [weightError, setWeightError] = useState<string>('');
+
 
   // Get screen dimensions
   const windowHeight = Dimensions.get('window').height;
@@ -51,31 +47,31 @@ const CLHomeScreen: React.FC<CLHomeScreenProps> = ({ navigation }) => {
       {
         id: "1",
         clientId: "1",
-        name: "Item A",
+        name: "S24 Ultra",
         type: "Phone",
         condition: "Working",
         quantity: 1,
         address: "3, Eko Galleria, C0301, C0302, C0401, Blok C, Taman, Persiaran Eko Botani, 79100 Iskandar Puteri, Johor Darul Ta'zim",
         pickupStatus: "Out for pickup",
-        collectedTimestamp: null,
-        weight: null,
+        collectedTimestamp: new Date().toISOString(),
+        weight: 5,
         dimensions: { length: 15, width: 10, height: 5 },
       },
       {
         id: "2",
         clientId: "2",
-        name: "Item A",
+        name: "S23 Ultra",
         type: "Phone",
         condition: "Working",
         quantity: 1,
         address: "3, Eko Galleria, C0301, C0302, C0401, Blok C, Taman, Persiaran Eko Botani, 79100 Iskandar Puteri, Johor Darul Ta'zim",
         pickupStatus: "Collected",
-        collectedTimestamp: null,
-        weight: null,
+        collectedTimestamp: new Date().toISOString(),
+        weight: 5,
         dimensions: { length: 15, width: 10, height: 5 },
       }
     ];
-      setPendingPickups(mockPendingPickups);
+      setCompletedPickups(mockPendingPickups);
     } catch (error) {
       console.error("Error loading data:", error);
       Alert.alert("Error", "Failed to load pickup data. Please try again.");
@@ -83,97 +79,29 @@ const CLHomeScreen: React.FC<CLHomeScreenProps> = ({ navigation }) => {
       setLoading(false);
     }
   };
-
-const handleMarkAsCollected = (pickup: any) => {
-  // Confirmation alert
-  Alert.alert(
-    "Confirm Pickup",
-    "Are you sure you want to mark this pickup as collected?",
-    [
-      {
-        text: "Cancel",
-        style: "cancel", // Close the alert without doing anything
-      },
-      {
-        text: "Confirm",
-        onPress: () => {
-          // Update the pickup status to 'collected'
-          const updatedPickup = { ...pickup, pickupStatus: "Collected", collectedTimestamp: new Date().toISOString() };
-
-          // Update the state with the new status
-          setPendingPickups((prevPickups) =>
-            prevPickups.map((item) =>
-              item.id === pickup.id ? updatedPickup : item
-            )
-          );
-
-          setModal1Visible(false);
-        },
-      },
-    ],
-    { cancelable: true }
-  );
-};
-
-const handleWeightChange = (text: string) => {
-  // Regular expression: allow up to 3 decimal places
-  const regex = /^\d*\.?\d{0,3}$/;
-
-  if (regex.test(text)) {
-    setWeightInput(text);
-    setWeightError('');
-  } else {
-    setWeightError('Please enter a number with up to three decimal places');
-  }
-};
-
-const handleSubmitWeight = () => {
-  if (!weightInput || isNaN(Number(weightInput)) || weightError) {
-    Alert.alert('Error', 'Please enter a valid weight');
-    return;
-  }
-
-  // Update the selected pickup with the weight and change the status to 'Completed'
-  const updatedPickup = {
-    ...selectedPickup,
-    weight: weightInput,
-    pickupStatus: 'Completed',
-    collectedTimestamp: new Date().toISOString(),
-  };
-
-  // Update the pending pickups list by removing the completed pickup and adding it to the completed pickups list
-  setPendingPickups((prevPickups) =>
-    prevPickups.filter((item) => item.id !== selectedPickup.id)
-  );
-  // Add to completed pickups
-  setCompletedPickups((prevCompletedPickups) => [
-    ...prevCompletedPickups,
-    updatedPickup,
-  ]);
-
-  // Close the modal
-  setModal3Visible(false);
-  Alert.alert('Success', `Successfully submitted weight: ${weightInput} kg`);
-};
-
-
-
-
-  const handleUpdatePendingPickupStatus = (pickup: any) => {
-    setSelectedPickup(pickup);
-    setModal1Visible(true);
-  };
-
-   const handleUpdateCollectedPickups = (pickup: any) => {
+ const viewPickupDetails = (pickup: any) => {
      setSelectedPickup(pickup);
-     setModal2Visible(true);
-   };
-
-   const handleEnterWeight = (pickup: any) => {
-     setSelectedPickup(pickup);
-     setModal2Visible(false);
-     setModal3Visible(true);
-   };
+     setModal1Visible(true);
+ }
+ const formatDate = (isoString) => {
+   const date = new Date(isoString);
+   date.setHours(date.getHours() + 8);
+   const year = date.getFullYear();
+   const month = String(date.getMonth() + 1).padStart(2, '0');
+   const day = String(date.getDate()).padStart(2, '0');
+   return `${year}-${month}-${day}`;
+ };
+ const formatDateTime = (isoString) => {
+   const date = new Date(isoString);
+   date.setHours(date.getHours() + 8);
+   const year = date.getFullYear();
+   const month = String(date.getMonth() + 1).padStart(2, '0');
+   const day = String(date.getDate()).padStart(2, '0');
+   const hours = String(date.getHours()).padStart(2, '0');
+   const minutes = String(date.getMinutes()).padStart(2, '0');
+   const seconds = String(date.getSeconds()).padStart(2, '0');
+   return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+ };
 
   const handleTabPress = (tabName: string) => {
     navigation.navigate(tabName);
@@ -187,30 +115,21 @@ const handleCall = (phoneNumber) => {
   Linking.openURL(`tel:${phoneNumber}`);
 };
 
-const getStatusStyle = (status) => {
-  if (status == "Collected"){
-      return styles.statusCollected;
-  }else {
-      return styles.statusPending;
-  }
-};
-
-
   return (
     <SafeAreaView style={styles.safeContainer}>
       <View style={styles.headerSection}>
-          <Text style={styles.header}>Pending pickups</Text>
+          <Text style={styles.header}>Completed pickups</Text>
           <View style={[styles.tableContainer, { height: tableHeight }]}>
-            {pendingPickups.length === 0 ? (
+            {completedPickups.length === 0 ? (
               <View style={styles.emptyContainer}>
                 <Text style={styles.emptyText}>
-                  {loading ? "Loading pending pickups..." : "No pending pickups"}
+                  {loading ? "Loading completed pickups..." : "No completed pickups"}
                 </Text>
               </View>
             ) : (
               <FlatList
                 style={styles.flatList}
-                data={pendingPickups}
+                data={completedPickups}
                 keyExtractor={(item) => item.id}
                 renderItem={({ item }) => (
                   <View style={styles.pendingCard}>
@@ -218,20 +137,13 @@ const getStatusStyle = (status) => {
                       <Text style={styles.itemText}>
                        {item.name} - {item.type}
                       </Text>
-                      <Text style={styles.collectorText}>Client: {item.clientId || "Unassigned"}</Text>
+                      <Text style={styles.collectorText}>{formatDate(item.collectedTimestamp)}</Text>
                     </View>
                     <View style={styles.iconRow}>
-                      <Text style={[styles.itemStatus, getStatusStyle(item.pickupStatus)]}>{item.pickupStatus}</Text>
-                      <TouchableOpacity style={styles.acceptButton}
-                         onPress={() => {
-                           if (item.pickupStatus === "Out for pickup") {
-                             handleUpdatePendingPickupStatus(item);
-                           } else {
-                             handleUpdateCollectedPickups(item);
-                           }
-                         }}
+                      <TouchableOpacity
+                         onPress={() => viewPickupDetails(item)}
                       >
-                        <Text style={styles.acceptText}>Update</Text>
+                        <Icon name="visibility" size={24} color="#b366ff" />
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -243,12 +155,12 @@ const getStatusStyle = (status) => {
 
       <View style={styles.bottomNav}>
         <TouchableOpacity style={styles.navItem} onPress={() => handleTabPress("CLHome")}>
-          <Icon name="home" size={24} color="#5E4DCD" />
-          <Text style={styles.activeNavText}>Home</Text>
+          <Icon name="home" size={24} color="#666666" />
+          <Text style={styles.anavText}>Home</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem} onPress={() => handleTabPress("CLHistory")}>
-          <Icon name="history" size={24} color="#666666" />
-          <Text style={styles.navText}>History</Text>
+          <Icon name="history" size={24} color="#5E4DCD" />
+          <Text style={styles.activeNavText}>History</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem} onPress={() => handleTabPress("CLProfile")}>
           <Icon name="person" size={24} color="#666666" />
@@ -256,7 +168,7 @@ const getStatusStyle = (status) => {
         </TouchableOpacity>
       </View>
 
-      {/* Update Modal for Out for pickup status */}
+      {/* Modal for viewing history pickups details */}
       <Modal visible={modal1Visible} animationType="slide" transparent={true}>
         <View style={styles.modalContainer}>
           <View style={styles.modal1Content}>
@@ -267,9 +179,6 @@ const getStatusStyle = (status) => {
 
             {selectedPickup && (
               <ScrollView style={styles.modalScrollView}>
-                <View style={styles.mapWrapper}>
-                  <RouteInfo initialDestination={selectedPickup.address} />
-                </View>
                 <View style={styles.detailsContainer}>
                   <Text style={styles.label}><Text style={styles.bold}>Item Name:</Text> {selectedPickup.name}</Text>
                   <Text style={styles.label}><Text style={styles.bold}>Type:</Text> {selectedPickup.type}</Text>
@@ -283,63 +192,10 @@ const getStatusStyle = (status) => {
                         <Text style={styles.phonelabel}>+60123456789</Text>
                       </TouchableOpacity>
                   </Text>
+                  <Text style={styles.label}><Text style={styles.bold}>Collected time:</Text> {formatDateTime(selectedPickup.collectedTimestamp)} (UTC+8)</Text>
                 </View>
               </ScrollView>
             )}
-              <TouchableOpacity style={styles.assignButton} onPress={() => handleMarkAsCollected(selectedPickup)}>
-                <Text style={styles.acceptText}>Mark as collected</Text>
-              </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-      {/* Pickups details Modal*/}
-      <Modal visible={modal2Visible} animationType="slide" transparent={true}>
-        <View style={styles.modalContainer}>
-          <View style={styles.modal1Content}>
-            <TouchableOpacity onPress={() => setModal2Visible(false)} style={{ alignSelf: "flex-start" }}>
-              <Icon name="close" size={24} color="#333333" />
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>Pickup details</Text>
-
-            {selectedPickup && (
-              <ScrollView style={styles.modalScrollView}>
-                <View style={styles.detailsContainer}>
-                  <Text style={styles.label}><Text style={styles.bold}>Item Name:</Text> {selectedPickup.name}</Text>
-                  <Text style={styles.label}><Text style={styles.bold}>Type:</Text> {selectedPickup.type}</Text>
-                  <Text style={styles.label}><Text style={styles.bold}>Condition:</Text> {selectedPickup.condition}</Text>
-                  <Text style={styles.label}><Text style={styles.bold}>Size:</Text> {formatDimensions(selectedPickup)}</Text>
-                  <Text style={styles.label}><Text style={styles.bold}>Quantity:</Text> {selectedPickup.quantity}</Text>
-                  <Text style={styles.label}><Text style={styles.bold}>Address:</Text> {selectedPickup.address}</Text>
-                  <Text style={styles.label}><Text style={styles.bold}>Client name:</Text> {selectedPickup.clientId}</Text>
-                  <Text style={styles.label}><Text style={styles.bold}>Client contact number:</Text>+60123456789</Text>
-                  <Text style={styles.label}><Text style={styles.bold}>Collected Time:</Text>{selectedPickup.collectedTimestamp}</Text>
-                </View>
-              </ScrollView>
-            )}
-              <TouchableOpacity style={styles.assignButton} onPress={() => handleEnterWeight(selectedPickup)}>
-                <Text style={styles.acceptText}>Enter the weight of the item</Text>
-              </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-    {/* Pickups details Modal*/}
-      <Modal visible={modal3Visible} animationType="slide" transparent={true}>
-        <View style={styles.modalContainer}>
-          <View style={styles.modal1Content}>
-            <TouchableOpacity onPress={() => setModal3Visible(false)} style={{ alignSelf: "flex-start" }}>
-              <Icon name="close" size={24} color="#333333" />
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>Enter the weight of the item to completed this pickup</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Weight (kg)"
-              onChangeText={handleWeightChange}
-              placeholderTextColor="#999999"
-            />
-            {weightError ? <Text style={styles.errorText}>{weightError}</Text> : <Text style={styles.hintText}>Unit is kilogram (kg), allow up to 3 decimal places</Text>}
-              <TouchableOpacity style={[styles.assignButton, weightInput === '' || weightError !== '' ? styles.disabledButton : null]} onPress={() => handleSubmitWeight()} disabled={weightInput === '' || weightError !== ''}>
-                <Text style={styles.acceptText}>Submit</Text>
-              </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -653,19 +509,13 @@ const styles = StyleSheet.create({
   },
 itemStatus: {
   fontSize: 12,
+  color: '#5E4DCD',
   fontWeight: '500',
   backgroundColor: 'white',
   paddingHorizontal: 8,
   paddingVertical: 2,
   borderRadius: 4,
   marginRight: 10,
-},
-statusCollected: {
-  color: '#138f2d',
-},
-
-statusPending: {
-  color: '#1906c4',
 },
 
   input: {
@@ -690,7 +540,7 @@ statusPending: {
   },
   touchable: {
       paddingHorizontal: 5,
-      height:"10%",
+      height:"5%",
   },
   phonelabel: {
     alignSelf: "flex-start",
@@ -702,5 +552,4 @@ statusPending: {
 
 });
 
-export default CLHomeScreen;
-
+export default CLHistoryScreen;
