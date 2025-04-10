@@ -9,7 +9,6 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 type RootStackParamList = {
   Home: undefined;
   rewards: undefined;
-  notifications: undefined;
   profile: undefined;
   PickupHistory: undefined;
   RewardsHistory: undefined;
@@ -229,10 +228,6 @@ const handleLogout = async () => {
         <TouchableOpacity style={styles.navItem} onPress={() => handleTabPress("rewards")}>
           <MaterialIcon name="star" size={24} color="#666" />
           <Text style={styles.navText}>Rewards</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem} onPress={() => handleTabPress("notifications")}>
-          <MaterialIcon name="notifications" size={24} color="#666" />
-          <Text style={styles.navText}>Notifications</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem} onPress={() => handleTabPress("profile")}>
           <MaterialIcon name="person" size={24} color="#5E4DCD" />

@@ -41,7 +41,7 @@ const CLHomeScreen: React.FC<CLHomeScreenProps> = ({ navigation }) => {
   const tableHeight = (windowHeight - headerHeight - navHeight - spacing);
 
   // Add mockUsers to get client names - in a real app, this would be a backend API call
-  const mockUsers = {
+  const mockUsers: { [key: string]: { name: string; phoneNumber: string } } = {
     '1': { name: 'John Doe', phoneNumber: '+601233335555' },
     '2': { name: 'GreenTech Recyclers', phoneNumber: '+601244445555' },
     '3': { name: 'EcoLife Solutions', phoneNumber: '+601244446666' },
@@ -75,20 +75,20 @@ const CLHomeScreen: React.FC<CLHomeScreenProps> = ({ navigation }) => {
       const collectorPickups = await getCollectorPickups();
       console.log("Collector pickups:", collectorPickups.length);
       
-      // Separate into pending and completed pickups based on pickupStatus
+      // Separate into pending and collected pickups based on pickupStatus
       const pending = collectorPickups.filter(pickup => 
         pickup.pickupStatus === 'Out for pickup' || !pickup.pickupStatus
       );
       
       const collected = collectorPickups.filter(pickup => 
-        pickup.pickupStatus === 'Collected' && !pickup.weight
+        pickup.pickupStatus === 'Collected'
       );
       
       console.log("Pending pickups:", pending.length);
       console.log("Collected pickups:", collected.length);
       
       setPendingPickups(pending);
-      setCompletedPickups(collected);
+      setCompletedPickups(collected); // We keep collected items here until weight is submitted
     } catch (error) {
       console.error("Error loading data:", error);
       Alert.alert("Error", "Failed to load pickup data. Please try again.");
@@ -116,9 +116,9 @@ const handleMarkAsCollected = async (pickup: ScheduledPickup) => {
             
             if (success) {
               // Update the state with the new status
-              const updatedPickup = { 
+              const updatedPickup: ScheduledPickup = { 
                 ...pickup, 
-                status: "Collected", // Update main status field
+                status: "Collected", // Ensure status is of the correct type
                 pickupStatus: "Collected", 
                 collectedTimestamp: new Date().toISOString(),
                 date: new Date().toISOString().split('T')[0] // Update date field
@@ -172,33 +172,29 @@ const handleSubmitWeight = async () => {
 
   if (selectedPickup) {
     try {
-      // Create an updated pickup with the weight value
-      const updatedPickup = {
+      // Create an updated pickup: Set status to Collected and mark readyForClaiming
+      const updatedPickup: ScheduledPickup = {
         ...selectedPickup,
         weight: Number(weightInput),
-        status: 'Recycled', // Update main status field
-        pickupStatus: 'Recycled',
+        status: 'Collected', // Keep status as Collected
+        pickupStatus: 'Collected', // Keep pickupStatus as Collected
+        readyForClaiming: true, // Mark as ready for client to claim points
         date: new Date().toISOString().split('T')[0] // Update date field
       };
       
-      // Update pickup status to 'Recycled' in UserContext
-      const success = await updatePickupStatus(selectedPickup.id, 'Recycled');
-      
-      if (success) {
-        // Update the full pickup with weight information
-        updatePickup(updatedPickup);
+      // Update the full pickup with weight and readyForClaiming flag
+      // No need to call updatePickupStatus separately anymore
+      updatePickup(updatedPickup);
         
-        // Update local state
-        setCompletedPickups(prevPickups => 
-          prevPickups.filter(p => p.id !== selectedPickup.id)
-        );
+      // Update local state (remove from completedPickups, as it's now fully processed locally)
+      setCompletedPickups(prevPickups => 
+        prevPickups.filter(p => p.id !== selectedPickup.id)
+      );
         
-        Alert.alert('Success', `Successfully submitted weight: ${weightInput} kg`);
-      } else {
-        Alert.alert('Error', 'Failed to update pickup status');
-      }
+      Alert.alert('Success', `Successfully submitted weight: ${weightInput} kg. Client can now claim points.`);
+
     } catch (error) {
-      console.error("Error updating pickup status:", error);
+      console.error("Error updating pickup:", error);
       Alert.alert('Error', 'An error occurred while submitting weight');
     }
   }
@@ -323,7 +319,7 @@ const getStatusStyle = (status: string | undefined) => {
             {selectedPickup && (
               <ScrollView style={styles.modalScrollView}>
                 <View style={styles.mapWrapper}>
-                  <RouteInfo initialDestination={selectedPickup.address || selectedPickup.facilityName} />
+                  <RouteInfo initialDestination={selectedPickup.address || 'Default Address'} />
                 </View>
                 <View style={styles.detailsContainer}>
                   {selectedPickup.items && selectedPickup.items.length > 0 && (
@@ -338,7 +334,7 @@ const getStatusStyle = (status: string | undefined) => {
                       )}
                     </>
                   )}
-                  <Text style={styles.label}><Text style={styles.bold}>Facility:</Text> {selectedPickup.facilityName}</Text>
+                  <Text style={styles.label}><Text style={styles.bold}>Facility:</Text> {'N/A' /* No facilityName in ScheduledPickup */}</Text>
                   <Text style={styles.label}><Text style={styles.bold}>Address:</Text> {selectedPickup.address || 'Address not available'}</Text>
                   <Text style={styles.label}><Text style={styles.bold}>Client:</Text> {getClientName(selectedPickup.clientId)}</Text>
                   <Text style={styles.label}><Text style={styles.bold}>Client contact number:</Text>
@@ -379,11 +375,11 @@ const getStatusStyle = (status: string | undefined) => {
                       )}
                     </>
                   )}
-                  <Text style={styles.label}><Text style={styles.bold}>Facility:</Text> {selectedPickup.facilityName}</Text>
+                  <Text style={styles.label}><Text style={styles.bold}>Facility:</Text> {'N/A' /* No facilityName in ScheduledPickup */}</Text>
                   <Text style={styles.label}><Text style={styles.bold}>Address:</Text> {selectedPickup.address || 'Address not available'}</Text>
                   <Text style={styles.label}><Text style={styles.bold}>Client:</Text> {getClientName(selectedPickup.clientId)}</Text>
                   <Text style={styles.label}><Text style={styles.bold}>Client contact number:</Text>{getClientPhone(selectedPickup.clientId)}</Text>
-                  <Text style={styles.label}><Text style={styles.bold}>Collected Time:</Text> {selectedPickup.collectedTimestamp || 'Not recorded'}</Text>
+                  <Text style={styles.label}><Text style={styles.bold}>Collected Time:</Text> {'N/A' /* No collectedTimestamp in ScheduledPickup */}</Text>
                 </View>
               </ScrollView>
             )}

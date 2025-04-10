@@ -52,9 +52,9 @@ const CollectorListScreen = () => {
       const formattedCollectors = collectorsData.map(collector => ({
         id: collector.value,
         name: collector.label,
-        email: collector.label.toLowerCase().replace(' ', '.') + '@example.com', // Create email from name
-        phoneNumber: '123456789', // Default phone number
-        password: 'Password@123' // Default password
+        email: collector.email,
+        phoneNumber: collector.phoneNumber.startsWith('+60') ? collector.phoneNumber.slice(3) : collector.phoneNumber,
+        password: 'Password@123' // Default password for UI only
       }));
 
       // Extract emails for validation
