@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert, Modal, TextInput } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useUser } from '../../contexts/UserContext';
@@ -24,13 +24,10 @@ interface EmployeeErrors {
 }
 
 const CollectorListScreen = () => {
-  const { getCollectors, addCollector, removeCollector } = useUser();
-  const [existingEmails, setExistingEmails] = useState<string[]>(["john@example.com", "jane@example.com", "michael@example.com"]);
-  const [newEmployees, setNewEmployees] = useState<Employee[]>([
-    { id: 'collector1', name: 'John Doe', email: 'john@example.com', phoneNumber: '123456789', password: 'Pass@1234' },
-    { id: 'collector2', name: 'Jane Smith', email: 'jane@example.com', phoneNumber: '123456780', password: 'Pass@1234' },
-    { id: 'collector3', name: 'Michael Brown', email: 'michael@example.com', phoneNumber: '123456781', password: 'Pass@1234' },
-  ]);
+  const { getCollectors, addCollector, removeCollector, user } = useUser();
+  const [existingEmails, setExistingEmails] = useState<string[]>([]);
+  const [collectors, setCollectors] = useState<Employee[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const [modalVisible, setModalVisible] = useState(false);
   const [newEmployee, setNewEmployee] = useState<Employee>({ 
@@ -40,6 +37,38 @@ const CollectorListScreen = () => {
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
 
+  // Load collectors when component mounts
+  useEffect(() => {
+    loadCollectors();
+  }, []);
+
+  const loadCollectors = async () => {
+    setLoading(true);
+    try {
+      // Get all collectors from the organization
+      const collectorsData = await getCollectors();
+      
+      // Convert to the Employee format
+      const formattedCollectors = collectorsData.map(collector => ({
+        id: collector.value,
+        name: collector.label,
+        email: collector.label.toLowerCase().replace(' ', '.') + '@example.com', // Create email from name
+        phoneNumber: '123456789', // Default phone number
+        password: 'Password@123' // Default password
+      }));
+
+      // Extract emails for validation
+      const emails = formattedCollectors.map(c => c.email);
+      setExistingEmails(emails);
+      
+      setCollectors(formattedCollectors);
+    } catch (error) {
+      console.error("Error loading collectors:", error);
+      Alert.alert("Error", "Failed to load collectors. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
 const handleDelete = async (id: string) => {
   Alert.alert(
@@ -58,13 +87,16 @@ const handleDelete = async (id: string) => {
           const success = await removeCollector(id);
           if (success) {
             // Also remove from local state
-            setNewEmployees((prev) => prev.filter((item) => item.id !== id));
+            setCollectors((prev) => prev.filter((item) => item.id !== id));
             // Remove from existingEmails list
-            const employee = newEmployees.find(emp => emp.id === id);
+            const employee = collectors.find(emp => emp.id === id);
             if (employee) {
               setExistingEmails(prev => prev.filter(email => email !== employee.email));
             }
             Alert.alert("Success", "Collector removed successfully");
+            
+            // Reload collectors to ensure the list is up to date
+            loadCollectors();
           } else {
             Alert.alert("Error", "Failed to remove collector");
           }
@@ -105,24 +137,14 @@ const handleDelete = async (id: string) => {
     );
     
     if (success) {
-      // Generate a collector ID in the format 'collectorX' where X is a number
-      const collectorId = `collector${newEmployees.length + 4}`;
-      
-      // Add the new employee to local state
-      setNewEmployees([...newEmployees, { 
-        ...newEmployee, 
-        id: collectorId,
-        phoneNumber: phoneNumber
-      }]);
-      
-      // Add to existingEmails
-      setExistingEmails([...existingEmails, newEmployee.email]);
-      
       // Reset form
       setNewEmployee({ id: '', name: '', email: '', phoneNumber: '', password: '', confirmPassword: '' });
       setModalVisible(false);
       setErrors({});
       Alert.alert("Success", "Collector added successfully");
+      
+      // Reload collectors to get the updated list including the new collector
+      loadCollectors();
     } else {
       Alert.alert("Error", "Failed to add collector. The email might already be in use.");
     }
@@ -139,25 +161,35 @@ return (
     </TouchableOpacity>
   </View>
 
-  <FlatList
-    data={newEmployees}
-    keyExtractor={(item) => item.id}
-    renderItem={({ item }) => (
-      <View style={styles.itemContainer}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{item.name.charAt(0)}</Text>
+  {loading ? (
+    <View style={styles.loadingContainer}>
+      <Text>Loading collectors...</Text>
+    </View>
+  ) : collectors.length === 0 ? (
+    <View style={styles.emptyContainer}>
+      <Text style={styles.emptyText}>No collectors found</Text>
+    </View>
+  ) : (
+    <FlatList
+      data={collectors}
+      keyExtractor={(item) => item.id}
+      renderItem={({ item }) => (
+        <View style={styles.itemContainer}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{item.name.charAt(0)}</Text>
+          </View>
+          <View style={styles.collectorInfo}>
+            <Text style={styles.collectorName}>{item.name}</Text>
+            <Text style={styles.collectorEmail}>{item.email}</Text>
+            <Text style={styles.collectorPhone}>+60{item.phoneNumber}</Text>
+          </View>
+          <TouchableOpacity onPress={() => handleDelete(item.id)}>
+            <Icon name="trash-can" size={24} color="#333333" />
+          </TouchableOpacity>
         </View>
-        <View style={styles.collectorInfo}>
-          <Text style={styles.collectorName}>{item.name}</Text>
-          <Text style={styles.collectorEmail}>{item.email}</Text>
-          <Text style={styles.collectorPhone}>+60{item.phoneNumber}</Text>
-        </View>
-        <TouchableOpacity onPress={() => handleDelete(item.id)}>
-          <Icon name="trash-can" size={24} color="#333333" />
-        </TouchableOpacity>
-      </View>
-    )}
-  />
+      )}
+    />
+  )}
 
   <Modal visible={modalVisible} transparent animationType="slide">
     <View style={styles.modalContainer}>
@@ -273,24 +305,20 @@ const styles = StyleSheet.create({
     padding: 16,
     backgroundColor: '#fff'
   },
-
   header: {
     flexDirection: 'row',
     justifyContent: "flex-end",
     marginBottom: 16
   },
-
   addButton: {
     backgroundColor: "#5E4DCD",
     padding: 10,
     borderRadius: 5
   },
-
   addButtonText: {
     color: 'white',
     fontWeight: 'bold'
   },
-
   itemContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -298,7 +326,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0'
   },
-
   avatar: {
     width: 40,
     height: 40,
@@ -308,55 +335,60 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 10
   },
-
   avatarText: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#333333'
   },
-
   collectorInfo: {
     flex: 1,
     justifyContent: 'center',
   },
-  
   collectorName: {
     fontSize: 16,
     fontWeight: 'bold',
     color: '#333333',
   },
-  
   collectorEmail: {
     fontSize: 14,
     color: '#333333',
   },
-  
   collectorPhone: {
     fontSize: 12,
     color: '#666666',
   },
-
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#666666',
+  },
   modalContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "rgba(0,0,0,0.5)"
   },
-
   modalContent: {
     width: "80%",
     backgroundColor: "#fff",
     padding: 20,
     borderRadius: 10
   },
-
   modalTitle: {
     fontSize: 18,
     fontWeight: "bold",
     marginBottom: 20,
     color: '#333333'
   },
-
   input: {
     width: "100%",
     height: 40,
@@ -367,31 +399,26 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     color: '#333333'
   },
-
   saveButton: {
     backgroundColor: "#5E4DCD",
     padding: 10,
     borderRadius: 5,
     alignItems: "center"
   },
-
   buttonText: {
     color: "#fff",
     fontWeight: "bold"
   },
-
   errorText: {
     color: "#E53935",
     fontSize: 12,
     marginBottom: 10
   },
-
   hintText: {
     color: "#555555",
     fontSize: 12,
     marginBottom: 10
   },
-
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -399,7 +426,6 @@ const styles = StyleSheet.create({
     width: "100%",
     position: "relative"
   },
-
   eyeIcon: {
     position: "absolute",
     right: 0,

@@ -80,13 +80,17 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       // Load pickups
       setIsPickupsLoading(true);
       const allPickups = await getScheduledPickups();
-      // Filter to show only pending pickups
-      const pendingPickups = allPickups.filter(pickup => pickup.status === 'Pending');
-      setScheduledPickups(pendingPickups);
+      // Filter to show only active pickups (Pending or Out for pickup)
+      // Also check pickupStatus field which is used by collectors
+      const activePickups = allPickups.filter(pickup => 
+        (pickup.status === 'Pending' || pickup.status === 'Out for pickup') && 
+        (pickup.pickupStatus !== 'Collected' && pickup.pickupStatus !== 'Recycled' && pickup.pickupStatus !== 'Cancelled')
+      );
+      setScheduledPickups(activePickups);
       
       // Load organization names for pickups
       const orgNames: {[key: string]: string} = {};
-      for (const pickup of pendingPickups) {
+      for (const pickup of activePickups) {
         if (pickup.organizationId) {
           const orgName = await getOrganizationName(pickup.organizationId);
           orgNames[pickup.id] = orgName;
@@ -108,8 +112,33 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const isItemInPickup = (itemId: string) => {
     return scheduledPickups.some(pickup => 
       pickup.listedItemIds.includes(itemId) && 
-      pickup.status === 'Pending'
+      (pickup.status === 'Pending' || pickup.status === 'Out for pickup') &&
+      (pickup.pickupStatus !== 'Collected' && pickup.pickupStatus !== 'Recycled' && pickup.pickupStatus !== 'Cancelled')
     );
+  };
+
+  // Helper function to get status display text
+  const getStatusText = (status: string) => {
+    switch(status) {
+      case 'Pending':
+        return 'Not Collected';
+      case 'Out for pickup':
+        return 'Out for Pickup';
+      default:
+        return status;
+    }
+  };
+
+  // Helper function to get status color
+  const getStatusColor = (status: string) => {
+    switch(status) {
+      case 'Pending':
+        return '#F57C00'; // Orange
+      case 'Out for pickup':
+        return '#5E4DCD'; // Purple
+      default:
+        return '#666666';
+    }
   };
 
   const handleViewPickup = (pickupId: string) => {
@@ -245,31 +274,49 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
               <View style={styles.emptyContainer}>
                 <Text style={styles.emptyText}>No scheduled pickups</Text>
               </View>
-            ) : scheduledPickups.map((pickup) => (
-              <View key={pickup.id} style={styles.tableRow}>
-                <View style={styles.pickupInfo}>
-                  <Text style={styles.facilityText}>
-                    {organizationNames[pickup.id] || 'Unknown Facility'}
-                  </Text>
-                  {pickup.collector && (
-                    <Text style={styles.collectorText}>
-                      Collector: {pickup.collector}
-                    </Text>
-                  )}
-                </View>
-                <View style={styles.actionButtons}>
-                  <TouchableOpacity 
-                    style={styles.iconButton} 
-                    onPress={() => handleViewPickup(pickup.id)}
-                  >
-                    <Icon name="visibility" size={24} color="#666" />
-                  </TouchableOpacity>
-                  <View style={styles.iconButton}>
-                    <LoadingIcon />
+            ) : (
+              // Sort the pickups so that Not Collected (Pending) comes before Out for Pickup
+              [...scheduledPickups]
+                .sort((a, b) => {
+                  // Prioritize Pending over Out for pickup
+                  if (a.status === b.status) return 0;
+                  if (a.status === 'Pending') return -1;
+                  if (b.status === 'Pending') return 1;
+                  return 0;
+                })
+                .map((pickup) => (
+                  <View key={pickup.id} style={styles.tableRow}>
+                    <View style={styles.pickupInfo}>
+                      <Text style={styles.facilityText}>
+                        {organizationNames[pickup.id] || 'Unknown Facility'}
+                      </Text>
+                      {pickup.collector && (
+                        <Text style={styles.collectorText}>
+                          Collector: {pickup.collector}
+                        </Text>
+                      )}
+                      <View style={[styles.statusTag, {
+                        backgroundColor: getStatusColor(pickup.status)
+                      }]}>
+                        <Text style={styles.statusText}>
+                          {getStatusText(pickup.status)}
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={styles.actionButtons}>
+                      <TouchableOpacity 
+                        style={styles.iconButton} 
+                        onPress={() => handleViewPickup(pickup.id)}
+                      >
+                        <Icon name="visibility" size={24} color="#666" />
+                      </TouchableOpacity>
+                      <View style={styles.iconButton}>
+                        <LoadingIcon />
+                      </View>
+                    </View>
                   </View>
-                </View>
-              </View>
-            ))}
+                ))
+            )}
           </ScrollView>
         </View>
       </View>
@@ -564,6 +611,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 4,
+  },
+  statusTag: {
+    marginTop: 6,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  statusText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '500',
   },
 });
 

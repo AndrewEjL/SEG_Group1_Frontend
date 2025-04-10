@@ -118,9 +118,14 @@ const handleMarkAsCollected = async (pickup: ScheduledPickup) => {
               // Update the state with the new status
               const updatedPickup = { 
                 ...pickup, 
+                status: "Collected", // Update main status field
                 pickupStatus: "Collected", 
-                collectedTimestamp: new Date().toISOString() 
+                collectedTimestamp: new Date().toISOString(),
+                date: new Date().toISOString().split('T')[0] // Update date field
               };
+              
+              // Update the full pickup with all updated fields
+              updatePickup(updatedPickup);
 
               setPendingPickups(prevPickups => 
                 prevPickups.filter(p => p.id !== pickup.id)
@@ -171,8 +176,9 @@ const handleSubmitWeight = async () => {
       const updatedPickup = {
         ...selectedPickup,
         weight: Number(weightInput),
+        status: 'Recycled', // Update main status field
         pickupStatus: 'Recycled',
-        date: new Date().toISOString() // Set current date as completion date
+        date: new Date().toISOString().split('T')[0] // Update date field
       };
       
       // Update pickup status to 'Recycled' in UserContext
