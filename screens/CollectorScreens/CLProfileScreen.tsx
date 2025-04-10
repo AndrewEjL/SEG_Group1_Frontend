@@ -28,9 +28,9 @@ const CLProfileScreen: React.FC<RProfileScreenProps> = ({ navigation }) => {
   const [modal2Visible, setModal2Visible] = useState(false);
 
   const clearModal2Data = () => {
-    setTempPassword({originPassword: "", password: "", confirmPassword: ""});
+    setTempPassword({ originPassword: "", password: "", confirmPassword: "" });
     setPasswordErrors({ originPassword: "", password: "", confirmPassword: "" });
-    setPasswordVisibility({origin: false, new: false, confirm: false});
+    setPasswordVisibility({ origin: false, new: false, confirm: false });
   }
 
   const validateEmail = (email: string): boolean => {
@@ -142,7 +142,7 @@ const CLProfileScreen: React.FC<RProfileScreenProps> = ({ navigation }) => {
   };
 
 
-return (
+  return (
     <View style={styles.container}>
       <View style={styles.profileHeader}>
         <View style={styles.avatarContainer}>
@@ -174,7 +174,7 @@ return (
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Activity</Text>
-        <TouchableOpacity style={styles.listItem} onPress={() => handleTabPress("CLHistory")>
+        <TouchableOpacity style={styles.listItem} onPress={() => handleTabPress("CLHistory")}>
           <Icon name="history" size={20} color="#5E4DCD" />
           <Text style={styles.listText}>Pickups History</Text>
         </TouchableOpacity>
@@ -204,8 +204,8 @@ return (
       >
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
-            <TouchableOpacity onPress={() => {setModal1Visible(false);setTempUser(localUser);}} style={{ alignSelf: "flex-start" }}>
-                <Icon name="close" size={24} color="#333333" />
+            <TouchableOpacity onPress={() => { setModal1Visible(false); setTempUser(localUser); }} style={{ alignSelf: "flex-start" }}>
+              <Icon name="close" size={24} color="#333333" />
             </TouchableOpacity>
             <Text style={styles.modalTitle}>Edit Profile</Text>
             <TextInput
@@ -242,98 +242,98 @@ return (
             </View>
           </View>
         </View>
-       </Modal>
+      </Modal>
       <Modal
-         animationType="slide"
-         transparent={true}
-         visible={modal2Visible}
-         onRequestClose={() => setModal2Visible(false)}
-       >
-         <View style={styles.modalContainer}>
-           <View style={styles.modalContent}>
-             <TouchableOpacity onPress={() => {setModal2Visible(false);clearModal2Data();}} style={{ alignSelf: "flex-start" }}>
-                 <Icon name="close" size={24} color="#333333" />
-             </TouchableOpacity>
-             <Text style={styles.modalTitle}>Change password</Text>
-             <View style={styles.inputContainer}>
-             <TextInput
-               placeholder="Origin Password"
-               value={tempPassword.originPassword}
-               onChangeText={(text) => setTempPassword({ ...tempPassword, originPassword: text })}
-               secureTextEntry = {!passwordVisibility.origin}
-               style={styles.input}
-               placeholderTextColor="#999999"
-             />
-             <TouchableOpacity
-               onPress={() =>
-                 setPasswordVisibility((prev) => ({
-                   ...prev,
-                   origin: !prev.origin,
-                 }))
-               }
-               style={styles.eyeIcon}
-             >
-               <Icon name={passwordVisibility.origin ? "eye-off" : "eye"} size={20} color="#555555" />
-             </TouchableOpacity>
-             </View>
-             {passwordErrors.originPassword ? <Text style={styles.errorText}>{passwordErrors.originPassword}</Text> : null}
-             <View style={styles.inputContainer}>
-             <TextInput
-               placeholder="New Password"
-               value={tempPassword.password}
-               onChangeText={(text) => setTempPassword({ ...tempPassword, password: text })}
-               secureTextEntry={!passwordVisibility.new}
-               style={styles.input}
-               placeholderTextColor="#999999"
-             />
-             <TouchableOpacity
-               onPress={() =>
-                 setPasswordVisibility((prev) => ({
-                   ...prev,
-                   new: !prev.new,
-                 }))
-               }
-               style={styles.eyeIcon}
-             >
-               <Icon name={passwordVisibility.new ? "eye-off" : "eye"} size={20} color="#555555" />
-             </TouchableOpacity>
-             </View>
-             {passwordErrors.password ? <Text style={styles.errorText}>{passwordErrors.password}</Text> : <Text style={styles.hintText}>At least 8 characters long, containing at least one number and one special character</Text>}
-             <View style={styles.inputContainer}>
-             <TextInput
-               placeholder="Confirm new Password"
-               value={tempPassword.confirmPassword}
-               onChangeText={(text) => setTempPassword({ ...tempPassword, confirmPassword: text })}
-               secureTextEntry={!passwordVisibility.confirm}
-               style={styles.input}
-               placeholderTextColor="#999999"
-             />
-             <TouchableOpacity
-               onPress={() =>
-                 setPasswordVisibility((prev) => ({
-                   ...prev,
-                   confirm: !prev.confirm,
-                 }))
-               }
-               style={styles.eyeIcon}
-             >
-               <Icon name={passwordVisibility.confirm ? "eye-off" : "eye"} size={20} color="#555555" />
-             </TouchableOpacity>
-             </View>
-             {passwordErrors.confirmPassword ? <Text style={styles.errorText}>{passwordErrors.confirmPassword}</Text> : null}
-             <View style={styles.modalButtons}>
-               <TouchableOpacity
-                 style={styles.saveButton}
-                 onPress={handleChangePassword}
-               >
-                 <Text style={styles.buttonText}>Save</Text>
-               </TouchableOpacity>
-             </View>
-           </View>
-         </View>
-       </Modal>
-      </View>
-)
+        animationType="slide"
+        transparent={true}
+        visible={modal2Visible}
+        onRequestClose={() => setModal2Visible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <TouchableOpacity onPress={() => { setModal2Visible(false); clearModal2Data(); }} style={{ alignSelf: "flex-start" }}>
+              <Icon name="close" size={24} color="#333333" />
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Change password</Text>
+            <View style={styles.inputContainer}>
+              <TextInput
+                placeholder="Origin Password"
+                value={tempPassword.originPassword}
+                onChangeText={(text) => setTempPassword({ ...tempPassword, originPassword: text })}
+                secureTextEntry={!passwordVisibility.origin}
+                style={styles.input}
+                placeholderTextColor="#999999"
+              />
+              <TouchableOpacity
+                onPress={() =>
+                  setPasswordVisibility((prev) => ({
+                    ...prev,
+                    origin: !prev.origin,
+                  }))
+                }
+                style={styles.eyeIcon}
+              >
+                <Icon name={passwordVisibility.origin ? "eye-off" : "eye"} size={20} color="#555555" />
+              </TouchableOpacity>
+            </View>
+            {passwordErrors.originPassword ? <Text style={styles.errorText}>{passwordErrors.originPassword}</Text> : null}
+            <View style={styles.inputContainer}>
+              <TextInput
+                placeholder="New Password"
+                value={tempPassword.password}
+                onChangeText={(text) => setTempPassword({ ...tempPassword, password: text })}
+                secureTextEntry={!passwordVisibility.new}
+                style={styles.input}
+                placeholderTextColor="#999999"
+              />
+              <TouchableOpacity
+                onPress={() =>
+                  setPasswordVisibility((prev) => ({
+                    ...prev,
+                    new: !prev.new,
+                  }))
+                }
+                style={styles.eyeIcon}
+              >
+                <Icon name={passwordVisibility.new ? "eye-off" : "eye"} size={20} color="#555555" />
+              </TouchableOpacity>
+            </View>
+            {passwordErrors.password ? <Text style={styles.errorText}>{passwordErrors.password}</Text> : <Text style={styles.hintText}>At least 8 characters long, containing at least one number and one special character</Text>}
+            <View style={styles.inputContainer}>
+              <TextInput
+                placeholder="Confirm new Password"
+                value={tempPassword.confirmPassword}
+                onChangeText={(text) => setTempPassword({ ...tempPassword, confirmPassword: text })}
+                secureTextEntry={!passwordVisibility.confirm}
+                style={styles.input}
+                placeholderTextColor="#999999"
+              />
+              <TouchableOpacity
+                onPress={() =>
+                  setPasswordVisibility((prev) => ({
+                    ...prev,
+                    confirm: !prev.confirm,
+                  }))
+                }
+                style={styles.eyeIcon}
+              >
+                <Icon name={passwordVisibility.confirm ? "eye-off" : "eye"} size={20} color="#555555" />
+              </TouchableOpacity>
+            </View>
+            {passwordErrors.confirmPassword ? <Text style={styles.errorText}>{passwordErrors.confirmPassword}</Text> : null}
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.saveButton}
+                onPress={handleChangePassword}
+              >
+                <Text style={styles.buttonText}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </View>
+  )
 }
 const styles = StyleSheet.create({
   container: {
