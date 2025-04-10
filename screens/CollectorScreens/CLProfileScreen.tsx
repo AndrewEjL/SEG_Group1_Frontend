@@ -1,20 +1,36 @@
-import React, { useState } from "react";
-import { View, Text, TouchableOpacity, TextInput, Modal, StyleSheet, Alert } from "react-native";
+import React, { useState, useEffect } from "react";
+import { View, Text, TouchableOpacity, TextInput, Modal, StyleSheet, Alert, ScrollView, SafeAreaView } from "react-native";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import MenuIcon from "react-native-vector-icons/MaterialIcons";
 import { useUser } from '../../contexts/UserContext';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+
+type RProfileScreenProps = {
+  navigation: NativeStackNavigationProp<any, any>;
+};
+
 const CLProfileScreen: React.FC<RProfileScreenProps> = ({ navigation }) => {
-  const { user, logout, changePassword } = useUser();
+  const { user, logout, changePassword, updateUserProfile } = useUser();
 
-  const [localUser, setLocalUser] = useState({
-    organization: user?.name || "Collector Name",
-    email: user?.email || "email@example.com",
-    address: user?.address || "Address",
-    phoneNumber: user?.phoneNumber || "+601233335555",
+  const [tempUser, setTempUser] = useState({
+    name: user?.name || "",
+    email: user?.email || "",
+    address: user?.address || "",
+    phoneNumber: user?.phoneNumber || ""
   });
+  
+  // Update temp user data when user object changes
+  useEffect(() => {
+    if (user) {
+      setTempUser({
+        name: user.name,
+        email: user.email,
+        address: user.address || "",
+        phoneNumber: user.phoneNumber
+      });
+    }
+  }, [user]);
 
-  const [tempUser, setTempUser] = useState(localUser);
   const [tempPassword, setTempPassword] = useState({ originPassword: "", password: "", confirmPassword: "" });
   const [errors, setErrors] = useState({ email: "", phoneNumber: "", address: "" });
   const [passwordErrors, setPasswordErrors] = useState({ originPassword: "", password: "", confirmPassword: "" });
@@ -51,7 +67,7 @@ const CLProfileScreen: React.FC<RProfileScreenProps> = ({ navigation }) => {
     return tempUser.address.trim().length > 0;
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     let newErrors = { email: "", phoneNumber: "", address: "" };
 
     if (!validateEmail(tempUser.email)) {
@@ -67,9 +83,19 @@ const CLProfileScreen: React.FC<RProfileScreenProps> = ({ navigation }) => {
     setErrors(newErrors);
 
     if (!newErrors.email && !newErrors.phoneNumber && !newErrors.address) {
-      setLocalUser(tempUser);
-      setModal1Visible(false);
-      Alert.alert("Success", "Profile updated successfully!");
+      // Update profile using the UserContext method
+      const success = await updateUserProfile({
+        email: tempUser.email,
+        address: tempUser.address,
+        phoneNumber: tempUser.phoneNumber
+      });
+
+      if (success) {
+        setModal1Visible(false);
+        Alert.alert("Success", "Profile updated successfully!");
+      } else {
+        Alert.alert("Error", "Failed to update profile. Please try again.");
+      }
     }
   };
 
@@ -78,6 +104,10 @@ const CLProfileScreen: React.FC<RProfileScreenProps> = ({ navigation }) => {
 
     // Password validation regex - at least 8 chars, 1 number, 1 special char
     const passwordRegex = /^(?=.*[0-9])(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$/;
+
+    if (!tempPassword.originPassword) {
+      newErrors.originPassword = "Current password cannot be empty";
+    }
 
     if (!tempPassword.password) {
       newErrors.password = "New password cannot be empty";
@@ -91,14 +121,13 @@ const CLProfileScreen: React.FC<RProfileScreenProps> = ({ navigation }) => {
 
     setPasswordErrors(newErrors);
 
-    if (!newErrors.password && !newErrors.confirmPassword) {
+    if (!newErrors.originPassword && !newErrors.password && !newErrors.confirmPassword) {
       // Call the changePassword method from UserContext
       const success = await changePassword(tempPassword.originPassword, tempPassword.password);
 
       if (success) {
         // Clear the form
-        setTempPassword({ originPassword: "", password: "", confirmPassword: "" });
-        setPasswordVisibility({ origin: false, new: false, confirm: false });
+        clearModal2Data();
 
         // Close the modal
         setModal2Visible(false);
@@ -141,47 +170,77 @@ const CLProfileScreen: React.FC<RProfileScreenProps> = ({ navigation }) => {
     navigation.navigate(tabName);
   };
 
+  // If user is not loaded yet, show a loading indicator
+  if (!user) {
+    return (
+      <View style={[styles.container, {justifyContent: 'center', alignItems: 'center'}]}>
+        <Text>Loading profile...</Text>
+      </View>
+    );
+  }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.profileHeader}>
-        <View style={styles.avatarContainer}>
-          <Icon name="account-circle" size={60} color="#a393eb" />
+    <SafeAreaView style={styles.safeContainer}>
+      <ScrollView style={styles.scrollContainer}>
+        <View style={styles.profileHeader}>
+          <View style={styles.avatarContainer}>
+            <Icon name="account-circle" size={60} color="#a393eb" />
+          </View>
+          <View style={styles.userInfo}>
+            <Text style={styles.username}>{user.name}</Text>
+            <Text style={styles.email}>{user.email}</Text>
+            <TouchableOpacity
+              style={styles.editProfileButton}
+              onPress={() => setModal1Visible(true)}
+            >
+              <Text style={styles.editProfileText}>Edit Profile</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-        <View style={styles.userInfo}>
-          <Text style={styles.username}>{user?.name || localUser.organization}</Text>
-          <Text style={styles.email}>{user?.email || localUser.email}</Text>
-          <TouchableOpacity
-            style={styles.editProfileButton}
-            onPress={() => setModal1Visible(true)}
-          >
-            <Text style={styles.editProfileText}>Edit Profile</Text>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Contact Information</Text>
+          <View style={styles.infoItem}>
+            <Icon name="phone" size={20} color="#5E4DCD" />
+            <Text style={styles.infoText}>{user.phoneNumber}</Text>
+          </View>
+          <View style={styles.infoItem}>
+            <Icon name="map-marker" size={20} color="#5E4DCD" />
+            <Text style={styles.infoText}>{user.address || "No address set"}</Text>
+          </View>
+          <View style={styles.infoItem}>
+            <Icon name="office-building" size={20} color="#5E4DCD" />
+            <Text style={styles.infoText}>
+              Organization: {user.organizationId ? `GreenTech Recyclers (ID: ${user.organizationId})` : "None"}
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Account management</Text>
+          <TouchableOpacity style={styles.listItem} onPress={() => setModal2Visible(true)}>
+            <Icon name="key" size={20} color="#5E4DCD" />
+            <Text style={styles.listText}>Change password</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.listItem} onPress={handleLogout}>
+            <Icon name="logout" size={20} color="#D32F2F" />
+            <Text style={[styles.listText, styles.logoutText]}>Logout</Text>
           </TouchableOpacity>
         </View>
-      </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Account management</Text>
-        <TouchableOpacity style={styles.listItem} onPress={() => setModal2Visible(true)}>
-          <Icon name="key" size={20} color="#5E4DCD" />
-          <Text style={styles.listText}>Change password</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.listItem} onPress={handleLogout}>
-          <Icon name="logout" size={20} color="#D32F2F" />
-          <Text style={[styles.listText, styles.logoutText]}>Logout</Text>
-        </TouchableOpacity>
-      </View>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Activity</Text>
+          <TouchableOpacity style={styles.listItem} onPress={() => handleTabPress("CLHistory")}>
+            <Icon name="history" size={20} color="#5E4DCD" />
+            <Text style={styles.listText}>Pickups History</Text>
+          </TouchableOpacity>
+        </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Activity</Text>
-        <TouchableOpacity style={styles.listItem} onPress={() => handleTabPress("CLHistory")}>
-          <Icon name="history" size={20} color="#5E4DCD" />
-          <Text style={styles.listText}>Pickups History</Text>
-        </TouchableOpacity>
-      </View>
+        {/* Bottom spacer to ensure content isn't hidden behind fixed nav bar */}
+        <View style={{height: 80}} />
+      </ScrollView>
 
-
-      {/* Bottom Navigation */}
+      {/* Bottom Navigation - Now outside of ScrollView */}
       <View style={styles.bottomNav}>
         <TouchableOpacity style={styles.navItem} onPress={() => handleTabPress("CLHome")}>
           <MenuIcon name="home" size={24} color="#666666" />
@@ -196,15 +255,42 @@ const CLProfileScreen: React.FC<RProfileScreenProps> = ({ navigation }) => {
           <Text style={styles.activeNavText}>Profile</Text>
         </TouchableOpacity>
       </View>
+      
+      {/* Edit Profile Modal */}
       <Modal
         animationType="slide"
         transparent={true}
         visible={modal1Visible}
-        onRequestClose={() => setModal1Visible(false)}
+        onRequestClose={() => {
+          setModal1Visible(false);
+          // Reset temp user to current user data
+          if (user) {
+            setTempUser({
+              name: user.name,
+              email: user.email,
+              address: user.address || "",
+              phoneNumber: user.phoneNumber
+            });
+          }
+        }}
       >
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
-            <TouchableOpacity onPress={() => { setModal1Visible(false); setTempUser(localUser); }} style={{ alignSelf: "flex-start" }}>
+            <TouchableOpacity 
+              onPress={() => {
+                setModal1Visible(false);
+                // Reset temp user to current user data
+                if (user) {
+                  setTempUser({
+                    name: user.name,
+                    email: user.email,
+                    address: user.address || "",
+                    phoneNumber: user.phoneNumber
+                  });
+                }
+              }} 
+              style={{ alignSelf: "flex-start" }}
+            >
               <Icon name="close" size={24} color="#333333" />
             </TouchableOpacity>
             <Text style={styles.modalTitle}>Edit Profile</Text>
@@ -243,11 +329,16 @@ const CLProfileScreen: React.FC<RProfileScreenProps> = ({ navigation }) => {
           </View>
         </View>
       </Modal>
+      
+      {/* Change Password Modal */}
       <Modal
         animationType="slide"
         transparent={true}
         visible={modal2Visible}
-        onRequestClose={() => setModal2Visible(false)}
+        onRequestClose={() => {
+          setModal2Visible(false);
+          clearModal2Data();
+        }}
       >
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
@@ -257,7 +348,7 @@ const CLProfileScreen: React.FC<RProfileScreenProps> = ({ navigation }) => {
             <Text style={styles.modalTitle}>Change password</Text>
             <View style={styles.inputContainer}>
               <TextInput
-                placeholder="Origin Password"
+                placeholder="Current Password"
                 value={tempPassword.originPassword}
                 onChangeText={(text) => setTempPassword({ ...tempPassword, originPassword: text })}
                 secureTextEntry={!passwordVisibility.origin}
@@ -332,14 +423,23 @@ const CLProfileScreen: React.FC<RProfileScreenProps> = ({ navigation }) => {
           </View>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   )
 }
+
 const styles = StyleSheet.create({
+  safeContainer: {
+    flex: 1,
+    backgroundColor: "white",
+    position: "relative",
+  },
+  scrollContainer: {
+    flex: 1,
+    padding: 20,
+  },
   container: {
     flex: 1,
     backgroundColor: "white",
-    padding: 20,
   },
   profileHeader: {
     flexDirection: "row",
@@ -347,13 +447,13 @@ const styles = StyleSheet.create({
     backgroundColor: "#F0EBF8",
     padding: 10,
     borderRadius: 20,
-    marginHorizontal: 20,
-    marginTop: 40,
+    marginHorizontal: 0,
+    marginTop: 20,
     marginBottom: 30,
     shadowColor: "#000",
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 5,
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 0,
   },
   avatarContainer: {
     width: 80,
@@ -397,13 +497,24 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     backgroundColor: "#f9f9f9",
     borderRadius: 10,
-    padding: 10,
+    padding: 15,
   },
   sectionTitle: {
     fontSize: 16,
     fontWeight: "bold",
     color: "#555555",
-    marginBottom: 5,
+    marginBottom: 10,
+  },
+  infoItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 8,
+  },
+  infoText: {
+    fontSize: 14,
+    marginLeft: 10,
+    color: "#333333",
+    flex: 1,
   },
   listItem: {
     flexDirection: "row",
@@ -429,6 +540,8 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
+    height: 60,
+    zIndex: 999,
   },
   navItem: {
     alignItems: "center",
@@ -441,6 +554,8 @@ const styles = StyleSheet.create({
   activeNavText: {
     color: "#5E4DCD",
     fontWeight: "500",
+    marginTop: 4,
+    fontSize: 12,
   },
   modalContainer: {
     flex: 1,
@@ -510,4 +625,5 @@ const styles = StyleSheet.create({
     padding: 5,
   },
 });
+
 export default CLProfileScreen;

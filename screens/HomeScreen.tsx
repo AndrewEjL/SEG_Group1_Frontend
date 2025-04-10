@@ -80,14 +80,13 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       // Load pickups
       setIsPickupsLoading(true);
       const allPickups = await getScheduledPickups();
-      
-      // Filter to show only ongoing pickups
-      const ongoingPickups = allPickups.filter(pickup => pickup.status === 'Pending');
-      setScheduledPickups(ongoingPickups);
+      // Filter to show only pending pickups
+      const pendingPickups = allPickups.filter(pickup => pickup.status === 'Pending');
+      setScheduledPickups(pendingPickups);
       
       // Load organization names for pickups
       const orgNames: {[key: string]: string} = {};
-      for (const pickup of ongoingPickups) {
+      for (const pickup of pendingPickups) {
         if (pickup.organizationId) {
           const orgName = await getOrganizationName(pickup.organizationId);
           orgNames[pickup.id] = orgName;
@@ -117,7 +116,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     navigation.navigate('PickupDetails', { pickupId });
   };
 
-  const handleEditPickup = (pickupId: string) => {
+  const handleEditPickup = (pickup: ScheduledPickup) => {
     // Show options to update pickup status
     Alert.alert(
       "Update Pickup",
@@ -128,62 +127,48 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           style: "cancel"
         },
         {
-          text: "Mark as Collected",
+          text: "Mark as Completed",
           onPress: async () => {
-            // Get current date for the completion timestamp
-            const currentDate = new Date().toISOString();
+            // In a real app, this would call an API to update the pickup
+            const updatedPickup: ScheduledPickup = {
+              ...pickup,
+              status: 'Collected',
+              date: new Date().toISOString().split('T')[0]
+            };
             
-            // Find the pickup in the list
-            const pickup = scheduledPickups.find(p => p.id === pickupId);
+            // Update the pickup
+            updatePickup(updatedPickup);
             
-            if (pickup && user) {
-              // Update the pickup status to collected with current date
-              const updatedPickup: ScheduledPickup = {
-                ...pickup,
-                status: 'Collected',
-                date: currentDate
-              };
-              
-              updatePickup(updatedPickup);
-              
-              Alert.alert(
-                "Success", 
-                "Pickup has been marked as collected. You can view it in your Pickup History."
-              );
-              
-              // Trigger data reload to reflect the changes
-              loadData();
-            }
+            Alert.alert(
+              "Success", 
+              "Pickup has been marked as completed. You can view it in your Pickup History."
+            );
+            
+            // Trigger data reload to reflect the changes
+            loadData();
           }
         },
         {
           text: "Mark as Cancelled",
           style: "destructive",
           onPress: async () => {
-            // Get current date for the cancellation timestamp
-            const currentDate = new Date().toISOString();
+            // In a real app, this would call an API to update the pickup
+            const updatedPickup: ScheduledPickup = {
+              ...pickup,
+              status: 'Cancelled',
+              date: new Date().toISOString().split('T')[0]
+            };
             
-            // Find the pickup in the list
-            const pickup = scheduledPickups.find(p => p.id === pickupId);
+            // Update the pickup
+            updatePickup(updatedPickup);
             
-            if (pickup && user) {
-              // Update the pickup status to cancelled with current date
-              const updatedPickup: ScheduledPickup = {
-                ...pickup,
-                status: 'Cancelled',
-                date: currentDate
-              };
-              
-              updatePickup(updatedPickup);
-              
-              Alert.alert(
-                "Success", 
-                "Pickup has been cancelled. You can view it in your Pickup History."
-              );
-              
-              // Trigger data reload to reflect the changes
-              loadData();
-            }
+            Alert.alert(
+              "Success", 
+              "Pickup has been cancelled. You can view it in your Pickup History."
+            );
+            
+            // Trigger data reload to reflect the changes
+            loadData();
           }
         }
       ]
@@ -263,12 +248,9 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             ) : scheduledPickups.map((pickup) => (
               <View key={pickup.id} style={styles.tableRow}>
                 <View style={styles.pickupInfo}>
-                  <Text style={styles.facilityText}>{pickup.address}</Text>
-                  {pickup.organizationId && organizationNames[pickup.id] && (
-                    <Text style={styles.organizationText}>
-                      By: {organizationNames[pickup.id]}
-                    </Text>
-                  )}
+                  <Text style={styles.facilityText}>
+                    {organizationNames[pickup.id] || 'Unknown Facility'}
+                  </Text>
                   {pickup.collector && (
                     <Text style={styles.collectorText}>
                       Collector: {pickup.collector}
@@ -282,12 +264,9 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                   >
                     <Icon name="visibility" size={24} color="#666" />
                   </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={styles.iconButton} 
-                    onPress={() => handleEditPickup(pickup.id)}
-                  >
-                    <Icon name="edit" size={24} color="#666" />
-                  </TouchableOpacity>
+                  <View style={styles.iconButton}>
+                    <LoadingIcon />
+                  </View>
                 </View>
               </View>
             ))}
@@ -306,82 +285,108 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
               </View>
             ) : listedItems.length === 0 ? (
               <View style={styles.emptyContainer}>
-                <Text style={styles.emptyText}>No items listed</Text>
+                <Text style={styles.emptyText}>No items listed yet</Text>
               </View>
-            ) : listedItems.map((item) => {
-              const inPickup = isItemInPickup(item.id);
-              return (
-                <View key={item.id} style={styles.tableRow}>
-                  <View style={styles.itemInfo}>
-                    <Text style={styles.itemName}>{item.name}</Text>
-                    <Text style={styles.itemType}>{item.type}, {item.condition}</Text>
-                    {inPickup && (
-                      <View style={styles.pickupBadge}>
-                        <Text style={styles.pickupBadgeText}>In Pickup</Text>
+            ) : (
+              [...listedItems]
+                .sort((a, b) => {
+                  const aInPickup = isItemInPickup(a.id);
+                  const bInPickup = isItemInPickup(b.id);
+                  if (aInPickup === bInPickup) return 0;
+                  return aInPickup ? 1 : -1; // Items not in pickup (Listing) come first
+                })
+                .map((item) => {
+                  const inPickup = isItemInPickup(item.id);
+                  return (
+                    <View key={item.id} style={styles.tableRow}>
+                      <View style={styles.itemDetails}>
+                        <Text style={styles.itemText}>{item.name}</Text>
+                        <View style={styles.itemInfo}>
+                          <Text style={styles.itemSubtext}>
+                            {item.type} • {item.condition}
+                          </Text>
+                          {inPickup ? (
+                            <Text style={styles.itemStatus}>
+                              Awaiting Pickup
+                            </Text>
+                          ) : (
+                            <Text style={styles.listingStatus}>
+                              Listing
+                            </Text>
+                          )}
+                        </View>
                       </View>
-                    )}
-                  </View>
-                  <View style={styles.actionButtons}>
-                    <TouchableOpacity 
-                      style={styles.iconButton} 
-                      onPress={() => handleEditItem(item.id)}
-                      disabled={inPickup}
-                    >
-                      <Icon 
-                        name="edit" 
-                        size={24} 
-                        color={inPickup ? "#ccc" : "#666"} 
-                      />
-                    </TouchableOpacity>
-                    <TouchableOpacity 
-                      style={styles.iconButton} 
-                      onPress={() => handleDeleteItem(item.id, item.name)}
-                      disabled={inPickup}
-                    >
-                      <Icon 
-                        name="delete" 
-                        size={24} 
-                        color={inPickup ? "#ccc" : "#666"} 
-                      />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              );
-            })}
+                      <View style={styles.actionButtons}>
+                        <TouchableOpacity 
+                          style={styles.iconButton} 
+                          onPress={() => handleEditItem(item.id)}
+                          disabled={inPickup}
+                        >
+                          <Icon 
+                            name="edit" 
+                            size={24} 
+                            color={inPickup ? "#BDBDBD" : "#666"} 
+                          />
+                        </TouchableOpacity>
+                        
+                        {!inPickup && (
+                          <TouchableOpacity 
+                            style={styles.deleteButton} 
+                            onPress={() => handleDeleteItem(item.id, item.name)}
+                          >
+                            <Icon 
+                              name="close" 
+                              size={24} 
+                              color="#D32F2F" 
+                            />
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    </View>
+                  );
+                })
+            )}
           </ScrollView>
         </View>
       </View>
 
-      {/* Add Button */}
+      {/* Add Pickup Item Button */}
       <TouchableOpacity 
         style={styles.addButton} 
         onPress={handleAddPickupItem}
       >
-        <Icon name="add" size={24} color="#fff" />
+        <Text style={styles.addButtonText}>Add Pickup Item</Text>
       </TouchableOpacity>
 
-      {/* Tab Bar */}
-      <View style={styles.tabBar}>
+      {/* Bottom Navigation */}
+      <View style={styles.bottomNav}>
         <TouchableOpacity 
-          style={[styles.tab, styles.activeTab]}
-          onPress={() => {}}
+          style={styles.navItem} 
+          onPress={() => handleTabPress('home')}
         >
           <Icon name="home" size={24} color="#5E4DCD" />
-          <Text style={[styles.tabText, styles.activeTabText]}>Home</Text>
+          <Text style={[styles.navText, styles.activeNavText]}>Home</Text>
         </TouchableOpacity>
         <TouchableOpacity 
-          style={styles.tab}
+          style={styles.navItem}
           onPress={() => handleTabPress('rewards')}
         >
-          <Icon name="card-giftcard" size={24} color="#999" />
-          <Text style={styles.tabText}>Rewards</Text>
+          <Icon name="star" size={24} color="#666" />
+          <Text style={styles.navText}>Rewards</Text>
         </TouchableOpacity>
         <TouchableOpacity 
-          style={styles.tab}
+          style={styles.navItem}
+          onPress={() => handleTabPress('notifications')}
+        >
+          <Icon name="notifications" size={24} color="#666" />
+          <Text style={styles.navText}>Notifications</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={styles.navItem}
           onPress={() => handleTabPress('profile')}
         >
-          <Icon name="person" size={24} color="#999" />
-          <Text style={styles.tabText}>Profile</Text>
+          <Icon name="person" size={24} color="#666" />
+          <Text style={styles.navText}>Profile</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -392,6 +397,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
+    position: 'relative',
   },
   header: {
     padding: 16,
@@ -455,38 +461,14 @@ const styles = StyleSheet.create({
     color: '#333',
     fontWeight: '500',
   },
-  organizationText: {
-    fontSize: 14,
-    color: '#5E4DCD',
-    marginTop: 2,
-  },
   collectorText: {
     fontSize: 12,
     color: '#666',
     marginTop: 2,
   },
-  itemInfo: {
-    flexDirection: 'column',
-  },
-  itemName: {
+  itemText: {
     fontSize: 16,
     color: '#333',
-  },
-  itemType: {
-    color: '#666',
-    fontSize: 12,
-  },
-  pickupBadge: {
-    backgroundColor: '#5E4DCD',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 4,
-    marginTop: 4,
-  },
-  pickupBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '500',
   },
   actionButtons: {
     flexDirection: 'row',
@@ -496,15 +478,25 @@ const styles = StyleSheet.create({
   iconButton: {
     padding: 4,
   },
+  deleteButton: {
+    padding: 4,
+    backgroundColor: '#FFEBEE',
+    borderRadius: 4,
+  },
   addButton: {
     backgroundColor: '#5E4DCD',
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 24,
     alignSelf: 'center',
-    marginBottom: 24,
+    marginBottom: 80, // Increased to account for bottom nav
   },
-  tabBar: {
+  addButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  bottomNav: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     paddingVertical: 12,
@@ -515,22 +507,19 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
+    height: 60,
+    zIndex: 999,
   },
-  tab: {
+  navItem: {
     alignItems: 'center',
   },
-  tabText: {
+  navText: {
     fontSize: 12,
     color: '#666',
     marginTop: 4,
   },
-  activeTab: {
-    borderBottomWidth: 2,
-    borderBottomColor: '#5E4DCD',
-  },
-  activeTabText: {
+  activeNavText: {
     color: '#5E4DCD',
-    fontWeight: '500',
   },
   loadingContainer: {
     flex: 1,
@@ -545,6 +534,36 @@ const styles = StyleSheet.create({
   emptyText: {
     color: '#757575',
     fontSize: 14,
+  },
+  itemDetails: {
+    flexDirection: 'column',
+  },
+  itemInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  itemSubtext: {
+    color: '#666',
+    fontSize: 12,
+  },
+  itemStatus: {
+    fontSize: 12,
+    color: '#5E4DCD',
+    fontWeight: '500',
+    backgroundColor: '#F0EEFF',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  listingStatus: {
+    fontSize: 12,
+    color: '#F57C00',
+    fontWeight: '500',
+    backgroundColor: '#FFF3E0',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
   },
 });
 

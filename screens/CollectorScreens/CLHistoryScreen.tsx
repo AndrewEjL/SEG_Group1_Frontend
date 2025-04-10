@@ -1,12 +1,19 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, Modal, ScrollView, Alert, SafeAreaView, Dimensions , Linking,TextInput} from "react-native";
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, Modal, ScrollView, Alert, SafeAreaView, Dimensions, Linking, TextInput } from "react-native";
 import Icon from "react-native-vector-icons/MaterialIcons";
 import { Dropdown } from "react-native-element-dropdown";
 import RouteInfo from "./RouteInfo.tsx";
 import { useUser, ScheduledPickup } from "../../contexts/UserContext";
 
+// Extended ScheduledPickup type to include weight property
+interface ExtendedPickup extends ScheduledPickup {
+  weight?: number;
+  collectedTimestamp?: string;
+}
+
 type NavigationProp = {
   navigate: (screen: string) => void;
+  addListener: (event: string, callback: () => void) => () => void;
 };
 
 type CLHistoryScreenProps = {
@@ -16,15 +23,15 @@ type CLHistoryScreenProps = {
 const CLHistoryScreen: React.FC<CLHistoryScreenProps> = ({ navigation }) => {
   const { user, getCollectorPickups } = useUser();
 
-  const [completedPickups, setCompletedPickups] = useState<ScheduledPickup[]>([]);
+  const [completedPickups, setCompletedPickups] = useState<ExtendedPickup[]>([]);
 
   // State for UI components
   const [modal1Visible, setModal1Visible] = useState(false);
-  const [selectedPickup, setSelectedPickup] = useState<ScheduledPickup | null>(null);
+  const [selectedPickup, setSelectedPickup] = useState<ExtendedPickup | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
   // Add mockUsers to get client names - in a real app, this would be a backend API call
-  const mockUsers = {
+  const mockUsers: Record<string, { name: string; phoneNumber: string }> = {
     '1': { name: 'John Doe', phoneNumber: '+601233335555' },
     '2': { name: 'GreenTech Recyclers', phoneNumber: '+601244445555' },
     '3': { name: 'EcoLife Solutions', phoneNumber: '+601244446666' },
@@ -80,7 +87,7 @@ const CLHistoryScreen: React.FC<CLHistoryScreenProps> = ({ navigation }) => {
       // Only keep pickups that are Recycled (fully completed with weight)
       const completedPickupsData = collectorPickups.filter(pickup => 
         pickup.pickupStatus === 'Recycled'
-      );
+      ) as ExtendedPickup[];
       
       console.log("Completed pickups with weight:", completedPickupsData.length);
       setCompletedPickups(completedPickupsData);
@@ -92,7 +99,7 @@ const CLHistoryScreen: React.FC<CLHistoryScreenProps> = ({ navigation }) => {
     }
   };
 
-  const viewPickupDetails = (pickup: ScheduledPickup) => {
+  const viewPickupDetails = (pickup: ExtendedPickup) => {
     setSelectedPickup(pickup);
     setModal1Visible(true);
   }
@@ -122,12 +129,10 @@ const CLHistoryScreen: React.FC<CLHistoryScreenProps> = ({ navigation }) => {
     navigation.navigate(tabName);
   };
 
-  const formatDimensions = (pickup: ScheduledPickup) => {
-    // Try to get dimensions from the first item if available
-    if (pickup.items && pickup.items.length > 0 && pickup.items[0].dimensions) {
-      const dims = pickup.items[0].dimensions;
-      return `${dims.length} cm x ${dims.width} cm x ${dims.height} cm`;
-    }
+  // Helper function to safely handle dimensions
+  const formatDimensions = (pickup: ExtendedPickup) => {
+    // Instead of checking for dimensions on PickupItem (which doesn't have dimensions property), 
+    // we could use item information to describe the pickup
     return 'Dimensions not available';
   };
 
@@ -161,7 +166,7 @@ const CLHistoryScreen: React.FC<CLHistoryScreenProps> = ({ navigation }) => {
                       </Text>
                       <Text style={styles.collectorText}>
                         {item.date && `Completed: ${formatDate(item.date)}`}
-                        {item.weight && ` • Weight: ${item.weight} kg`}
+                        {item.weight !== undefined && ` • Weight: ${item.weight} kg`}
                       </Text>
                     </View>
                     <View style={styles.iconRow}>
@@ -240,169 +245,79 @@ const CLHistoryScreen: React.FC<CLHistoryScreenProps> = ({ navigation }) => {
 const styles = StyleSheet.create({
   safeContainer: {
     flex: 1,
-    backgroundColor: "white",
+    backgroundColor: "#f7f7f7",
   },
   headerSection: {
-    paddingHorizontal: 20,
-    paddingTop: 80,
-  },
-  contentContainer: {
     flex: 1,
-    paddingHorizontal: 20,
-    paddingBottom: 60, // Space for bottom nav
-  },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 5,
+    padding: 16,
   },
   header: {
-    fontSize: 18,
+    fontSize: 24,
     fontWeight: "bold",
-    color: "#6a0dad",
-    marginVertical: 10,
+    marginBottom: 16,
+    color: "#333",
+    textAlign: "center",
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  emptyText: {
+    color: "#888",
+    fontSize: 16,
   },
   tableContainer: {
-    backgroundColor: "#f0f0f0",
+    backgroundColor: "#fff",
     borderRadius: 10,
-    marginBottom: 10,
-    overflow: 'hidden',
-    // Height will be set dynamically based on screen size
+    overflow: "hidden",
+    flex: 1,
   },
   flatList: {
-    flex: 1,
-    width: '100%',
-  },
-  multiSelectButton: {
-    backgroundColor: "#f0f0f0",
-    padding: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "#5E4DCD",
-  },
-  multiSelectButtonActive: {
-    backgroundColor: "#5E4DCD",
-  },
-  multiSelectText: {
-    color: "#5E4DCD",
-    fontWeight: "500",
-    fontSize: 12,
-  },
-  multiSelectTextActive: {
-    color: "white",
-  },
-  pickupCard: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: "#e6e6fa",
-    padding: 10,
-    marginVertical: 5,
-    marginHorizontal: 10,
-    borderRadius: 10,
-    minHeight: 60,
-  },
-  selectedPickupCard: {
-    backgroundColor: "#d4c9ff",
-    borderWidth: 1,
-    borderColor: "#5E4DCD",
+    paddingHorizontal: 10,
+    paddingTop: 10,
   },
   pendingCard: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: "#e6e6fa",
-    padding: 10,
-    marginVertical: 5,
-    marginHorizontal: 10,
+    backgroundColor: "white",
     borderRadius: 10,
-    minHeight: 60,
+    padding: 16,
+    marginBottom: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderWidth: 1,
+    borderColor: "#e1e1e1",
   },
   pickupInfo: {
     flex: 1,
   },
   itemText: {
     fontSize: 16,
-    color: "#333333",
-  },
-  addressHint: {
-    fontSize: 12,
-    color: "#6a0dad",
-    fontStyle: "italic",
-    marginTop: 2,
+    fontWeight: "600",
+    marginBottom: 4,
+    color: "#333",
   },
   collectorText: {
     fontSize: 14,
-    color: "#555555",
+    color: "#666",
   },
   iconRow: {
     flexDirection: "row",
     alignItems: "center",
-  },
-  acceptButton: {
-    backgroundColor: "#b366ff",
-    padding: 5,
-    borderRadius: 5,
     marginLeft: 10,
   },
-  acceptText: {
-    color: "white",
-    fontWeight: "500",
-  },
-  selectionBar: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: "#f0f0f0",
-    padding: 10,
-    marginBottom: 10,
-    borderRadius: 10,
-  },
-  selectionText: {
-    color: "#333333",
-    fontWeight: "500",
-  },
-  selectedItemsContainer: {
-    width: "100%",
-    marginBottom: 15,
-  },
-  selectedItemsTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#333333",
-    marginBottom: 5,
-  },
-  selectedItemsList: {
-    maxHeight: 120,
-    borderWidth: 1,
-    borderColor: "#e0e0e0",
-    borderRadius: 5,
-    padding: 5,
-  },
-  selectedItemRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 5,
-  },
-  selectedItemText: {
-    marginLeft: 5,
-    color: "#333333",
-  },
   bottomNav: {
+    height: 60,
     flexDirection: "row",
     justifyContent: "space-around",
-    paddingVertical: 12,
+    alignItems: "center",
+    backgroundColor: "#ffffff",
     borderTopWidth: 1,
-    borderTopColor: "#E0E0E0",
-    backgroundColor: "#FFFFFF",
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
+    borderTopColor: "#e1e1e1",
   },
   navItem: {
     alignItems: "center",
+    justifyContent: "center",
   },
   navText: {
     fontSize: 12,
@@ -410,8 +325,9 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   activeNavText: {
+    fontSize: 12,
     color: "#5E4DCD",
-    fontWeight: "500",
+    marginTop: 4,
   },
   modalContainer: {
     flex: 1,
@@ -419,171 +335,44 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "rgba(0,0,0,0.5)",
   },
-  modalContent: {
-    width: 300,
-    backgroundColor: "white",
-    padding: 20,
-    borderRadius: 10,
-    alignItems: "center",
-  },
-  expandedModalContent: {
-    width: 350,
-    maxHeight: "80%",
-  },
   modal1Content: {
-    width: '90%',
-    maxWidth: 400,
+    width: "85%",
     backgroundColor: "white",
-    padding: 15,
     borderRadius: 10,
-    alignItems: "center",
-    maxHeight: '90%',
+    padding: 20,
+    maxHeight: "80%",
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: "bold",
-    marginBottom: 10,
-    color: "#333333",
-  },
-  label: {
-    alignSelf: "flex-start",
-    fontSize: 14,
-    marginTop: 10,
-    color: "#333333",
-  },
-  bold: {
-    alignSelf: "flex-start",
-    fontSize: 14,
-    marginTop: 10,
-    fontWeight: "bold",
-    color: "#333333",
-  },
-  assignButton: {
-    backgroundColor: "#5E4DCD",
-    padding: 10,
-    borderRadius: 5,
-    width: "100%",
-    alignItems: "center",
-    marginTop: 10,
-  },
-  assignText: {
-    color: "white",
-    fontWeight: "bold",
-  },
-  dropdown: {
-    width: "100%",
-    height: 50,
-    borderColor: "#ccc",
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    backgroundColor: "white",
-  },
-  itemTextStyle: {
-    color: "#333333",
-    fontSize: 16,
-  },
-  placeholderStyle: {
-    color: "#555555",
-    fontSize: 16,
-  },
-  selectedTextStyle: {
-    color: "#5E4DCD",
-    fontSize: 16,
-  },
-  inputSearchStyle: {
-    color: "#333333",
-    fontSize: 16,
-  },
-  statusContainer: {
-    padding: 20,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  statusText: {
-    marginTop: 10,
-    marginBottom: 10,
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#333333",
-  },
-  emptyContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 20,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: "#666666",
+    marginBottom: 15,
+    textAlign: "center",
+    color: "#333",
   },
   modalScrollView: {
-    width: '100%',
-    maxHeight: '90%',
+    marginTop: 10,
   },
   detailsContainer: {
-    width: '100%',
-    paddingTop: 10,
-    paddingBottom: 20,
-  },
-  mapWrapper: {
-    height: 500,
-    width: '100%',
-    position: 'relative',
     marginTop: 10,
-    marginBottom: 10,
-    borderRadius: 12,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    backgroundColor: '#f0f0f0',
   },
-  disabledButton: {
-    backgroundColor: "#cccccc",
-    opacity: 0.7,
+  label: {
+    fontSize: 16,
+    marginBottom: 12,
+    color: "#555",
   },
-itemStatus: {
-  fontSize: 12,
-  color: '#5E4DCD',
-  fontWeight: '500',
-  backgroundColor: 'white',
-  paddingHorizontal: 8,
-  paddingVertical: 2,
-  borderRadius: 4,
-  marginRight: 10,
-},
-
-  input: {
-    width: "97%",
-    height: 40,
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 5,
-    paddingHorizontal: 10,
-    marginBottom: 10,
-    color: "#333333",
-  },
-  errorText: {
-    color: "#E53935",
-    fontSize: 12,
-    marginBottom: 10,
-  },
-  hintText: {
-    color: "#555555",
-    fontSize: 12,
-    marginBottom: 10,
+  bold: {
+    fontWeight: "bold",
+    color: "#333",
   },
   touchable: {
-      paddingHorizontal: 5,
-      height:"5%",
+    paddingLeft: 4,
   },
   phonelabel: {
-    alignSelf: "flex-start",
-    fontSize: 14,
-    marginTop: 5,
-    color: "#0066CC",
-    textDecorationLine: 'underline',
+    fontSize: 16,
+    marginBottom: 12,
+    color: "#5E4DCD",
+    textDecorationLine: "underline",
   },
-
 });
 
 export default CLHistoryScreen;
