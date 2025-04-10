@@ -2,7 +2,8 @@ import React, { useEffect, useState } from "react";
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, Modal, ScrollView, Alert, SafeAreaView, Dimensions , Linking,TextInput} from "react-native";
 import Icon from "react-native-vector-icons/MaterialIcons";
 import { Dropdown } from "react-native-element-dropdown";
-import RouteInfo from "../RecipientHomePageScreens/RouteInfo.tsx";
+import RouteInfo from "./RouteInfo.tsx";
+import { useUser, ScheduledPickup } from "../../contexts/UserContext";
 
 type NavigationProp = {
   navigate: (screen: string) => void;
@@ -13,15 +14,35 @@ type CLHistoryScreenProps = {
 };
 
 const CLHistoryScreen: React.FC<CLHistoryScreenProps> = ({ navigation }) => {
+  const { user, getCollectorPickups } = useUser();
 
-  const [completedPickups, setCompletedPickups] = useState<any[]>([]);
+  const [completedPickups, setCompletedPickups] = useState<ScheduledPickup[]>([]);
 
   // State for UI components
   const [modal1Visible, setModal1Visible] = useState(false);
-
-  const [selectedPickup, setSelectedPickup] = useState<any | null>(null); // Mock data type
+  const [selectedPickup, setSelectedPickup] = useState<ScheduledPickup | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
+  // Add mockUsers to get client names - in a real app, this would be a backend API call
+  const mockUsers = {
+    '1': { name: 'John Doe', phoneNumber: '+601233335555' },
+    '2': { name: 'GreenTech Recyclers', phoneNumber: '+601244445555' },
+    '3': { name: 'EcoLife Solutions', phoneNumber: '+601244446666' },
+    '4': { name: 'ReNew Electronics', phoneNumber: '+601244447777' },
+    '5': { name: 'John Collector', phoneNumber: '+601244448888' },
+  };
+
+  // Function to get client name from clientId
+  const getClientName = (clientId: string | undefined) => {
+    if (!clientId) return "Unassigned";
+    return mockUsers[clientId]?.name || `Client ${clientId}`;
+  };
+
+  // Function to get client phone from clientId
+  const getClientPhone = (clientId: string | undefined) => {
+    if (!clientId) return "+60123456789"; // Default fallback
+    return mockUsers[clientId]?.phoneNumber || "+60123456789";
+  };
 
   // Get screen dimensions
   const windowHeight = Dimensions.get('window').height;
@@ -32,88 +53,87 @@ const CLHistoryScreen: React.FC<CLHistoryScreenProps> = ({ navigation }) => {
   const spacing = 100;  // Additional spacing for margins, padding etc.
 
   // Calculate each table's height
-  const tableHeight = (windowHeight - headerHeight - navHeight - spacing) ;
+  const tableHeight = (windowHeight - headerHeight - navHeight - spacing);
 
   // Load data when component mounts and when screen comes into focus
   useEffect(() => {
     loadData();
-  }, []);
+
+    // Add a focus listener to reload data when the screen comes into focus
+    const unsubscribe = navigation.addListener('focus', () => {
+      loadData();
+    });
+
+    // Clean up the listener when component unmounts
+    return unsubscribe;
+  }, [navigation]);
 
   const loadData = async () => {
     setLoading(true);
     try {
-      // Simulate loading pending pickups and collectors from mock data
-    const mockPendingPickups = [
-      {
-        id: "1",
-        clientId: "1",
-        name: "S24 Ultra",
-        type: "Phone",
-        condition: "Working",
-        quantity: 1,
-        address: "3, Eko Galleria, C0301, C0302, C0401, Blok C, Taman, Persiaran Eko Botani, 79100 Iskandar Puteri, Johor Darul Ta'zim",
-        pickupStatus: "Out for pickup",
-        collectedTimestamp: new Date().toISOString(),
-        weight: 5,
-        dimensions: { length: 15, width: 10, height: 5 },
-      },
-      {
-        id: "2",
-        clientId: "2",
-        name: "S23 Ultra",
-        type: "Phone",
-        condition: "Working",
-        quantity: 1,
-        address: "3, Eko Galleria, C0301, C0302, C0401, Blok C, Taman, Persiaran Eko Botani, 79100 Iskandar Puteri, Johor Darul Ta'zim",
-        pickupStatus: "Collected",
-        collectedTimestamp: new Date().toISOString(),
-        weight: 5,
-        dimensions: { length: 15, width: 10, height: 5 },
-      }
-    ];
-      setCompletedPickups(mockPendingPickups);
+      console.log("Loading history for collector:", user?.name);
+      
+      // Get all pickups for this collector
+      const collectorPickups = await getCollectorPickups();
+      console.log("Total collector pickups:", collectorPickups.length);
+      
+      // Only keep pickups that are Recycled (fully completed with weight)
+      const completedPickupsData = collectorPickups.filter(pickup => 
+        pickup.pickupStatus === 'Recycled'
+      );
+      
+      console.log("Completed pickups with weight:", completedPickupsData.length);
+      setCompletedPickups(completedPickupsData);
     } catch (error) {
-      console.error("Error loading data:", error);
-      Alert.alert("Error", "Failed to load pickup data. Please try again.");
+      console.error("Error loading history data:", error);
+      Alert.alert("Error", "Failed to load pickup history. Please try again.");
     } finally {
       setLoading(false);
     }
   };
- const viewPickupDetails = (pickup: any) => {
-     setSelectedPickup(pickup);
-     setModal1Visible(true);
- }
- const formatDate = (isoString) => {
-   const date = new Date(isoString);
-   date.setHours(date.getHours() + 8);
-   const year = date.getFullYear();
-   const month = String(date.getMonth() + 1).padStart(2, '0');
-   const day = String(date.getDate()).padStart(2, '0');
-   return `${year}-${month}-${day}`;
- };
- const formatDateTime = (isoString) => {
-   const date = new Date(isoString);
-   date.setHours(date.getHours() + 8);
-   const year = date.getFullYear();
-   const month = String(date.getMonth() + 1).padStart(2, '0');
-   const day = String(date.getDate()).padStart(2, '0');
-   const hours = String(date.getHours()).padStart(2, '0');
-   const minutes = String(date.getMinutes()).padStart(2, '0');
-   const seconds = String(date.getSeconds()).padStart(2, '0');
-   return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
- };
+
+  const viewPickupDetails = (pickup: ScheduledPickup) => {
+    setSelectedPickup(pickup);
+    setModal1Visible(true);
+  }
+
+  const formatDate = (isoString: string) => {
+    const date = new Date(isoString);
+    date.setHours(date.getHours() + 8);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const formatDateTime = (isoString: string) => {
+    const date = new Date(isoString);
+    date.setHours(date.getHours() + 8);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+  };
 
   const handleTabPress = (tabName: string) => {
     navigation.navigate(tabName);
   };
 
-  const formatDimensions = (item: any) => {
-    return `${item.dimensions?.length} cm x ${item.dimensions?.width} cm x ${item.dimensions?.height} cm`;
+  const formatDimensions = (pickup: ScheduledPickup) => {
+    // Try to get dimensions from the first item if available
+    if (pickup.items && pickup.items.length > 0 && pickup.items[0].dimensions) {
+      const dims = pickup.items[0].dimensions;
+      return `${dims.length} cm x ${dims.width} cm x ${dims.height} cm`;
+    }
+    return 'Dimensions not available';
   };
 
-const handleCall = (phoneNumber) => {
-  Linking.openURL(`tel:${phoneNumber}`);
-};
+  const handleCall = (phoneNumber: string) => {
+    Linking.openURL(`tel:${phoneNumber}`);
+  };
 
   return (
     <SafeAreaView style={styles.safeContainer}>
@@ -135,9 +155,14 @@ const handleCall = (phoneNumber) => {
                   <View style={styles.pendingCard}>
                     <View style={styles.pickupInfo}>
                       <Text style={styles.itemText}>
-                       {item.name} - {item.type}
+                        {item.items && item.items.length > 0 
+                          ? `${item.items[0].name} ${item.items.length > 1 ? `+ ${item.items.length - 1} more` : ''}`
+                          : 'Item name not available'}
                       </Text>
-                      <Text style={styles.collectorText}>{formatDate(item.collectedTimestamp)}</Text>
+                      <Text style={styles.collectorText}>
+                        {item.date && `Completed: ${formatDate(item.date)}`}
+                        {item.weight && ` • Weight: ${item.weight} kg`}
+                      </Text>
                     </View>
                     <View style={styles.iconRow}>
                       <TouchableOpacity
@@ -156,7 +181,7 @@ const handleCall = (phoneNumber) => {
       <View style={styles.bottomNav}>
         <TouchableOpacity style={styles.navItem} onPress={() => handleTabPress("CLHome")}>
           <Icon name="home" size={24} color="#666666" />
-          <Text style={styles.anavText}>Home</Text>
+          <Text style={styles.navText}>Home</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem} onPress={() => handleTabPress("CLHistory")}>
           <Icon name="history" size={24} color="#5E4DCD" />
@@ -180,19 +205,28 @@ const handleCall = (phoneNumber) => {
             {selectedPickup && (
               <ScrollView style={styles.modalScrollView}>
                 <View style={styles.detailsContainer}>
-                  <Text style={styles.label}><Text style={styles.bold}>Item Name:</Text> {selectedPickup.name}</Text>
-                  <Text style={styles.label}><Text style={styles.bold}>Type:</Text> {selectedPickup.type}</Text>
-                  <Text style={styles.label}><Text style={styles.bold}>Condition:</Text> {selectedPickup.condition}</Text>
-                  <Text style={styles.label}><Text style={styles.bold}>Size:</Text> {formatDimensions(selectedPickup)}</Text>
-                  <Text style={styles.label}><Text style={styles.bold}>Quantity:</Text> {selectedPickup.quantity}</Text>
-                  <Text style={styles.label}><Text style={styles.bold}>Address:</Text> {selectedPickup.address}</Text>
-                  <Text style={styles.label}><Text style={styles.bold}>Client name:</Text> {selectedPickup.clientId}</Text>
+                  {selectedPickup.items && selectedPickup.items.length > 0 && (
+                    <>
+                      <Text style={styles.label}>
+                        <Text style={styles.bold}>Item Name:</Text> {selectedPickup.items[0].name}
+                      </Text>
+                      {selectedPickup.items.length > 1 && (
+                        <Text style={styles.label}>
+                          <Text style={styles.bold}>Additional Items:</Text> {selectedPickup.items.length - 1} more items
+                        </Text>
+                      )}
+                    </>
+                  )}
+                  <Text style={styles.label}><Text style={styles.bold}>Weight:</Text> {selectedPickup.weight || 'Not recorded'} kg</Text>
+                  <Text style={styles.label}><Text style={styles.bold}>Address:</Text> {selectedPickup.address || 'Address not available'}</Text>
+                  <Text style={styles.label}><Text style={styles.bold}>Client:</Text> {getClientName(selectedPickup.clientId)}</Text>
                   <Text style={styles.label}><Text style={styles.bold}>Client contact number:</Text>
-                      <TouchableOpacity onPress={() => handleCall("+60123456789")} style={styles.touchable} >
-                        <Text style={styles.phonelabel}>+60123456789</Text>
+                      <TouchableOpacity onPress={() => handleCall(getClientPhone(selectedPickup.clientId))} style={styles.touchable} >
+                        <Text style={styles.phonelabel}>{getClientPhone(selectedPickup.clientId)}</Text>
                       </TouchableOpacity>
                   </Text>
-                  <Text style={styles.label}><Text style={styles.bold}>Collected time:</Text> {formatDateTime(selectedPickup.collectedTimestamp)} (UTC+8)</Text>
+                  <Text style={styles.label}><Text style={styles.bold}>Date completed:</Text> {formatDateTime(selectedPickup.date)} (UTC+8)</Text>
+                  <Text style={styles.label}><Text style={styles.bold}>Pickup status:</Text> {selectedPickup.pickupStatus}</Text>
                 </View>
               </ScrollView>
             )}

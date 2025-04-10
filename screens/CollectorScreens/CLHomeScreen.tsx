@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, Modal, ScrollView, Alert, SafeAreaView, Dimensions , Linking,TextInput} from "react-native";
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, Modal, ScrollView, Alert, SafeAreaView, Dimensions , Linking, TextInput} from "react-native";
 import Icon from "react-native-vector-icons/MaterialIcons";
 import { Dropdown } from "react-native-element-dropdown";
 import RouteInfo from "./RouteInfo.tsx";
+import { useUser, ScheduledPickup } from "../../contexts/UserContext";
 
 type NavigationProp = {
   navigate: (screen: string) => void;
@@ -13,16 +14,17 @@ type CLHomeScreenProps = {
 };
 
 const CLHomeScreen: React.FC<CLHomeScreenProps> = ({ navigation }) => {
+  const { user, getCollectorPickups, updatePickupStatus, updatePickup } = useUser();
 
   // State for pending pickups (pickups that are in progress)
-  const [pendingPickups, setPendingPickups] = useState<any[]>([]);
-  const [completedPickups, setCompletedPickups] = useState<any[]>([]);
+  const [pendingPickups, setPendingPickups] = useState<ScheduledPickup[]>([]);
+  const [completedPickups, setCompletedPickups] = useState<ScheduledPickup[]>([]);
 
   // State for UI components
   const [modal1Visible, setModal1Visible] = useState(false);
   const [modal2Visible, setModal2Visible] = useState(false);
   const [modal3Visible, setModal3Visible] = useState(false);
-  const [selectedPickup, setSelectedPickup] = useState<any | null>(null); // Mock data type
+  const [selectedPickup, setSelectedPickup] = useState<ScheduledPickup | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [weightInput, setWeightInput] = useState<string>('');
   const [weightError, setWeightError] = useState<string>('');
@@ -36,7 +38,28 @@ const CLHomeScreen: React.FC<CLHomeScreenProps> = ({ navigation }) => {
   const spacing = 100;  // Additional spacing for margins, padding etc.
 
   // Calculate each table's height
-  const tableHeight = (windowHeight - headerHeight - navHeight - spacing) ;
+  const tableHeight = (windowHeight - headerHeight - navHeight - spacing);
+
+  // Add mockUsers to get client names - in a real app, this would be a backend API call
+  const mockUsers = {
+    '1': { name: 'John Doe', phoneNumber: '+601233335555' },
+    '2': { name: 'GreenTech Recyclers', phoneNumber: '+601244445555' },
+    '3': { name: 'EcoLife Solutions', phoneNumber: '+601244446666' },
+    '4': { name: 'ReNew Electronics', phoneNumber: '+601244447777' },
+    '5': { name: 'John Collector', phoneNumber: '+601244448888' },
+  };
+
+  // Function to get client name from clientId
+  const getClientName = (clientId: string | undefined) => {
+    if (!clientId) return "Unassigned";
+    return mockUsers[clientId]?.name || `Client ${clientId}`;
+  };
+
+  // Function to get client phone from clientId
+  const getClientPhone = (clientId: string | undefined) => {
+    if (!clientId) return "+60123456789"; // Default fallback
+    return mockUsers[clientId]?.phoneNumber || "+60123456789";
+  };
 
   // Load data when component mounts and when screen comes into focus
   useEffect(() => {
@@ -46,36 +69,26 @@ const CLHomeScreen: React.FC<CLHomeScreenProps> = ({ navigation }) => {
   const loadData = async () => {
     setLoading(true);
     try {
-      // Simulate loading pending pickups and collectors from mock data
-    const mockPendingPickups = [
-      {
-        id: "1",
-        clientId: "1",
-        name: "Item A",
-        type: "Phone",
-        condition: "Working",
-        quantity: 1,
-        address: "3, Eko Galleria, C0301, C0302, C0401, Blok C, Taman, Persiaran Eko Botani, 79100 Iskandar Puteri, Johor Darul Ta'zim",
-        pickupStatus: "Out for pickup",
-        collectedTimestamp: null,
-        weight: null,
-        dimensions: { length: 15, width: 10, height: 5 },
-      },
-      {
-        id: "2",
-        clientId: "2",
-        name: "Item A",
-        type: "Phone",
-        condition: "Working",
-        quantity: 1,
-        address: "3, Eko Galleria, C0301, C0302, C0401, Blok C, Taman, Persiaran Eko Botani, 79100 Iskandar Puteri, Johor Darul Ta'zim",
-        pickupStatus: "Collected",
-        collectedTimestamp: null,
-        weight: null,
-        dimensions: { length: 15, width: 10, height: 5 },
-      }
-    ];
-      setPendingPickups(mockPendingPickups);
+      console.log("Loading data for collector:", user?.name);
+      
+      // Get pickups assigned to this collector
+      const collectorPickups = await getCollectorPickups();
+      console.log("Collector pickups:", collectorPickups.length);
+      
+      // Separate into pending and completed pickups based on pickupStatus
+      const pending = collectorPickups.filter(pickup => 
+        pickup.pickupStatus === 'Out for pickup' || !pickup.pickupStatus
+      );
+      
+      const collected = collectorPickups.filter(pickup => 
+        pickup.pickupStatus === 'Collected' && !pickup.weight
+      );
+      
+      console.log("Pending pickups:", pending.length);
+      console.log("Collected pickups:", collected.length);
+      
+      setPendingPickups(pending);
+      setCompletedPickups(collected);
     } catch (error) {
       console.error("Error loading data:", error);
       Alert.alert("Error", "Failed to load pickup data. Please try again.");
@@ -84,7 +97,7 @@ const CLHomeScreen: React.FC<CLHomeScreenProps> = ({ navigation }) => {
     }
   };
 
-const handleMarkAsCollected = (pickup: any) => {
+const handleMarkAsCollected = async (pickup: ScheduledPickup) => {
   // Confirmation alert
   Alert.alert(
     "Confirm Pickup",
@@ -96,17 +109,36 @@ const handleMarkAsCollected = (pickup: any) => {
       },
       {
         text: "Confirm",
-        onPress: () => {
-          // Update the pickup status to 'collected'
-          const updatedPickup = { ...pickup, pickupStatus: "Collected", collectedTimestamp: new Date().toISOString() };
+        onPress: async () => {
+          try {
+            // Update the pickup status to 'Collected' in UserContext
+            const success = await updatePickupStatus(pickup.id, 'Collected');
+            
+            if (success) {
+              // Update the state with the new status
+              const updatedPickup = { 
+                ...pickup, 
+                pickupStatus: "Collected", 
+                collectedTimestamp: new Date().toISOString() 
+              };
 
-          // Update the state with the new status
-          setPendingPickups((prevPickups) =>
-            prevPickups.map((item) =>
-              item.id === pickup.id ? updatedPickup : item
-            )
-          );
-
+              setPendingPickups(prevPickups => 
+                prevPickups.filter(p => p.id !== pickup.id)
+              );
+              
+              setCompletedPickups(prevCompleted => 
+                [...prevCompleted, updatedPickup]
+              );
+              
+              Alert.alert("Success", "Pickup has been marked as collected");
+            } else {
+              Alert.alert("Error", "Failed to update pickup status");
+            }
+          } catch (error) {
+            console.error("Error updating pickup status:", error);
+            Alert.alert("Error", "An error occurred while updating pickup status");
+          }
+          
           setModal1Visible(false);
         },
       },
@@ -127,49 +159,60 @@ const handleWeightChange = (text: string) => {
   }
 };
 
-const handleSubmitWeight = () => {
+const handleSubmitWeight = async () => {
   if (!weightInput || isNaN(Number(weightInput)) || weightError) {
     Alert.alert('Error', 'Please enter a valid weight');
     return;
   }
 
-  // Update the selected pickup with the weight and change the status to 'Completed'
-  const updatedPickup = {
-    ...selectedPickup,
-    weight: weightInput,
-    pickupStatus: 'Completed',
-    collectedTimestamp: new Date().toISOString(),
-  };
-
-  // Update the pending pickups list by removing the completed pickup and adding it to the completed pickups list
-  setPendingPickups((prevPickups) =>
-    prevPickups.filter((item) => item.id !== selectedPickup.id)
-  );
-  // Add to completed pickups
-  setCompletedPickups((prevCompletedPickups) => [
-    ...prevCompletedPickups,
-    updatedPickup,
-  ]);
+  if (selectedPickup) {
+    try {
+      // Create an updated pickup with the weight value
+      const updatedPickup = {
+        ...selectedPickup,
+        weight: Number(weightInput),
+        pickupStatus: 'Recycled',
+        date: new Date().toISOString() // Set current date as completion date
+      };
+      
+      // Update pickup status to 'Recycled' in UserContext
+      const success = await updatePickupStatus(selectedPickup.id, 'Recycled');
+      
+      if (success) {
+        // Update the full pickup with weight information
+        updatePickup(updatedPickup);
+        
+        // Update local state
+        setCompletedPickups(prevPickups => 
+          prevPickups.filter(p => p.id !== selectedPickup.id)
+        );
+        
+        Alert.alert('Success', `Successfully submitted weight: ${weightInput} kg`);
+      } else {
+        Alert.alert('Error', 'Failed to update pickup status');
+      }
+    } catch (error) {
+      console.error("Error updating pickup status:", error);
+      Alert.alert('Error', 'An error occurred while submitting weight');
+    }
+  }
 
   // Close the modal
   setModal3Visible(false);
-  Alert.alert('Success', `Successfully submitted weight: ${weightInput} kg`);
+  setWeightInput('');
 };
 
-
-
-
-  const handleUpdatePendingPickupStatus = (pickup: any) => {
+  const handleUpdatePendingPickupStatus = (pickup: ScheduledPickup) => {
     setSelectedPickup(pickup);
     setModal1Visible(true);
   };
 
-   const handleUpdateCollectedPickups = (pickup: any) => {
+   const handleUpdateCollectedPickups = (pickup: ScheduledPickup) => {
      setSelectedPickup(pickup);
      setModal2Visible(true);
    };
 
-   const handleEnterWeight = (pickup: any) => {
+   const handleEnterWeight = (pickup: ScheduledPickup) => {
      setSelectedPickup(pickup);
      setModal2Visible(false);
      setModal3Visible(true);
@@ -180,28 +223,30 @@ const handleSubmitWeight = () => {
   };
 
   const formatDimensions = (item: any) => {
-    return `${item.dimensions?.length} cm x ${item.dimensions?.width} cm x ${item.dimensions?.height} cm`;
+    if (item.dimensions) {
+      return `${item.dimensions.length} cm x ${item.dimensions.width} cm x ${item.dimensions.height} cm`;
+    }
+    return 'Dimensions not available';
   };
 
-const handleCall = (phoneNumber) => {
+const handleCall = (phoneNumber: string) => {
   Linking.openURL(`tel:${phoneNumber}`);
 };
 
-const getStatusStyle = (status) => {
-  if (status == "Collected"){
+const getStatusStyle = (status: string | undefined) => {
+  if (status === "Collected"){
       return styles.statusCollected;
-  }else {
+  } else {
       return styles.statusPending;
   }
 };
-
 
   return (
     <SafeAreaView style={styles.safeContainer}>
       <View style={styles.headerSection}>
           <Text style={styles.header}>Pending pickups</Text>
           <View style={[styles.tableContainer, { height: tableHeight }]}>
-            {pendingPickups.length === 0 ? (
+            {pendingPickups.length === 0 && completedPickups.length === 0 ? (
               <View style={styles.emptyContainer}>
                 <Text style={styles.emptyText}>
                   {loading ? "Loading pending pickups..." : "No pending pickups"}
@@ -210,21 +255,25 @@ const getStatusStyle = (status) => {
             ) : (
               <FlatList
                 style={styles.flatList}
-                data={pendingPickups}
+                data={[...pendingPickups, ...completedPickups]}
                 keyExtractor={(item) => item.id}
                 renderItem={({ item }) => (
                   <View style={styles.pendingCard}>
                     <View style={styles.pickupInfo}>
                       <Text style={styles.itemText}>
-                       {item.name} - {item.type}
+                        {item.items && item.items.length > 0 
+                          ? `${item.items[0].name} ${item.items.length > 1 ? `+ ${item.items.length - 1} more` : ''}`
+                          : 'Item name not available'}
                       </Text>
-                      <Text style={styles.collectorText}>Client: {item.clientId || "Unassigned"}</Text>
+                      <Text style={styles.collectorText}>Client: {getClientName(item.clientId)}</Text>
                     </View>
                     <View style={styles.iconRow}>
-                      <Text style={[styles.itemStatus, getStatusStyle(item.pickupStatus)]}>{item.pickupStatus}</Text>
+                      <Text style={[styles.itemStatus, getStatusStyle(item.pickupStatus)]}>
+                        {item.pickupStatus || "Out for pickup"}
+                      </Text>
                       <TouchableOpacity style={styles.acceptButton}
                          onPress={() => {
-                           if (item.pickupStatus === "Out for pickup") {
+                           if (!item.pickupStatus || item.pickupStatus === "Out for pickup") {
                              handleUpdatePendingPickupStatus(item);
                            } else {
                              handleUpdateCollectedPickups(item);
@@ -268,25 +317,33 @@ const getStatusStyle = (status) => {
             {selectedPickup && (
               <ScrollView style={styles.modalScrollView}>
                 <View style={styles.mapWrapper}>
-                  <RouteInfo initialDestination={selectedPickup.address} />
+                  <RouteInfo initialDestination={selectedPickup.address || selectedPickup.facilityName} />
                 </View>
                 <View style={styles.detailsContainer}>
-                  <Text style={styles.label}><Text style={styles.bold}>Item Name:</Text> {selectedPickup.name}</Text>
-                  <Text style={styles.label}><Text style={styles.bold}>Type:</Text> {selectedPickup.type}</Text>
-                  <Text style={styles.label}><Text style={styles.bold}>Condition:</Text> {selectedPickup.condition}</Text>
-                  <Text style={styles.label}><Text style={styles.bold}>Size:</Text> {formatDimensions(selectedPickup)}</Text>
-                  <Text style={styles.label}><Text style={styles.bold}>Quantity:</Text> {selectedPickup.quantity}</Text>
-                  <Text style={styles.label}><Text style={styles.bold}>Address:</Text> {selectedPickup.address}</Text>
-                  <Text style={styles.label}><Text style={styles.bold}>Client name:</Text> {selectedPickup.clientId}</Text>
+                  {selectedPickup.items && selectedPickup.items.length > 0 && (
+                    <>
+                      <Text style={styles.label}>
+                        <Text style={styles.bold}>Item Name:</Text> {selectedPickup.items[0].name}
+                      </Text>
+                      {selectedPickup.items.length > 1 && (
+                        <Text style={styles.label}>
+                          <Text style={styles.bold}>Additional Items:</Text> {selectedPickup.items.length - 1} more items
+                        </Text>
+                      )}
+                    </>
+                  )}
+                  <Text style={styles.label}><Text style={styles.bold}>Facility:</Text> {selectedPickup.facilityName}</Text>
+                  <Text style={styles.label}><Text style={styles.bold}>Address:</Text> {selectedPickup.address || 'Address not available'}</Text>
+                  <Text style={styles.label}><Text style={styles.bold}>Client:</Text> {getClientName(selectedPickup.clientId)}</Text>
                   <Text style={styles.label}><Text style={styles.bold}>Client contact number:</Text>
-                      <TouchableOpacity onPress={() => handleCall("+60123456789")} style={styles.touchable} >
-                        <Text style={styles.phonelabel}>+60123456789</Text>
+                      <TouchableOpacity onPress={() => handleCall(getClientPhone(selectedPickup.clientId))} style={styles.touchable} >
+                        <Text style={styles.phonelabel}>{getClientPhone(selectedPickup.clientId)}</Text>
                       </TouchableOpacity>
                   </Text>
                 </View>
               </ScrollView>
             )}
-              <TouchableOpacity style={styles.assignButton} onPress={() => handleMarkAsCollected(selectedPickup)}>
+              <TouchableOpacity style={styles.assignButton} onPress={() => handleMarkAsCollected(selectedPickup!)}>
                 <Text style={styles.acceptText}>Mark as collected</Text>
               </TouchableOpacity>
           </View>
@@ -304,19 +361,27 @@ const getStatusStyle = (status) => {
             {selectedPickup && (
               <ScrollView style={styles.modalScrollView}>
                 <View style={styles.detailsContainer}>
-                  <Text style={styles.label}><Text style={styles.bold}>Item Name:</Text> {selectedPickup.name}</Text>
-                  <Text style={styles.label}><Text style={styles.bold}>Type:</Text> {selectedPickup.type}</Text>
-                  <Text style={styles.label}><Text style={styles.bold}>Condition:</Text> {selectedPickup.condition}</Text>
-                  <Text style={styles.label}><Text style={styles.bold}>Size:</Text> {formatDimensions(selectedPickup)}</Text>
-                  <Text style={styles.label}><Text style={styles.bold}>Quantity:</Text> {selectedPickup.quantity}</Text>
-                  <Text style={styles.label}><Text style={styles.bold}>Address:</Text> {selectedPickup.address}</Text>
-                  <Text style={styles.label}><Text style={styles.bold}>Client name:</Text> {selectedPickup.clientId}</Text>
-                  <Text style={styles.label}><Text style={styles.bold}>Client contact number:</Text>+60123456789</Text>
-                  <Text style={styles.label}><Text style={styles.bold}>Collected Time:</Text>{selectedPickup.collectedTimestamp}</Text>
+                  {selectedPickup.items && selectedPickup.items.length > 0 && (
+                    <>
+                      <Text style={styles.label}>
+                        <Text style={styles.bold}>Item Name:</Text> {selectedPickup.items[0].name}
+                      </Text>
+                      {selectedPickup.items.length > 1 && (
+                        <Text style={styles.label}>
+                          <Text style={styles.bold}>Additional Items:</Text> {selectedPickup.items.length - 1} more items
+                        </Text>
+                      )}
+                    </>
+                  )}
+                  <Text style={styles.label}><Text style={styles.bold}>Facility:</Text> {selectedPickup.facilityName}</Text>
+                  <Text style={styles.label}><Text style={styles.bold}>Address:</Text> {selectedPickup.address || 'Address not available'}</Text>
+                  <Text style={styles.label}><Text style={styles.bold}>Client:</Text> {getClientName(selectedPickup.clientId)}</Text>
+                  <Text style={styles.label}><Text style={styles.bold}>Client contact number:</Text>{getClientPhone(selectedPickup.clientId)}</Text>
+                  <Text style={styles.label}><Text style={styles.bold}>Collected Time:</Text> {selectedPickup.collectedTimestamp || 'Not recorded'}</Text>
                 </View>
               </ScrollView>
             )}
-              <TouchableOpacity style={styles.assignButton} onPress={() => handleEnterWeight(selectedPickup)}>
+              <TouchableOpacity style={styles.assignButton} onPress={() => handleEnterWeight(selectedPickup!)}>
                 <Text style={styles.acceptText}>Enter the weight of the item</Text>
               </TouchableOpacity>
           </View>
