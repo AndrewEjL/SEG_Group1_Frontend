@@ -115,7 +115,7 @@ const App = () => {
     <UserProvider>
       <NavigationContainer>
         <Stack.Navigator 
-          initialRouteName="CLHistory"
+          initialRouteName="Login"
           screenOptions={{
             headerShown: false
           }}

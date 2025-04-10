@@ -70,11 +70,12 @@ export interface User {
   points: number;
   address: string;   // Adding address field
   phoneNumber: string;  // Adding phone number field
-  role: 'client' | 'organization';  // Add role field to distinguish user types
+  role: 'client' | 'organization' | 'collector';  // Add collector role
   scheduledPickups: string[];  // Array of pickup IDs - references to pickups in the database
   listedItems: string[];      // Array of listed item IDs
   redeemedRewards?: RewardRedemption[];  // Array of redeemed rewards
   collectorEmployees?: string[]; // Array of collector IDs for organization
+  organizationId?: string; // ID of the organization the collector belongs to (for collector role)
 }
 
 /**
@@ -497,7 +498,19 @@ const mockUsers: { [key: string]: User } = {
     redeemedRewards: [],
     collectorEmployees: ['collector3']
   },
-
+  '5': {
+    id: '5',
+    name: 'John Collector',
+    email: 'collector@example.com',
+    points: 0,
+    address: '456 Business Ave, City',
+    phoneNumber: '+601244448888',
+    role: 'collector',
+    scheduledPickups: ['pickup1', 'pickup5'],
+    listedItems: [],
+    redeemedRewards: [],
+    organizationId: '2' // Works for GreenTech Recyclers
+  },
 };
 
 const mockUserPasswords: { [key: string]: string } = {
@@ -505,6 +518,7 @@ const mockUserPasswords: { [key: string]: string } = {
   '2': 'password', // org@example.com
   '3': 'password', // eco@example.com
   '4': 'password', // renew@example.com
+  '5': 'password', // collector@example.com
 };
 
 /**
