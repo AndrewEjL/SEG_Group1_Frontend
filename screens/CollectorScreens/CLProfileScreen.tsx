@@ -174,7 +174,7 @@ return (
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Activity</Text>
-        <TouchableOpacity style={styles.listItem} onPress={() => navigation.navigate("RStats")}>
+        <TouchableOpacity style={styles.listItem} onPress={() => handleTabPress("CLHistory")>
           <Icon name="history" size={20} color="#5E4DCD" />
           <Text style={styles.listText}>Pickups History</Text>
         </TouchableOpacity>
