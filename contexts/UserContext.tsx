@@ -496,7 +496,8 @@ const mockUsers: { [key: string]: User } = {
     listedItems: [],
     redeemedRewards: [],
     collectorEmployees: ['collector3']
-  }
+  },
+
 };
 
 const mockUserPasswords: { [key: string]: string } = {
