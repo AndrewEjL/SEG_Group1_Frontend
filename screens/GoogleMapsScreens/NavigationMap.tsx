@@ -1,9 +1,10 @@
 import React, { useRef, useState } from "react";
 import { View, TextInput, Text, Button, FlatList, TouchableOpacity, StyleSheet } from "react-native";
-import MapView, { Marker, Polyline } from "react-native-maps";
+import MapView, { Marker, Polyline, PROVIDER_DEFAULT } from "react-native-maps";
 import polyline from "@mapbox/polyline";
 
-const GOOGLE_MAPS_API_KEY = "AIzaSyDqpBZYwzP8m_L8du5imDrLUQHYIUZFHtU";
+// OpenStreetMap doesn't require an API key
+// const GOOGLE_MAPS_API_KEY = "AIzaSyDqpBZYwzP8m_L8du5imDrLUQHYIUZFHtU";
 
 const NavigationMap = () => {
   const mapRef = useRef(null);
@@ -21,29 +22,47 @@ const NavigationMap = () => {
       setSuggestions([]);
       return;
     }
-    const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(
-      input
-    )}&key=${GOOGLE_MAPS_API_KEY}`;
+    
+    // Using Nominatim for address search with countrycodes=my to limit to Malaysia
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(input)}&countrycodes=my&limit=5`;
 
     try {
-      const response = await fetch(url);
+      const response = await fetch(url, {
+        headers: {
+          'Accept-Language': 'en',
+          'User-Agent': 'SEG_Group1_Frontend/1.0'
+        }
+      });
       const data = await response.json();
-      if (data.status === "OK") {
-        setSuggestions(data.predictions);
-      }
+      
+      // Transform response to match expected format
+      const suggestions = data.map(item => ({
+        place_id: item.place_id,
+        description: item.display_name,
+      }));
+      
+      setSuggestions(suggestions);
     } catch (error) {
       console.error("Error fetching autocomplete:", error);
     }
   };
 
-  const getCoordinatesFromPlaceID = async (placeID) => {
-    const url = `https://maps.googleapis.com/maps/api/geocode/json?place_id=${placeID}&key=${GOOGLE_MAPS_API_KEY}`;
+  const getCoordinatesFromPlaceID = async (placeID, description) => {
+    // Instead of using place_id, we'll search for the address text directly
+    // Limit to Malaysia with countrycodes=my
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(description)}&countrycodes=my&limit=1`;
 
     try {
-      const response = await fetch(url);
+      const response = await fetch(url, {
+        headers: {
+          'Accept-Language': 'en',
+          'User-Agent': 'SEG_Group1_Frontend/1.0'
+        }
+      });
       const data = await response.json();
-      if (data.status === "OK") {
-        return data.results[0].geometry.location;
+      
+      if (data && data.length > 0) {
+        return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
       }
     } catch (error) {
       console.error("Error fetching coordinates:", error);
@@ -55,7 +74,7 @@ const NavigationMap = () => {
     setOriginText(place.description);
     setOriginSuggestions([]);
 
-    const coords = await getCoordinatesFromPlaceID(place.place_id);
+    const coords = await getCoordinatesFromPlaceID(place.place_id, place.description);
     if (coords) {
       setOrigin({ latitude: coords.lat, longitude: coords.lng });
     }
@@ -65,7 +84,7 @@ const NavigationMap = () => {
     setDestinationText(place.description);
     setDestinationSuggestions([]);
 
-    const coords = await getCoordinatesFromPlaceID(place.place_id);
+    const coords = await getCoordinatesFromPlaceID(place.place_id, place.description);
     if (coords) {
       setDestination({ latitude: coords.lat, longitude: coords.lng });
     }
@@ -74,44 +93,30 @@ const NavigationMap = () => {
   const fetchRoute = async () => {
     if (!origin || !destination) return;
 
-    const url = `https://routes.googleapis.com/directions/v2:computeRoutes`;
-    const body = {
-      origin: { location: { latLng: { latitude: origin.latitude, longitude: origin.longitude } } },
-      destination: { location: { latLng: { latitude: destination.latitude, longitude: destination.longitude } } },
-      travelMode: "DRIVE",
-      routingPreference: "TRAFFIC_AWARE",
-      computeAlternativeRoutes: false,
-      routeModifiers: { avoidTolls: false, avoidHighways: false, avoidFerries: false },
-      languageCode: "en-US",
-      units: "IMPERIAL",
-    };
+    // Using OSRM for routing
+    const url = `https://router.project-osrm.org/route/v1/driving/${origin.longitude},${origin.latitude};${destination.longitude},${destination.latitude}?overview=full&geometries=polyline`;
 
     try {
-      let response = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Goog-Api-Key": GOOGLE_MAPS_API_KEY,
-          "X-Goog-FieldMask": "routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline",
-        },
-        body: JSON.stringify(body),
-      });
-
-      let data = await response.json();
-      if (data.routes && data.routes.length > 0) {
+      const response = await fetch(url);
+      const data = await response.json();
+      
+      if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
         const route = data.routes[0];
-
-        const decodedPolyline = polyline.decode(route.polyline.encodedPolyline).map((point) => ({
+        
+        // Decode the polyline
+        const decodedPolyline = polyline.decode(route.geometry).map((point) => ({
           latitude: point[0],
           longitude: point[1],
         }));
-
+        
         setRouteCoords(decodedPolyline);
+        
+        // Set route info with distance and duration
         setRouteInfo({
-          distance: (route.distanceMeters / 1000).toFixed(2),
-          duration: Math.round(parseInt(route.duration.replace("s", ""), 10) / 60),
+          distance: (route.distance / 1000).toFixed(2), // Convert meters to kilometers
+          duration: Math.round(route.duration / 60), // Convert seconds to minutes
         });
-
+        
         if (mapRef.current) {
           mapRef.current.fitToCoordinates(decodedPolyline, {
             edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
@@ -128,6 +133,7 @@ const NavigationMap = () => {
     <View style={styles.container}>
       <MapView
         ref={mapRef}
+        provider={PROVIDER_DEFAULT}
         style={styles.map}
         showsUserLocation={true}
         initialRegion={{
@@ -140,6 +146,11 @@ const NavigationMap = () => {
         {origin && <Marker coordinate={origin} title="Current Location" />}
         {destination && <Marker coordinate={destination} title="Destination" />}
         {routeCoords.length > 0 && <Polyline coordinates={routeCoords} strokeWidth={4} strokeColor="blue" />}
+        
+        {/* OSM Attribution */}
+        <View style={styles.attributionContainer}>
+          <Text style={styles.attributionText}>© OpenStreetMap contributors</Text>
+        </View>
       </MapView>
 
       <View style={styles.inputContainer}>
@@ -161,7 +172,6 @@ const NavigationMap = () => {
             </TouchableOpacity>
           )}
         />
-
 
         <TextInput
           style={styles.input}
@@ -202,6 +212,19 @@ const styles = StyleSheet.create({
   suggestionItem: { padding: 10, borderBottomWidth: 1, borderBottomColor: "#ddd" },
   routeInfo: { marginBottom: 10, backgroundColor: "#f0f0f0", padding: 10, borderRadius: 5 },
   text: { color: "black" },
+  attributionContainer: {
+    position: "absolute",
+    bottom: 5,
+    right: 5,
+    backgroundColor: "rgba(255, 255, 255, 0.7)",
+    padding: 3,
+    borderRadius: 3,
+    zIndex: 1,
+  },
+  attributionText: {
+    fontSize: 10,
+    color: "#333",
+  },
 });
 
 export default NavigationMap;
