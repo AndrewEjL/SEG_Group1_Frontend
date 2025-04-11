@@ -59,7 +59,7 @@ const LoadingIcon: React.FC = () => {
 };
 
 const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
-  const { user, getScheduledPickups, getListedItems, deleteListedItem, getOrganizationName, updatePickup, updateUserPoints } = useUser();
+  const { user, getScheduledPickups, getListedItems, deleteListedItem, getOrganizationName, updatePickup, updateUserPoints, getHistoricalItemDetails } = useUser();
   const [scheduledPickups, setScheduledPickups] = useState<ScheduledPickup[]>([]);
   const [listedItems, setListedItems] = useState<ListedItem[]>([]);
   const [isPickupsLoading, setIsPickupsLoading] = useState(true);
@@ -108,10 +108,19 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       setIsPickupsLoading(true);
       const allPickups = await getScheduledPickups();
       
-      // Filter pickups to display: Show all that aren't fully completed or cancelled
+      // Add console log to check pickup data
+      console.log("Loaded all pickups:", allPickups.length);
+      // Log how many pickups have readyForClaiming=true
+      const readyToClaimCount = allPickups.filter(p => p.readyForClaiming === true).length;
+      console.log("Pickups ready for claiming:", readyToClaimCount);
+      
+      // Filter pickups to display: Show all that aren't fully completed or cancelled,
+      // or ones that are recycled but still ready for claiming points
       const displayPickups = allPickups.filter(pickup => 
-        pickup.pickupStatus !== 'Recycled' && 
-        pickup.pickupStatus !== 'Cancelled'
+        (pickup.pickupStatus !== 'Recycled' && pickup.pickupStatus !== 'Cancelled') ||
+        // Include Recycled pickups that are still ready for claiming points
+        // @ts-ignore - readyForClaiming may not be in the type definition
+        (pickup.pickupStatus === 'Recycled' && pickup.readyForClaiming === true)
       );
       
       setScheduledPickups(displayPickups); // Use the refined list
@@ -140,17 +149,33 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         });
       });
       
-      // Filter out items that are in any pickup with 'Recycled' status
-      const recycledItems = new Set<string>();
-      allPickups.filter(p => p.status === 'Recycled' || p.pickupStatus === 'Recycled')
+      // Create a set of items that should not appear in the listed items section:
+      // 1. Items in recycled pickups that are not ready for claiming
+      // 2. Items in pickups ready for claiming (regardless of status)
+      const itemsToHide = new Set<string>();
+      
+      // Add items from recycled pickups (not ready for claiming)
+      allPickups
+        .filter(p => (p.status === 'Recycled' || p.pickupStatus === 'Recycled') && p.readyForClaiming !== true)
         .forEach(pickup => {
           pickup.listedItemIds.forEach(itemId => {
-            recycledItems.add(itemId);
+            itemsToHide.add(itemId);
           });
         });
       
-      // Only show items that aren't in completed pickups
-      const filteredItems = items.filter(item => !recycledItems.has(item.id));
+      // Add items from any pickup that is ready for claiming
+      allPickups
+        .filter(p => p.readyForClaiming === true)
+        .forEach(pickup => {
+          pickup.listedItemIds.forEach(itemId => {
+            itemsToHide.add(itemId);
+          });
+        });
+      
+      // Only show items that aren't in the hide list
+      const filteredItems = items.filter(item => !itemsToHide.has(item.id));
+      console.log("Filtered out", items.length - filteredItems.length, "items from the listed items view");
+      
       setListedItems(filteredItems);
       
       setIsItemsLoading(false);
@@ -214,65 +239,128 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
 
   // Function to handle claiming points for completed pickups
   const handleClaimPoints = async (pickup: ScheduledPickup) => {
+    console.log("Starting point claim process for pickup:", pickup.id);
+    
     // Calculate points based on item types
     let totalPoints = 0;
     
-    // Get the items from the pickup
-    const items = listedItems.filter(item => pickup.listedItemIds.includes(item.id));
-    
-    // Calculate points based on item type
-    items.forEach(item => {
-      switch(item.type) {
-        case 'Smartphone':
-        case 'Phone':
-          totalPoints += 50;
-          break;
-        case 'Laptop':
-          totalPoints += 100;
-          break;
-        case 'Tablet':
-          totalPoints += 75;
-          break;
-        case 'Battery':
-          totalPoints += 25;
-          break;
-        case 'Charger':
-          totalPoints += 15;
-          break;
-        default:
-          totalPoints += 10;
-      }
-    });
-    
-    // Update user points
-    if (user) {
-      // Update the pickup status to Recycled to indicate it's been processed
-      const updatedPickup: ScheduledPickup = {
-        ...pickup,
-        status: 'Recycled', // Mark as recycled since points have been claimed
-        pickupStatus: 'Recycled',
-        // @ts-ignore - Setting readyForClaiming to false since points are claimed
-        readyForClaiming: false
-      };
+    // Check if the pickup has items directly in its items property
+    if (pickup.items && pickup.items.length > 0) {
+      console.log("Using items directly from pickup:", pickup.items.length);
       
-      // Update the pickup
-      updatePickup(updatedPickup);
+      // We need to fetch the full item details to get their types for point calculation
+      const itemsWithTypes: ListedItem[] = [];
       
-      // Calculate the new total points by adding to existing points
-      const newTotalPoints = (user.points || 0) + totalPoints;
-      
-      // Update user points with the new total
-      updateUserPoints(newTotalPoints);
-      
-      Alert.alert(
-        "Points Claimed!",
-        `You've earned ${totalPoints} points for recycling your e-waste!`,
-        [
-          {
-            text: "OK",
-            onPress: () => loadData() // Reload data to reflect changes
+      // For each item in the pickup, try to find its full details
+      for (const pickupItem of pickup.items) {
+        // Try to find in listedItems first
+        const itemFromList = listedItems.find(item => item.id === pickupItem.id);
+        if (itemFromList) {
+          itemsWithTypes.push(itemFromList);
+        } else {
+          // If not in listedItems, fetch individually (this might be needed for items filtered out)
+          try {
+            const itemDetails = await getHistoricalItemDetails(pickupItem.id);
+            if (itemDetails) {
+              itemsWithTypes.push(itemDetails);
+            } else {
+              console.warn(`Could not find details for item ${pickupItem.id}`);
+            }
+          } catch (error) {
+            console.error(`Error fetching details for item ${pickupItem.id}:`, error);
           }
-        ]
+        }
+      }
+      
+      if (itemsWithTypes.length === 0) {
+        console.error("Could not find item details for any items in pickup:", pickup.id);
+        Alert.alert(
+          "Error",
+          "Could not retrieve item details for this pickup. Please try again later or contact support."
+        );
+        return;
+      }
+      
+      // Calculate points based on item type
+      itemsWithTypes.forEach(item => {
+        let itemPoints = 0;
+        switch(item.type) {
+          case 'Smartphone':
+          case 'Phone':
+            itemPoints = 50;
+            break;
+          case 'Laptop':
+            itemPoints = 100;
+            break;
+          case 'Tablet':
+            itemPoints = 75;
+            break;
+          case 'Battery':
+            itemPoints = 25;
+            break;
+          case 'Charger':
+            itemPoints = 15;
+            break;
+          default:
+            itemPoints = 10;
+        }
+        totalPoints += itemPoints;
+        console.log(`Item ${item.id} (${item.name}, ${item.type}): ${itemPoints} points`);
+      });
+      
+      console.log(`Total points to be awarded: ${totalPoints}`);
+      
+      // Update user points
+      if (user) {
+        console.log(`Current user points: ${user.points}`);
+        console.log(`New total will be: ${(user.points || 0) + totalPoints}`);
+        
+        // Update the pickup status to Recycled to indicate it's been processed
+        const updatedPickup: ScheduledPickup = {
+          ...pickup,
+          status: 'Recycled', // Mark as recycled since points have been claimed
+          pickupStatus: 'Recycled',
+          // @ts-ignore - Setting readyForClaiming to false since points are claimed
+          readyForClaiming: false,
+          // Make sure we preserve the items and listedItemIds
+          items: pickup.items || [],
+          listedItemIds: pickup.listedItemIds || []
+        };
+        
+        console.log("Updating pickup to Recycled status:", updatedPickup.id);
+        
+        // Update the pickup
+        updatePickup(updatedPickup);
+        
+        // Calculate the new total points by adding to existing points
+        const newTotalPoints = (user.points || 0) + totalPoints;
+        
+        console.log(`Updating user points from ${user.points} to ${newTotalPoints}`);
+        
+        // Update user points with the new total
+        updateUserPoints(newTotalPoints);
+        
+        Alert.alert(
+          "Points Claimed!",
+          `You've earned ${totalPoints} points for recycling your e-waste!`,
+          [
+            {
+              text: "OK",
+              onPress: () => {
+                console.log("Reloading data after points claim");
+                loadData(); // Reload data to reflect changes
+              }
+            }
+          ]
+        );
+      } else {
+        console.error("Cannot claim points: User is not logged in");
+      }
+    } else {
+      console.error("Pickup has no items:", pickup.id);
+      Alert.alert(
+        "Error",
+        "This pickup has no items associated with it. Please contact support."
       );
     }
   };

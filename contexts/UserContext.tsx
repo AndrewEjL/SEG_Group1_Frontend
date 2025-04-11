@@ -831,7 +831,9 @@ const mockUserService: UserService = {
     if (mockListedItems[itemId]) {
       // Check if the item is part of any ONGOING pickup (allow deletion for completed/cancelled)
       const isInActivePickup = Object.values(mockPickups).some(pickup => 
-        pickup.listedItemIds.includes(itemId) && pickup.status === 'Pending'
+        pickup.listedItemIds.includes(itemId) && 
+        pickup.status === 'Pending' && 
+        pickup.pickupStatus !== 'Cancelled'  // Allow deletion if in a cancelled pickup
       );
       
       // Only allow deletion if the item is not in an active pickup
@@ -839,8 +841,13 @@ const mockUserService: UserService = {
         // Keep a copy in the historical items before deleting from active listings
         // In a real database, this would be a soft delete with a "deleted" flag
         delete mockListedItems[itemId];
+        console.log(`Successfully deleted item ${itemId} from listings`);
         return true;
+      } else {
+        console.log(`Cannot delete item ${itemId} as it's in an active pickup`);
       }
+    } else {
+      console.log(`Item ${itemId} not found in listings`);
     }
     return false;
   },
@@ -855,20 +862,16 @@ const mockUserService: UserService = {
     // Simulates getting items that are available for pickup (not yet assigned to any organization)
     await new Promise(resolve => setTimeout(resolve, 500));
     
-    // Return all items that are not part of any ongoing pickup, regardless of user
+    // Return all items that are not part of any active pickup
     const availableItems = Object.values(mockListedItems).filter(item => {
-      // Check if the item is not in any ongoing pickup
-      const isInAnyActivePickup = Object.values(mockPickups).some(pickup => 
+      // Check if the item is in any non-cancelled pickup
+      const isInAnyPickup = Object.values(mockPickups).some(pickup => 
         pickup.listedItemIds.includes(item.id) && 
-        (
-          // Consider both status and pickupStatus
-          (pickup.status === 'Pending' || pickup.status === 'Out for pickup') &&
-          pickup.pickupStatus !== 'Cancelled' && pickup.pickupStatus !== 'Recycled' && pickup.pickupStatus !== 'Collected'
-        )
+        pickup.pickupStatus !== 'Cancelled'
       );
       
-      // Return true if the item is not in any active pickup
-      return !isInAnyActivePickup;
+      // Only return items that are NOT in any active pickup
+      return !isInAnyPickup;
     });
     
     console.log(`Available items for pickup: ${availableItems.length}`, 
@@ -1333,7 +1336,14 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Add a direct method to update points without an API call (for quicker UI updates)
   const updateUserPoints = (points: number) => {
-    setUser(prev => prev ? { ...prev, points } : null);
+    if (user) {
+      // Update the in-memory state
+      setUser(prev => prev ? { ...prev, points } : null);
+      
+      // Also update the mock data for persistence
+      mockUsers[user.id].points = points;
+      console.log(`Updated user ${user.id} points to ${points} in mock data`);
+    }
   };
 
   // Add a method to add a redeemed reward
@@ -1475,8 +1485,27 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (mockPickups[pickup.id]) {
       mockPickups[pickup.id] = {
         ...mockPickups[pickup.id],
-        ...pickup
+        ...pickup,
+        // Ensure these important properties are always preserved
+        items: pickup.items || mockPickups[pickup.id].items || [],
+        listedItemIds: pickup.listedItemIds || mockPickups[pickup.id].listedItemIds || []
       };
+      
+      console.log(`Updated pickup ${pickup.id} in mock data:`, {
+        status: pickup.status,
+        pickupStatus: pickup.pickupStatus,
+        readyForClaiming: pickup.readyForClaiming,
+        items: mockPickups[pickup.id].items?.length || 0,
+        listedItemIds: mockPickups[pickup.id].listedItemIds?.length || 0
+      });
+      
+      // If this is a "Recycled" pickup and readyForClaiming is false,
+      // it means points have been claimed, so we should update the historical data
+      if (pickup.pickupStatus === 'Recycled' && pickup.readyForClaiming === false) {
+        console.log(`Pickup ${pickup.id} fully processed (recycled and points claimed)`);
+      }
+    } else {
+      console.error(`Pickup ${pickup.id} not found in mockPickups`);
     }
   };
 

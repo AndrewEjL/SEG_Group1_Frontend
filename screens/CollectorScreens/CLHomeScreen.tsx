@@ -6,7 +6,7 @@ import RouteInfo from "./RouteInfo.tsx";
 import { useUser, ScheduledPickup } from "../../contexts/UserContext";
 
 type NavigationProp = {
-  navigate: (screen: string) => void;
+  navigate: (screen: string, params?: any) => void;
 };
 
 type CLHomeScreenProps = {
@@ -172,18 +172,23 @@ const handleSubmitWeight = async () => {
 
   if (selectedPickup) {
     try {
-      // Create an updated pickup: Set status to Collected and mark readyForClaiming
+      // Make sure to preserve all original data including items
       const updatedPickup: ScheduledPickup = {
         ...selectedPickup,
         weight: Number(weightInput),
         status: 'Collected', // Keep status as Collected
-        pickupStatus: 'Collected', // Keep pickupStatus as Collected
+        pickupStatus: 'Recycled', // Changed from 'Collected' to 'Recycled'
         readyForClaiming: true, // Mark as ready for client to claim points
-        date: new Date().toISOString().split('T')[0] // Update date field
+        date: new Date().toISOString().split('T')[0], // Update date field
+        // Ensure we keep the items array
+        items: selectedPickup.items || [],
+        // Make sure we keep the listedItemIds array 
+        listedItemIds: selectedPickup.listedItemIds || []
       };
       
+      console.log("Updating pickup with items:", updatedPickup.items?.length, "listedItemIds:", updatedPickup.listedItemIds?.length);
+      
       // Update the full pickup with weight and readyForClaiming flag
-      // No need to call updatePickupStatus separately anymore
       updatePickup(updatedPickup);
         
       // Update local state (remove from completedPickups, as it's now fully processed locally)
@@ -243,6 +248,11 @@ const getStatusStyle = (status: string | undefined) => {
   }
 };
 
+// Add a function to handle viewing pickup details
+const handleViewPickupDetails = (pickupId: string) => {
+  navigation.navigate('PickupDetails', { pickupId });
+};
+
   return (
     <SafeAreaView style={styles.safeContainer}>
       <View style={styles.headerSection}>
@@ -273,6 +283,12 @@ const getStatusStyle = (status: string | undefined) => {
                       <Text style={[styles.itemStatus, getStatusStyle(item.pickupStatus)]}>
                         {item.pickupStatus || "Out for pickup"}
                       </Text>
+                      <TouchableOpacity 
+                        style={styles.iconButton}
+                        onPress={() => handleViewPickupDetails(item.id)}
+                      >
+                        <Icon name="visibility" size={20} color="#666" />
+                      </TouchableOpacity>
                       <TouchableOpacity style={styles.acceptButton}
                          onPress={() => {
                            if (!item.pickupStatus || item.pickupStatus === "Out for pickup") {
@@ -765,6 +781,12 @@ statusPending: {
     marginTop: 5,
     color: "#0066CC",
     textDecorationLine: 'underline',
+  },
+  iconButton: {
+    padding: 5,
+    borderRadius: 5,
+    marginLeft: 5,
+    marginRight: 5,
   },
 
 });

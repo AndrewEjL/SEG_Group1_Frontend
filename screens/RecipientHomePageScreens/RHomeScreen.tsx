@@ -16,7 +16,7 @@ type RHomeScreenProps = {
 };
 
 const RHomeScreen: React.FC<RHomeScreenProps> = ({ navigation }) => {
-  const { getAvailablePickups, getPendingPickups, acceptPickup, acceptMultiplePickups, getCollectors } = useUser();
+  const { getAvailablePickups, getPendingPickups, acceptPickup, acceptMultiplePickups, getCollectors, updatePickupStatus, deleteListedItem } = useUser();
   
   // State for available pickups (items ready to be picked up)
   const [availablePickups, setAvailablePickups] = useState<ListedItem[]>([]);
@@ -192,6 +192,56 @@ const RHomeScreen: React.FC<RHomeScreenProps> = ({ navigation }) => {
     .filter(([_, items]) => items.length > 1)
     .map(([address]) => address);
 
+  // Add a function to handle cancelling a pickup
+  const handleCancelPickup = (pickup: ScheduledPickup) => {
+    Alert.alert(
+      "Cancel Pickup",
+      "Are you sure you want to cancel this pickup? This action cannot be undone, and all items in this pickup will be permanently deleted.",
+      [
+        {
+          text: "No",
+          style: "cancel"
+        },
+        {
+          text: "Yes, Cancel Pickup",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              // First update the pickup status to Cancelled
+              const success = await updatePickupStatus(pickup.id, 'Cancelled');
+              
+              if (success) {
+                // Delete all items in the pickup from listings
+                if (pickup.listedItemIds && pickup.listedItemIds.length > 0) {
+                  console.log(`Deleting ${pickup.listedItemIds.length} items from cancelled pickup ${pickup.id}`);
+                  
+                  // Delete each item
+                  for (const itemId of pickup.listedItemIds) {
+                    await deleteListedItem(itemId);
+                    console.log(`Deleted item ${itemId} from listings`);
+                  }
+                }
+                
+                Alert.alert(
+                  "Success",
+                  "Pickup cancelled successfully. All items have been removed from listings."
+                );
+                
+                // Reload data to update both tables
+                loadData();
+              } else {
+                Alert.alert("Error", "Failed to cancel pickup. Please try again.");
+              }
+            } catch (error) {
+              console.error("Error cancelling pickup:", error);
+              Alert.alert("Error", "Failed to cancel pickup. Please try again.");
+            }
+          }
+        }
+      ]
+    );
+  };
+
   return (
     <SafeAreaView style={styles.safeContainer}>
       {/* Header section */}
@@ -303,6 +353,12 @@ const RHomeScreen: React.FC<RHomeScreenProps> = ({ navigation }) => {
                   <View style={styles.iconRow}>
                     <TouchableOpacity onPress={() => handleViewPendingPickupStatus(item)}>
                       <Icon name="hourglass-empty" size={20} color="#333333" />
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                      style={styles.cancelButton}
+                      onPress={() => handleCancelPickup(item)}
+                    >
+                      <Text style={styles.cancelText}>Cancel</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -771,6 +827,16 @@ const styles = StyleSheet.create({
   disabledButton: {
     backgroundColor: "#cccccc",
     opacity: 0.7,
+  },
+  cancelButton: {
+    backgroundColor: "#ff6666",
+    padding: 5,
+    borderRadius: 5,
+    marginLeft: 10,
+  },
+  cancelText: {
+    color: "white",
+    fontWeight: "500",
   },
 });
 
