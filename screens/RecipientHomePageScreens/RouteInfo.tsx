@@ -1,47 +1,20 @@
 import React, { useRef, useState, useEffect } from "react";
 import { View, TextInput, Text, TouchableOpacity, StyleSheet, Dimensions, Keyboard, KeyboardAvoidingView, Platform, ScrollView } from "react-native";
-import MapView, { Marker, Polyline, PROVIDER_DEFAULT } from "react-native-maps";
+import MapView, { Marker, Polyline } from "react-native-maps";
 import polyline from "@mapbox/polyline";
 
-// Add type declarations without module augmentation
-// This is a simpler way to add typing for our usage without conflicts
-// @ts-ignore
-const polylineDecode = polyline.decode;
-
-interface RouteInfoProps {
-  initialDestination: string;
-}
-
-interface Coordinates {
-  latitude: number;
-  longitude: number;
-}
-
-interface RouteInfoData {
-  distance: string;
-  duration: number;
-}
-
-interface PlaceSuggestion {
-  description: string;
-  place_id?: string;
-  osm_id?: string;
-  lat: string;
-  lon: string;
-}
-
-// No Google Maps API key needed for OpenStreetMap
+const GOOGLE_MAPS_API_KEY = "AIzaSyDqpBZYwzP8m_L8du5imDrLUQHYIUZFHtU";
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
 
-const RouteInfo: React.FC<RouteInfoProps> = ({ initialDestination }) => {
-  const mapRef = useRef<MapView | null>(null);
-  const [origin, setOrigin] = useState<Coordinates | null>(null);
-  const [originText, setOriginText] = useState<string>("");
-  const [routeCoords, setRouteCoords] = useState<Coordinates[]>([]);
-  const [routeInfo, setRouteInfo] = useState<RouteInfoData | null>(null);
-  const [destination, setDestination] = useState<Coordinates | null>(null);
-  const [originSuggestions, setOriginSuggestions] = useState<PlaceSuggestion[]>([]);
-  const [showSuggestions, setShowSuggestions] = useState<boolean>(false);
+const RouteInfo = ({ initialDestination }) => {
+  const mapRef = useRef(null);
+  const [origin, setOrigin] = useState(null);
+  const [originText, setOriginText] = useState("");
+  const [routeCoords, setRouteCoords] = useState([]);
+  const [routeInfo, setRouteInfo] = useState(null);
+  const [destination, setDestination] = useState(null);
+  const [originSuggestions, setOriginSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   useEffect(() => {
     if (initialDestination) {
@@ -62,19 +35,13 @@ const RouteInfo: React.FC<RouteInfoProps> = ({ initialDestination }) => {
     }
   }, [initialDestination]);
 
-  const getCoordinatesFromAddress = async (address: string) => {
-    // Using Nominatim API (OpenStreetMap) for geocoding
-    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1&countrycodes=my`;
+  const getCoordinatesFromAddress = async (address) => {
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${GOOGLE_MAPS_API_KEY}`;
     try {
-      const response = await fetch(url, {
-        headers: {
-          'Accept-Language': 'en-US,en',
-          'User-Agent': 'EwasteUI/1.0' // Required for Nominatim API
-        }
-      });
+      const response = await fetch(url);
       const data = await response.json();
-      if (data && data.length > 0) {
-        return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+      if (data.status === "OK") {
+        return data.results[0].geometry.location;
       }
     } catch (error) {
       console.error("Error fetching coordinates:", error);
@@ -82,40 +49,22 @@ const RouteInfo: React.FC<RouteInfoProps> = ({ initialDestination }) => {
     return null;
   };
 
-  const fetchAutocompleteSuggestions = async (input: string, setSuggestions: React.Dispatch<React.SetStateAction<PlaceSuggestion[]>>) => {
+  const fetchAutocompleteSuggestions = async (input, setSuggestions) => {
     if (!input) {
       setSuggestions([]);
       setShowSuggestions(false);
       return;
     }
-    
-    // Using Nominatim API for autocomplete
-    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(input)}&format=json&limit=5&countrycodes=my`;
+    const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(
+      input
+    )}&key=${GOOGLE_MAPS_API_KEY}&components=country:MY`;
 
     try {
-      const response = await fetch(url, {
-        headers: {
-          'Accept-Language': 'en-US,en',
-          'User-Agent': 'EwasteUI/1.0'
-        }
-      });
+      const response = await fetch(url);
       const data = await response.json();
-      
-      if (data && data.length > 0) {
-        // Transform the data to match the format our component expects
-        const predictions = data.map((item: any) => ({
-          description: item.display_name,
-          place_id: item.place_id,
-          osm_id: item.osm_id,
-          lat: item.lat,
-          lon: item.lon
-        }));
-        
-        setSuggestions(predictions);
+      if (data.status === "OK") {
+        setSuggestions(data.predictions);
         setShowSuggestions(true);
-      } else {
-        setSuggestions([]);
-        setShowSuggestions(false);
       }
     } catch (error) {
       console.error("Error fetching autocomplete:", error);
@@ -123,46 +72,70 @@ const RouteInfo: React.FC<RouteInfoProps> = ({ initialDestination }) => {
     }
   };
 
-  const handleSelectOrigin = async (place: PlaceSuggestion) => {
+  const getCoordinatesFromPlaceID = async (placeID) => {
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?place_id=${placeID}&key=${GOOGLE_MAPS_API_KEY}`;
+
+    try {
+      const response = await fetch(url);
+      const data = await response.json();
+      if (data.status === "OK") {
+        return { latitude: data.results[0].geometry.location.lat, longitude: data.results[0].geometry.location.lng };
+      }
+    } catch (error) {
+      console.error("Error fetching coordinates:", error);
+    }
+    return null;
+  };
+
+  const handleSelectOrigin = async (place) => {
     setOriginText(place.description);
     setOriginSuggestions([]);
     setShowSuggestions(false);
     Keyboard.dismiss();
-    
-    // Coordinates are already in the place object from Nominatim
-    if (place.lat && place.lon) {
-      setOrigin({
-        latitude: parseFloat(place.lat),
-        longitude: parseFloat(place.lon)
-      });
+    const coords = await getCoordinatesFromPlaceID(place.place_id);
+    if (coords) {
+      setOrigin(coords);
     }
   };
 
   const fetchRoute = async () => {
     if (!origin || !destination) return;
 
-    // Using OSRM (Open Source Routing Machine) API for directions
-    const url = `https://router.project-osrm.org/route/v1/driving/${origin.longitude},${origin.latitude};${destination.longitude},${destination.latitude}?overview=full&geometries=polyline`;
+    const url = `https://routes.googleapis.com/directions/v2:computeRoutes`;
+    const body = {
+      origin: { location: { latLng: { latitude: origin.latitude, longitude: origin.longitude } } },
+      destination: { location: { latLng: { latitude: destination.latitude, longitude: destination.longitude } } },
+      travelMode: "DRIVE",
+      routingPreference: "TRAFFIC_AWARE",
+      computeAlternativeRoutes: false,
+      routeModifiers: { avoidTolls: false, avoidHighways: false, avoidFerries: false },
+      languageCode: "en-US",
+      units: "IMPERIAL",
+    };
 
     try {
-      const response = await fetch(url);
-      const data = await response.json();
-      
-      if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
+      let response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Goog-Api-Key": GOOGLE_MAPS_API_KEY,
+          "X-Goog-FieldMask": "routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline",
+        },
+        body: JSON.stringify(body),
+      });
+
+      let data = await response.json();
+      if (data.routes && data.routes.length > 0) {
         const route = data.routes[0];
-        
-        // Decode the polyline using our imported function
-        const decodedPolyline = polylineDecode(route.geometry).map((point: [number, number]) => ({
+        const decodedPolyline = polyline.decode(route.polyline.encodedPolyline).map((point) => ({
           latitude: point[0],
           longitude: point[1],
         }));
 
         setRouteCoords(decodedPolyline);
-        
-        // Calculate route info
         setRouteInfo({
-          distance: (route.distance / 1000).toFixed(2), // Convert meters to km
-          duration: Math.round(route.duration / 60) // Convert seconds to minutes
+          distance: (route.distanceMeters / 1000).toFixed(2),
+          duration: Math.round(parseInt(route.duration.replace("s", ""), 10) / 60),
         });
 
         if (mapRef.current) {
@@ -190,7 +163,7 @@ const RouteInfo: React.FC<RouteInfoProps> = ({ initialDestination }) => {
         >
           {originSuggestions.map((item) => (
             <TouchableOpacity 
-              key={item.place_id || item.osm_id}
+              key={item.place_id}
               style={styles.suggestionItemContainer}
               onPress={() => handleSelectOrigin(item)}
             >
@@ -212,7 +185,6 @@ const RouteInfo: React.FC<RouteInfoProps> = ({ initialDestination }) => {
         <MapView 
           ref={mapRef} 
           style={styles.map} 
-          provider={PROVIDER_DEFAULT} // Use default map provider with OSM tiles
           showsUserLocation={true}
           initialRegion={{
             latitude: 1.4927, // Default location (Malaysia)
@@ -225,9 +197,6 @@ const RouteInfo: React.FC<RouteInfoProps> = ({ initialDestination }) => {
           {destination && <Marker coordinate={destination} title="Pickup location" />}
           {routeCoords.length > 0 && <Polyline coordinates={routeCoords} strokeWidth={4} strokeColor="blue" />}
         </MapView>
-        <View style={styles.attributionContainer}>
-          <Text style={styles.attributionText}>© OpenStreetMap contributors</Text>
-        </View>
       </View>
       
       {/* Controls */}
@@ -338,18 +307,6 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 16,
     fontWeight: "bold",
-  },
-  attributionContainer: {
-    position: "absolute",
-    bottom: 5,
-    right: 5,
-    backgroundColor: "rgba(255, 255, 255, 0.7)",
-    padding: 3,
-    borderRadius: 3,
-  },
-  attributionText: {
-    fontSize: 10,
-    color: "#333",
   },
 });
 

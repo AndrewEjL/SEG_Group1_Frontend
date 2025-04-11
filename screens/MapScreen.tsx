@@ -15,13 +15,13 @@ import {
   FlatList
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
+import MapView, { Marker } from 'react-native-maps';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 import { useUser } from '../contexts/UserContext';
 
-// OpenStreetMap doesn't require API key
-// const GOOGLE_MAPS_API_KEY = "AIzaSyDqpBZYwzP8m_L8du5imDrLUQHYIUZFHtU";
+// Google Maps API Key
+const GOOGLE_MAPS_API_KEY = "AIzaSyDqpBZYwzP8m_L8du5imDrLUQHYIUZFHtU";
 
 type RootStackParamList = {
   MapScreen: {
@@ -82,33 +82,21 @@ const MapScreen: React.FC<MapScreenProps> = ({ navigation, route }) => {
       keyboardDidHideListener.remove();
     };
   }, []);
-  
-  const fetchAutocompleteSuggestions = async (input) => {
+  const fetchAutocompleteSuggestions = async (input, setSuggestions) => {
     if (!input) {
-      setLocationSuggestions([]);
+      setSuggestions([]);
       return;
     }
-    
-    // Using Nominatim for address search
-    // Add the countrycodes parameter to limit results to Malaysia only (MY)
-    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(input)}&countrycodes=my&limit=5`;
-    
+    const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(
+      input
+    )}&key=${GOOGLE_MAPS_API_KEY}&components=country:MY`;
+
     try {
-      const response = await fetch(url, {
-        headers: {
-          'Accept-Language': 'en',
-          'User-Agent': 'SEG_Group1_Frontend/1.0'
-        }
-      });
+      const response = await fetch(url);
       const data = await response.json();
-      
-      // Transform the response to match the expected format
-      const suggestions = data.map(item => ({
-        place_id: item.place_id,
-        description: item.display_name,
-      }));
-      
-      setLocationSuggestions(suggestions);
+      if (data.status === "OK") {
+        setSuggestions(data.predictions);
+      }
     } catch (error) {
       console.error("Error fetching autocomplete:", error);
     }
@@ -117,25 +105,18 @@ const MapScreen: React.FC<MapScreenProps> = ({ navigation, route }) => {
   // Convert address to coordinates
   const fetchCoordinates = async () => {
     if (!location.address.trim()) return;
-    
-    // Use Nominatim for geocoding with countrycodes=my to limit to Malaysia
-    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location.address)}&countrycodes=my&limit=1`;
-    
+
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(location.address)}&key=${GOOGLE_MAPS_API_KEY}`;
+
     try {
-      const response = await fetch(url, {
-        headers: {
-          'Accept-Language': 'en',
-          'User-Agent': 'SEG_Group1_Frontend/1.0'
-        }
-      });
+      const response = await fetch(url);
       const data = await response.json();
-      
-      if (data && data.length > 0) {
-        const { lat, lon } = data[0];
-        updateLocation(parseFloat(lat), parseFloat(lon), location.address);
+      if (data.status === "OK") {
+        const { lat, lng } = data.results[0].geometry.location;
+        updateLocation(lat, lng, location.address);
         Keyboard.dismiss();
       } else {
-        alert("Address not found in Malaysia");
+        alert("Address not found");
       }
     } catch (error) {
       console.error("Geocoding error", error);
@@ -144,30 +125,14 @@ const MapScreen: React.FC<MapScreenProps> = ({ navigation, route }) => {
 
   // Convert coordinates to address
   const fetchAddress = async (latitude, longitude) => {
-    // Use Nominatim for reverse geocoding
-    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`;
-    
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${GOOGLE_MAPS_API_KEY}`;
+
     try {
-      const response = await fetch(url, {
-        headers: {
-          'Accept-Language': 'en',
-          'User-Agent': 'SEG_Group1_Frontend/1.0'
-        }
-      });
+      const response = await fetch(url);
       const data = await response.json();
-      
-      if (data) {
-        // Check if the location is in Malaysia
-        const isInMalaysia = data.address && 
-          (data.address.country === "Malaysia" || 
-           data.address.country_code === "my");
-        
-        if (isInMalaysia) {
-          const formattedAddress = data.display_name || "Address not found";
-          setLocation({ latitude, longitude, address: formattedAddress });
-        } else {
-          alert("Please select a location within Malaysia");
-        }
+      if (data.status === "OK") {
+        const formattedAddress = data.results[0]?.formatted_address || "Address not found";
+        setLocation({ latitude, longitude, address: formattedAddress });
       }
     } catch (error) {
       console.error("Geolocation error:", error);
@@ -245,7 +210,6 @@ const MapScreen: React.FC<MapScreenProps> = ({ navigation, route }) => {
             <View style={styles.mapWrapper}>
               <MapView
                 ref={mapRef}
-                provider={PROVIDER_DEFAULT}
                 style={styles.map}
                 showsUserLocation={true}
                 initialRegion={{
@@ -281,7 +245,7 @@ const MapScreen: React.FC<MapScreenProps> = ({ navigation, route }) => {
                   value={location.address}
                   onChangeText={(text) => {
                       setLocation({ ...location, address: text });
-                      fetchAutocompleteSuggestions(text);
+                      fetchAutocompleteSuggestions(text, setLocationSuggestions);
                   }}
                 />
 
@@ -293,11 +257,7 @@ const MapScreen: React.FC<MapScreenProps> = ({ navigation, route }) => {
                   <Text style={styles.searchButtonText}>Search</Text>
                 </TouchableOpacity>
               </View>
-              
-              {/* OSM Attribution */}
-              <View style={styles.attributionContainer}>
-                <Text style={styles.attributionText}>© OpenStreetMap contributors</Text>
-              </View>
+
             </View>
 
             {/* Confirmed Address Section */}
@@ -546,18 +506,8 @@ const styles = StyleSheet.create({
       top: 150,
       zIndex: 2,
   },
-  attributionContainer: {
-    position: "absolute",
-    bottom: 5,
-    right: 5,
-    backgroundColor: "rgba(255, 255, 255, 0.7)",
-    padding: 3,
-    borderRadius: 3,
-  },
-  attributionText: {
-    fontSize: 10,
-    color: "#333",
-  },
+
+
 });
 
 export default MapScreen; 

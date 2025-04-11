@@ -1,9 +1,8 @@
 import React, { useRef, useState } from "react";
 import { Text, View, TextInput, Button, StyleSheet, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard, ScrollView } from "react-native";
-import MapView, { Marker, PROVIDER_DEFAULT } from "react-native-maps";
+import MapView, { Marker } from "react-native-maps";
 
-// OpenStreetMap doesn't require an API key
-// const GOOGLE_MAPS_API_KEY = "AIzaSyDqpBZYwzP8m_L8du5imDrLUQHYIUZFHtU";
+const GOOGLE_MAPS_API_KEY = "AIzaSyDqpBZYwzP8m_L8du5imDrLUQHYIUZFHtU";
 
 const SelectLocation = ({ onLocationSelect }) => {
   const mapRef = useRef(null);
@@ -18,22 +17,14 @@ const SelectLocation = ({ onLocationSelect }) => {
   const fetchCoordinates = async () => {
     if (!location.address.trim()) return;
 
-    // Use Nominatim for geocoding with countrycodes=my to limit to Malaysia
-    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location.address)}&countrycodes=my&limit=1`;
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(location.address)}&key=${GOOGLE_MAPS_API_KEY}`;
 
     try {
-      const response = await fetch(url, {
-        headers: {
-          'Accept-Language': 'en',
-          'User-Agent': 'SEG_Group1_Frontend/1.0'
-        }
-      });
+      const response = await fetch(url);
       const data = await response.json();
-      
-      if (data && data.length > 0) {
-        const lat = parseFloat(data[0].lat);
-        const lon = parseFloat(data[0].lon);
-        updateLocation(lat, lon, location.address);
+      if (data.status === "OK") {
+        const { lat, lng } = data.results[0].geometry.location;
+        updateLocation(lat, lng, location.address);
         Keyboard.dismiss();
       } else {
         alert("Address not found");
@@ -44,33 +35,15 @@ const SelectLocation = ({ onLocationSelect }) => {
   };
  //Convert coordinate to address
   const fetchAddress = async (latitude, longitude) => {
-    // Use Nominatim for reverse geocoding
-    // The countrycodes parameter is not needed for reverse geocoding as it's based on coordinates
-    // But we can validate if the returned country is Malaysia in the response
-    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`;
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${GOOGLE_MAPS_API_KEY}`;
 
     try {
-      const response = await fetch(url, {
-        headers: {
-          'Accept-Language': 'en',
-          'User-Agent': 'SEG_Group1_Frontend/1.0'
-        }
-      });
+      const response = await fetch(url);
       const data = await response.json();
-      
-      if (data) {
-        // Check if the location is in Malaysia
-        const isInMalaysia = data.address && 
-          (data.address.country === "Malaysia" || 
-           data.address.country_code === "my");
-        
-        if (isInMalaysia) {
-          const formattedAddress = data.display_name || "Address not found";
-          setLocation({ latitude, longitude, address: formattedAddress });
-          onLocationSelect(formattedAddress);
-        } else {
-          alert("Please select a location within Malaysia");
-        }
+      if (data.status === "OK") {
+        const formattedAddress = data.results[0]?.formatted_address || "Address not found";
+        setLocation({ latitude, longitude, address: formattedAddress });
+        onLocationSelect(formattedAddress);
       }
     } catch (error) {
       console.error("Geolocation error:", error);
@@ -103,7 +76,6 @@ const SelectLocation = ({ onLocationSelect }) => {
             <View style={styles.mapWrapper}>
               <MapView
                 ref={mapRef}
-                provider={PROVIDER_DEFAULT}
                 style={styles.map}
                 showsUserLocation={true}
                 initialRegion={{
@@ -129,11 +101,6 @@ const SelectLocation = ({ onLocationSelect }) => {
                     }}
                   />
                 )}
-                
-                {/* OSM Attribution */}
-                <View style={styles.attributionContainer}>
-                  <Text style={styles.attributionText}>© OpenStreetMap contributors</Text>
-                </View>
               </MapView>
 
               <View style={styles.searchContainer}>
@@ -226,19 +193,6 @@ const styles = StyleSheet.create({
   },
   keyboardSpacer: {
     height: 100, // Extra space at the bottom
-  },
-  attributionContainer: {
-    position: "absolute",
-    bottom: 5,
-    right: 5,
-    backgroundColor: "rgba(255, 255, 255, 0.7)",
-    padding: 3,
-    borderRadius: 3,
-    zIndex: 1,
-  },
-  attributionText: {
-    fontSize: 10,
-    color: "#333",
   },
 });
 
