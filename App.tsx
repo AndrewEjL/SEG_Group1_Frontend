@@ -14,6 +14,9 @@ import MapScreen from './screens/MapScreen';
 import EditListedItems from './screens/EditListedItems';
 import EditLocation from './screens/EditLocation';
 import ClientRegistration from './screens/Login&RegistrationScreens/clientRegistration.tsx';
+import CodeVerification from './screens/Login&RegistrationScreens/codeVerification.tsx';
+import ForgotPassword from './screens/Login&RegistrationScreens/forgotPassword.tsx';
+import ResetPassword from './screens/Login&RegistrationScreens/ResetPasswordScreen.tsx';
 import NavigationMap from './screens/GoogleMapsScreens/NavigationMap.tsx';
 import SelectLocation from './screens/GoogleMapsScreens/SelectLocation.tsx';
 import RHomeScreen from './screens/RecipientHomePageScreens/RHomeScreen.tsx';
@@ -167,6 +170,21 @@ const App = () => {
             name="ClientRegistration"
             component={ClientRegistration}
             options={{ headerShown: true, title: 'Client Registration'}}
+          />
+          <Stack.Screen
+            name="forgotPassword"
+            component={ForgotPassword}
+            options={{ headerShown: true, title: 'ForgotPassword'}}
+          />
+          <Stack.Screen
+            name="ResetPassword"
+            component={ResetPassword}
+            options={{ headerShown: true, title: 'ResetPassword'}}
+          />
+          <Stack.Screen
+            name="CodeVerification"
+            component={CodeVerification}
+            options={{ headerShown: true, title: 'Verification code'}}
           />
           <Stack.Screen
             name="NavigationMap"

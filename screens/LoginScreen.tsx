@@ -50,6 +50,9 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   const handleSignUp = () => {
     navigation.navigate('SelectRegistrationRole');
   };
+  const handleForgotPassword = () => {
+    navigation.navigate('forgotPassword');
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -128,6 +131,13 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
               <TouchableOpacity onPress={handleSignUp} disabled={isLoading}>
                 <Text style={[styles.signUpLink, isLoading && styles.signUpLinkDisabled]}>
                   Sign up!
+                </Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.forgotPasswordContainer}>
+              <TouchableOpacity onPress={handleForgotPassword} disabled={isLoading}>
+                <Text style={[styles.forgotPasswordLink, isLoading && styles.forgotPasswordDisabled]}>
+                  Forgot password?
                 </Text>
               </TouchableOpacity>
             </View>
@@ -218,6 +228,23 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   signUpLinkDisabled: {
+    opacity: 0.7,
+  },
+  forgotPasswordContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 20,
+  },
+  forgotPasswordText: {
+    color: '#000',
+    fontSize: 16,
+  },
+  forgotPasswordLink: {
+    color: '#5E4DCD',
+    fontWeight: '600',
+    fontSize: 16,
+  },
+  forgotPasswordDisabled: {
     opacity: 0.7,
   },
 });
