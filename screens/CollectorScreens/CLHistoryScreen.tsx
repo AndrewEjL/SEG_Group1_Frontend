@@ -12,7 +12,7 @@ interface ExtendedPickup extends ScheduledPickup {
 }
 
 type NavigationProp = {
-  navigate: (screen: string, params?: any) => void;
+  navigate: (screen: string) => void;
   addListener: (event: string, callback: () => void) => () => void;
 };
 
@@ -140,11 +140,6 @@ const CLHistoryScreen: React.FC<CLHistoryScreenProps> = ({ navigation }) => {
     Linking.openURL(`tel:${phoneNumber}`);
   };
 
-  // Add a function to handle viewing pickup details
-  const handleViewPickupDetails = (pickupId: string) => {
-    navigation.navigate('PickupDetails', { pickupId });
-  };
-
   return (
     <SafeAreaView style={styles.safeContainer}>
       <View style={styles.headerSection}>
@@ -176,15 +171,9 @@ const CLHistoryScreen: React.FC<CLHistoryScreenProps> = ({ navigation }) => {
                     </View>
                     <View style={styles.iconRow}>
                       <TouchableOpacity
-                        style={styles.iconButton}
-                        onPress={() => handleViewPickupDetails(item.id)}
-                      >
-                        <Icon name="visibility" size={20} color="#666" />
-                      </TouchableOpacity>
-                      <TouchableOpacity
                          onPress={() => viewPickupDetails(item)}
                       >
-                        <Icon name="history" size={24} color="#b366ff" />
+                        <Icon name="visibility" size={24} color="#b366ff" />
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -383,9 +372,6 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     color: "#5E4DCD",
     textDecorationLine: "underline",
-  },
-  iconButton: {
-    padding: 5,
   },
 });
 
