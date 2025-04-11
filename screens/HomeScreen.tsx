@@ -4,6 +4,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useUser, ScheduledPickup, type ListedItem } from '../contexts/UserContext';
 import { useFocusEffect } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type RootStackParamList = {
   Home: undefined;
@@ -23,6 +24,8 @@ interface PickupItem {
   id: number;
   facility: string;
 }
+
+const COMPLETED_PICKUPS_STORAGE_KEY = 'completedPickupIds';
 
 const LoadingIcon: React.FC = () => {
   const spinValue = useRef(new Animated.Value(0)).current;
@@ -56,23 +59,47 @@ const LoadingIcon: React.FC = () => {
 };
 
 const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
-  const { user, getScheduledPickups, getListedItems, deleteListedItem, getOrganizationName } = useUser();
+  const { user, getScheduledPickups, getListedItems, deleteListedItem, getOrganizationName, updatePickup, updateUserPoints } = useUser();
   const [scheduledPickups, setScheduledPickups] = useState<ScheduledPickup[]>([]);
   const [listedItems, setListedItems] = useState<ListedItem[]>([]);
   const [isPickupsLoading, setIsPickupsLoading] = useState(true);
   const [isItemsLoading, setIsItemsLoading] = useState(true);
   const [organizationNames, setOrganizationNames] = useState<{[key: string]: string}>({});
+  // Track which pickups are completed and ready for claiming points
+  const [completedPickupIds, setCompletedPickupIds] = useState<string[]>([]);
+  // State to track if AsyncStorage loading is complete
+  const [isStorageLoaded, setIsStorageLoaded] = useState(false);
 
-  // Load data when component mounts
+  // Load completed IDs from storage on mount
   useEffect(() => {
-    loadData();
+    const loadCompletedIds = async () => {
+      try {
+        const storedIds = await AsyncStorage.getItem(COMPLETED_PICKUPS_STORAGE_KEY);
+        if (storedIds) {
+          setCompletedPickupIds(JSON.parse(storedIds));
+        }
+      } catch (e) {
+        console.error("Failed to load completed pickup IDs from storage", e);
+      }
+      setIsStorageLoaded(true); // Indicate storage loading is complete
+    };
+    loadCompletedIds();
   }, []);
 
-  // Refresh data when screen comes into focus
+  // Load data when component mounts, only after storage is loaded
+  useEffect(() => {
+    if (isStorageLoaded) {
+      loadData();
+    }
+  }, [isStorageLoaded]); // Depend on storage loaded state
+
+  // Refresh data when screen comes into focus, only after storage is loaded
   useFocusEffect(
     useCallback(() => {
-      loadData();
-    }, [])
+      if (isStorageLoaded) {
+        loadData();
+      }
+    }, [isStorageLoaded]) // Depend on storage loaded state
   );
 
   const loadData = async () => {
@@ -80,13 +107,18 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       // Load pickups
       setIsPickupsLoading(true);
       const allPickups = await getScheduledPickups();
-      // Filter to show only ongoing pickups
-      const ongoingPickups = allPickups.filter(pickup => pickup.status === 'ongoing');
-      setScheduledPickups(ongoingPickups);
       
-      // Load organization names for pickups
+      // Filter pickups to display: Show all that aren't fully completed or cancelled
+      const displayPickups = allPickups.filter(pickup => 
+        pickup.pickupStatus !== 'Recycled' && 
+        pickup.pickupStatus !== 'Cancelled'
+      );
+      
+      setScheduledPickups(displayPickups); // Use the refined list
+      
+      // Load organization names for the pickups we are displaying
       const orgNames: {[key: string]: string} = {};
-      for (const pickup of ongoingPickups) {
+      for (const pickup of displayPickups) { // Iterate over displayPickups
         if (pickup.organizationId) {
           const orgName = await getOrganizationName(pickup.organizationId);
           orgNames[pickup.id] = orgName;
@@ -99,7 +131,28 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       // Load listed items
       setIsItemsLoading(true);
       const items = await getListedItems();
-      setListedItems(items);
+      
+      // Create a set of all item IDs that are in any pickup (including completed ones)
+      const itemsInAnyPickup = new Set<string>();
+      allPickups.forEach(pickup => {
+        pickup.listedItemIds.forEach(itemId => {
+          itemsInAnyPickup.add(itemId);
+        });
+      });
+      
+      // Filter out items that are in any pickup with 'Recycled' status
+      const recycledItems = new Set<string>();
+      allPickups.filter(p => p.status === 'Recycled' || p.pickupStatus === 'Recycled')
+        .forEach(pickup => {
+          pickup.listedItemIds.forEach(itemId => {
+            recycledItems.add(itemId);
+          });
+        });
+      
+      // Only show items that aren't in completed pickups
+      const filteredItems = items.filter(item => !recycledItems.has(item.id));
+      setListedItems(filteredItems);
+      
       setIsItemsLoading(false);
     }
   };
@@ -108,15 +161,127 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const isItemInPickup = (itemId: string) => {
     return scheduledPickups.some(pickup => 
       pickup.listedItemIds.includes(itemId) && 
-      pickup.status === 'ongoing'
+      (pickup.status === 'Pending' || pickup.status === 'Out for pickup' || pickup.status === 'Collected') &&
+      (pickup.pickupStatus !== 'Recycled' && pickup.pickupStatus !== 'Cancelled')
     );
+  };
+
+  // Helper function to get status display text
+  const getStatusText = (pickup: ScheduledPickup) => {
+    // Check if this pickup is ready for claiming FIRST
+    // @ts-ignore
+    if (pickup.readyForClaiming === true) {
+      return 'Completed';
+    }
+    
+    // If not ready for claiming, show the regular status
+    switch(pickup.status) {
+      case 'Pending':
+        return 'Not Collected';
+      case 'Out for pickup':
+        return 'Out for Pickup';
+      case 'Collected':
+        return 'Collected';
+      default:
+        return pickup.status;
+    }
+  };
+
+  // Helper function to get status color
+  const getStatusColor = (pickup: ScheduledPickup) => {
+    // Check if this pickup is in our "completedPickupIds" array
+    if (completedPickupIds.includes(pickup.id)) {
+      return '#2196F3'; // Blue for Completed
+    }
+    
+    switch(pickup.status) {
+      case 'Pending':
+        return '#F57C00'; // Orange
+      case 'Out for pickup':
+        return '#5E4DCD'; // Purple
+      case 'Collected':
+        return '#4CAF50'; // Green
+      default:
+        return '#666666';
+    }
+  };
+
+  // Helper function to check if pickup is ready for claiming points
+  const isReadyForClaiming = (pickup: ScheduledPickup) => {
+    // @ts-ignore - We're intentionally using a property that's not in the type definition
+    return pickup.readyForClaiming === true;
+  };
+
+  // Function to handle claiming points for completed pickups
+  const handleClaimPoints = async (pickup: ScheduledPickup) => {
+    // Calculate points based on item types
+    let totalPoints = 0;
+    
+    // Get the items from the pickup
+    const items = listedItems.filter(item => pickup.listedItemIds.includes(item.id));
+    
+    // Calculate points based on item type
+    items.forEach(item => {
+      switch(item.type) {
+        case 'Smartphone':
+        case 'Phone':
+          totalPoints += 50;
+          break;
+        case 'Laptop':
+          totalPoints += 100;
+          break;
+        case 'Tablet':
+          totalPoints += 75;
+          break;
+        case 'Battery':
+          totalPoints += 25;
+          break;
+        case 'Charger':
+          totalPoints += 15;
+          break;
+        default:
+          totalPoints += 10;
+      }
+    });
+    
+    // Update user points
+    if (user) {
+      // Update the pickup status to Recycled to indicate it's been processed
+      const updatedPickup: ScheduledPickup = {
+        ...pickup,
+        status: 'Recycled', // Mark as recycled since points have been claimed
+        pickupStatus: 'Recycled',
+        // @ts-ignore - Setting readyForClaiming to false since points are claimed
+        readyForClaiming: false
+      };
+      
+      // Update the pickup
+      updatePickup(updatedPickup);
+      
+      // Calculate the new total points by adding to existing points
+      const newTotalPoints = (user.points || 0) + totalPoints;
+      
+      // Update user points with the new total
+      updateUserPoints(newTotalPoints);
+      
+      Alert.alert(
+        "Points Claimed!",
+        `You've earned ${totalPoints} points for recycling your e-waste!`,
+        [
+          {
+            text: "OK",
+            onPress: () => loadData() // Reload data to reflect changes
+          }
+        ]
+      );
+    }
   };
 
   const handleViewPickup = (pickupId: string) => {
     navigation.navigate('PickupDetails', { pickupId });
   };
 
-  const handleEditPickup = (pickupId: string) => {
+  const handleEditPickup = (pickup: ScheduledPickup) => {
     // Show options to update pickup status
     Alert.alert(
       "Update Pickup",
@@ -127,15 +292,68 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           style: "cancel"
         },
         {
-          text: "Mark as Completed",
+          text: "Mark as Collected",
           onPress: async () => {
             // In a real app, this would call an API to update the pickup
+            const updatedPickup: ScheduledPickup = {
+              ...pickup,
+              status: 'Collected',
+              date: new Date().toISOString().split('T')[0]
+            };
+            
+            // Update the pickup
+            updatePickup(updatedPickup);
+            
             Alert.alert(
               "Success", 
-              "Pickup has been marked as completed. You can view it in your Pickup History."
+              "Pickup has been marked as collected."
             );
             
             // Trigger data reload to reflect the changes
+            loadData();
+          }
+        },
+        {
+          text: "Mark as Completed",
+          onPress: async () => {
+            // Add debug logging
+            console.log("1. STARTING Mark as Completed process for pickup ID:", pickup.id);
+            
+            // Mark as collected in the database and add readyForClaiming property
+            const updatedPickup: ScheduledPickup = {
+              ...pickup,
+              status: 'Collected', // This is a valid status in the ScheduledPickup type
+              date: new Date().toISOString().split('T')[0],
+              // Add readyForClaiming with @ts-ignore since it's not in the type definition
+              // @ts-ignore
+              readyForClaiming: true
+            };
+            
+            console.log("3. Updated pickup object with readyForClaiming:", updatedPickup);
+            
+            // Update the pickup in the backend
+            updatePickup(updatedPickup);
+            console.log("4. Called updatePickup");
+            
+            // Also update it in our local state immediately
+            setScheduledPickups(prev => 
+              prev.map(p => p.id === pickup.id ? 
+                {
+                  ...p,
+                  // @ts-ignore - Adding property not in type definition
+                  readyForClaiming: true
+                } : p
+              )
+            );
+            console.log("5. Updated local scheduledPickups state");
+            
+            Alert.alert(
+              "Success", 
+              "Pickup has been marked as completed. You can now claim your points!"
+            );
+            
+            // Trigger data reload to reflect the changes
+            console.log("6. Calling loadData");
             loadData();
           }
         },
@@ -144,9 +362,27 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           style: "destructive",
           onPress: async () => {
             // In a real app, this would call an API to update the pickup
+            const updatedPickup: ScheduledPickup = {
+              ...pickup,
+              status: 'Cancelled',
+              date: new Date().toISOString().split('T')[0]
+            };
+            
+            // Update the pickup
+            updatePickup(updatedPickup);
+            
+            // Remove from completed pickups if it was there and save to storage
+            const updatedIds = completedPickupIds.filter(id => id !== pickup.id);
+            setCompletedPickupIds(updatedIds);
+            try {
+              await AsyncStorage.setItem(COMPLETED_PICKUPS_STORAGE_KEY, JSON.stringify(updatedIds));
+            } catch (e) {
+              console.error("Failed to save completed pickup IDs to storage", e);
+            }
+            
             Alert.alert(
               "Success", 
-              "Pickup has been cancelled. You can view it in your Pickup History."
+              "Pickup has been cancelled."
             );
             
             // Trigger data reload to reflect the changes
@@ -227,37 +463,72 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
               <View style={styles.emptyContainer}>
                 <Text style={styles.emptyText}>No scheduled pickups</Text>
               </View>
-            ) : scheduledPickups.map((pickup) => (
-              <View key={pickup.id} style={styles.tableRow}>
-                <View style={styles.pickupInfo}>
-                  <Text style={styles.facilityText}>{pickup.facilityName}</Text>
-                  {pickup.organizationId && organizationNames[pickup.id] && (
-                    <Text style={styles.organizationText}>
-                      By: {organizationNames[pickup.id]}
-                    </Text>
-                  )}
-                  {pickup.collector && (
-                    <Text style={styles.collectorText}>
-                      Collector: {pickup.collector}
-                    </Text>
-                  )}
-                </View>
-                <View style={styles.actionButtons}>
-                  <TouchableOpacity 
-                    style={styles.iconButton} 
-                    onPress={() => handleViewPickup(pickup.id)}
-                  >
-                    <Icon name="visibility" size={24} color="#666" />
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={styles.iconButton} 
-                    onPress={() => handleEditPickup(pickup.id)}
-                  >
-                    <LoadingIcon />
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ))}
+            ) : (
+              // Sort pickups: Completed > Pending > Collected
+              [...scheduledPickups]
+                .sort((a, b) => {
+                  // @ts-ignore
+                  const aIsReady = a.readyForClaiming === true;
+                  // @ts-ignore
+                  const bIsReady = b.readyForClaiming === true;
+
+                  if (aIsReady !== bIsReady) {
+                    return aIsReady ? -1 : 1; // Ready items come first
+                  }
+
+                  // If readiness is the same, sort by Pending > Collected
+                  if (a.status === 'Pending' && b.status !== 'Pending') return -1;
+                  if (b.status === 'Pending' && a.status !== 'Pending') return 1;
+                  
+                  return 0; // Keep original order otherwise
+                })
+                .map((pickup) => (
+                  <View key={pickup.id} style={styles.tableRow}>
+                    <View style={styles.pickupInfo}>
+                      <Text style={styles.facilityText}>
+                        {organizationNames[pickup.id] || 'Unknown Facility'}
+                      </Text>
+                      {pickup.collector && (
+                        <Text style={styles.collectorText}>
+                          Collector: {pickup.collector}
+                        </Text>
+                      )}
+                      <View style={[styles.statusTag, {
+                        backgroundColor: getStatusColor(pickup)
+                      }]}>
+                        <Text style={styles.statusText}>
+                          {getStatusText(pickup)}
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={styles.actionButtons}>
+                      {isReadyForClaiming(pickup) ? (
+                        <TouchableOpacity 
+                          style={styles.claimButton} 
+                          onPress={() => handleClaimPoints(pickup)}
+                        >
+                          <Text style={styles.claimButtonText}>Claim Points</Text>
+                        </TouchableOpacity>
+                      ) : (
+                        <>
+                          <TouchableOpacity 
+                            style={styles.iconButton} 
+                            onPress={() => handleViewPickup(pickup.id)}
+                          >
+                            <Icon name="visibility" size={24} color="#666" />
+                          </TouchableOpacity>
+                          <TouchableOpacity 
+                            style={styles.iconButton} 
+                            onPress={() => handleEditPickup(pickup)}
+                          >
+                            <Icon name="edit" size={24} color="#666" />
+                          </TouchableOpacity>
+                        </>
+                      )}
+                    </View>
+                  </View>
+                ))
+            )}
           </ScrollView>
         </View>
       </View>
@@ -340,7 +611,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
 
       {/* Add Pickup Item Button */}
       <TouchableOpacity 
-        style={styles.addButton}
+        style={styles.addButton} 
         onPress={handleAddPickupItem}
       >
         <Text style={styles.addButtonText}>Add Pickup Item</Text>
@@ -364,13 +635,6 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         </TouchableOpacity>
         <TouchableOpacity 
           style={styles.navItem}
-          onPress={() => handleTabPress('notifications')}
-        >
-          <Icon name="notifications" size={24} color="#666" />
-          <Text style={styles.navText}>Notifications</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={styles.navItem}
           onPress={() => handleTabPress('profile')}
         >
           <Icon name="person" size={24} color="#666" />
@@ -385,6 +649,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
+    position: 'relative',
   },
   header: {
     padding: 16,
@@ -448,11 +713,6 @@ const styles = StyleSheet.create({
     color: '#333',
     fontWeight: '500',
   },
-  organizationText: {
-    fontSize: 14,
-    color: '#5E4DCD',
-    marginTop: 2,
-  },
   collectorText: {
     fontSize: 12,
     color: '#666',
@@ -481,7 +741,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     borderRadius: 24,
     alignSelf: 'center',
-    marginBottom: 24,
+    marginBottom: 80, // Increased to account for bottom nav
   },
   addButtonText: {
     color: '#FFFFFF',
@@ -499,6 +759,8 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
+    height: 60,
+    zIndex: 999,
   },
   navItem: {
     alignItems: 'center',
@@ -554,6 +816,31 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 4,
+  },
+  statusTag: {
+    marginTop: 6,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  statusText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '500',
+  },
+  claimButton: {
+    backgroundColor: '#4CAF50',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  claimButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '500',
   },
 });
 

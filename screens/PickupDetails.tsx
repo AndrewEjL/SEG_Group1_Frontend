@@ -47,10 +47,11 @@ const LoadingIcon: React.FC = () => {
 
 const PickupDetails: React.FC<PickupDetailsProps> = ({ navigation, route }) => {
   const { pickupId } = route.params;
-  const { getPickupDetails, getListedItems, getHistoricalItemDetails } = useUser();
+  const { getPickupDetails, getListedItems, getHistoricalItemDetails, getOrganizationName } = useUser();
   const [pickup, setPickup] = useState<ScheduledPickup | null>(null);
   const [itemDetails, setItemDetails] = useState<{ [key: string]: ListedItem | null }>({});
   const [isLoading, setIsLoading] = useState(true);
+  const [organizationName, setOrganizationName] = useState<string>('');
 
   useEffect(() => {
     loadPickupDetails();
@@ -62,6 +63,12 @@ const PickupDetails: React.FC<PickupDetailsProps> = ({ navigation, route }) => {
       const details = await getPickupDetails(pickupId);
       if (details) {
         setPickup(details);
+        
+        // Get organization name
+        if (details.organizationId) {
+          const orgName = await getOrganizationName(details.organizationId);
+          setOrganizationName(orgName);
+        }
         
         // Get all active listed items
         const allListedItems = await getListedItems();
@@ -90,6 +97,24 @@ const PickupDetails: React.FC<PickupDetailsProps> = ({ navigation, route }) => {
       console.error('Error loading pickup details:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Helper function to get status color
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'Collected':
+        return '#4CAF50'; // Green
+      case 'Cancelled':
+        return '#F44336'; // Red
+      case 'Pending':
+        return '#FFC107'; // Yellow/Amber
+      case 'Out for pickup':
+        return '#2196F3'; // Blue
+      case 'Recycled':
+        return '#4CAF50'; // Green
+      default:
+        return '#FFC107'; // Default to yellow/amber
     }
   };
 
@@ -163,13 +188,11 @@ const PickupDetails: React.FC<PickupDetailsProps> = ({ navigation, route }) => {
           {/* Facility Name */}
           <View style={styles.facilityContainer}>
             <Text style={styles.facilityLabel}>Facility</Text>
-            <Text style={styles.facilityName}>{pickup.facilityName}</Text>
+            <Text style={styles.facilityName}>{organizationName || 'Unknown Facility'}</Text>
             
             {/* Display pickup status */}
             <View style={[styles.statusContainer, { 
-              backgroundColor: 
-                pickup.status === 'completed' ? '#4CAF50' : 
-                pickup.status === 'cancelled' ? '#F44336' : '#FFC107'
+              backgroundColor: getStatusColor(pickup.status)
             }]}>
               <Text style={styles.statusText}>{pickup.status}</Text>
             </View>

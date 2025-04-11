@@ -19,7 +19,6 @@ import { GiftCard } from '../contexts/UserContext';
 type RootStackParamList = {
   Home: undefined;
   rewards: undefined;
-  notifications: undefined;
   profile: undefined;
   CProfileScreen: undefined;
   RewardsHistory: undefined;
@@ -340,10 +339,6 @@ const RewardsScreen: React.FC<RewardsScreenProps> = ({ navigation }) => {
         <TouchableOpacity style={styles.navItem} onPress={() => handleTabPress("rewards")}>
           <Icon name="star" size={24} color="#5E4DCD" />
           <Text style={[styles.navText, styles.activeNavText]}>Rewards</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem} onPress={() => handleTabPress("notifications")}>
-          <Icon name="notifications" size={24} color="#666" />
-          <Text style={styles.navText}>Notifications</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem} onPress={() => handleTabPress("CProfileScreen")}>
           <Icon name="person" size={24} color="#666" />

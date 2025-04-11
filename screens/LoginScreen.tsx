@@ -20,6 +20,8 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
     if (user) {
       if (user.role === 'organization') {
         navigation.navigate('RHome');
+      } else if (user.role === 'collector') {
+        navigation.navigate('CLHome');
       } else {
         navigation.navigate('Home');
       }
