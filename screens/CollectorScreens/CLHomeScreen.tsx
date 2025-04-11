@@ -6,7 +6,7 @@ import RouteInfo from "./RouteInfo.tsx";
 import { useUser, ScheduledPickup } from "../../contexts/UserContext";
 
 type NavigationProp = {
-  navigate: (screen: string) => void;
+  navigate: (screen: string, params?: any) => void;
 };
 
 type CLHomeScreenProps = {
@@ -243,6 +243,11 @@ const getStatusStyle = (status: string | undefined) => {
   }
 };
 
+// Add function to handle viewing pickup details
+const handleViewPickup = (pickupId: string) => {
+  navigation.navigate('PickupDetails', { pickupId });
+};
+
   return (
     <SafeAreaView style={styles.safeContainer}>
       <View style={styles.headerSection}>
@@ -261,18 +266,24 @@ const getStatusStyle = (status: string | undefined) => {
                 keyExtractor={(item) => item.id}
                 renderItem={({ item }) => (
                   <View style={styles.pendingCard}>
-                    <View style={styles.pickupInfo}>
+                    <TouchableOpacity 
+                      style={styles.pickupInfo}
+                      onPress={() => handleViewPickup(item.id)}
+                    >
                       <Text style={styles.itemText}>
                         {item.items && item.items.length > 0 
                           ? `${item.items[0].name} ${item.items.length > 1 ? `+ ${item.items.length - 1} more` : ''}`
                           : 'Item name not available'}
                       </Text>
                       <Text style={styles.collectorText}>Client: {getClientName(item.clientId)}</Text>
-                    </View>
+                    </TouchableOpacity>
                     <View style={styles.iconRow}>
                       <Text style={[styles.itemStatus, getStatusStyle(item.pickupStatus)]}>
                         {item.pickupStatus || "Out for pickup"}
                       </Text>
+                      <TouchableOpacity style={styles.viewButton} onPress={() => handleViewPickup(item.id)}>
+                        <Icon name="visibility" size={20} color="#333333" />
+                      </TouchableOpacity>
                       <TouchableOpacity style={styles.acceptButton}
                          onPress={() => {
                            if (!item.pickupStatus || item.pickupStatus === "Out for pickup") {
@@ -766,7 +777,10 @@ statusPending: {
     color: "#0066CC",
     textDecorationLine: 'underline',
   },
-
+  viewButton: {
+    padding: 5,
+    marginRight: 5,
+  },
 });
 
 export default CLHomeScreen;
