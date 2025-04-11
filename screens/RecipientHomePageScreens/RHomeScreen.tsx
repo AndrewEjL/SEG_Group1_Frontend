@@ -207,27 +207,61 @@ const RHomeScreen: React.FC<RHomeScreenProps> = ({ navigation }) => {
           style: "destructive",
           onPress: async () => {
             try {
+              console.log(`Attempting to cancel pickup ${pickup.id} with ${pickup.listedItemIds?.length || 0} items`);
+              
               // First update the pickup status to Cancelled
               const success = await updatePickupStatus(pickup.id, 'Cancelled');
               
               if (success) {
+                console.log(`Successfully updated pickup ${pickup.id} status to Cancelled`);
+                
                 // Delete all items in the pickup from listings
                 if (pickup.listedItemIds && pickup.listedItemIds.length > 0) {
                   console.log(`Deleting ${pickup.listedItemIds.length} items from cancelled pickup ${pickup.id}`);
                   
+                  // Track successful and failed deletions
+                  const results = { success: 0, failed: 0 };
+                  
                   // Delete each item
                   for (const itemId of pickup.listedItemIds) {
-                    await deleteListedItem(itemId);
-                    console.log(`Deleted item ${itemId} from listings`);
+                    try {
+                      const deleteSuccess = await deleteListedItem(itemId);
+                      if (deleteSuccess) {
+                        console.log(`Deleted item ${itemId} from listings`);
+                        results.success++;
+                      } else {
+                        console.warn(`Failed to delete item ${itemId}`);
+                        results.failed++;
+                      }
+                    } catch (err) {
+                      console.error(`Error deleting item ${itemId}:`, err);
+                      results.failed++;
+                    }
                   }
+                  
+                  // Show appropriate message based on results
+                  if (results.failed > 0) {
+                    Alert.alert(
+                      "Partial Success",
+                      `Pickup cancelled. ${results.success} items deleted, ${results.failed} items could not be deleted.`
+                    );
+                  } else {
+                    Alert.alert(
+                      "Success",
+                      "Pickup cancelled successfully. All items have been removed from listings."
+                    );
+                  }
+                } else {
+                  Alert.alert(
+                    "Success",
+                    "Pickup cancelled successfully. (No items were found to delete)"
+                  );
                 }
                 
-                Alert.alert(
-                  "Success",
-                  "Pickup cancelled successfully. All items have been removed from listings."
-                );
+                // Remove the pickup from our local state immediately
+                setPendingPickups(prev => prev.filter(p => p.id !== pickup.id));
                 
-                // Reload data to update both tables
+                // Then reload data to update both tables
                 loadData();
               } else {
                 Alert.alert("Error", "Failed to cancel pickup. Please try again.");

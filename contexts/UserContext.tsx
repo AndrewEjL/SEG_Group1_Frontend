@@ -114,7 +114,7 @@ interface UserContextType {
   getPendingPickups: () => Promise<ScheduledPickup[]>; // Get pickups that are assigned but not completed
   acceptPickup: (itemId: string, collectorId: string) => Promise<boolean>; // Accept a pickup and assign a collector - LEGACY
   acceptMultiplePickups: (itemIds: string[], collectorId: string) => Promise<boolean>; // Accept multiple items in one pickup
-  updatePickupStatus: (pickupId: string, status: 'Out for pickup' | 'Collected' | 'Recycled') => Promise<boolean>;
+  updatePickupStatus: (pickupId: string, status: 'Out for pickup' | 'Collected' | 'Recycled' | 'Cancelled') => Promise<boolean>;
   getCollectors: () => Promise<{label: string, value: string, email: string, phoneNumber: string}[]>; // Get list of collectors for an organization
   addCollector: (name: string, email: string, phoneNumber: string, password: string) => Promise<boolean>; // Add a collector to the organization
   removeCollector: (id: string) => Promise<boolean>; // Remove a collector from the organization
@@ -148,7 +148,7 @@ interface UserService {
   getPendingPickups: (organizationId: string) => Promise<ScheduledPickup[]>;
   acceptPickup: (itemId: string, organizationId: string, collectorName: string, collectorId: string) => Promise<boolean>;
   acceptMultiplePickups: (itemIds: string[], organizationId: string, collectorName: string, collectorId: string) => Promise<boolean>;
-  updatePickupStatus: (pickupId: string, status: 'Out for pickup' | 'Collected' | 'Recycled') => Promise<boolean>;
+  updatePickupStatus: (pickupId: string, status: 'Out for pickup' | 'Collected' | 'Recycled' | 'Cancelled') => Promise<boolean>;
   getCollectors: (organizationId: string) => Promise<{id: string, name: string, email: string, phoneNumber: string}[]>;
   addCollector: (organizationId: string, name: string, email: string, phoneNumber: string, password: string) => Promise<boolean>;
   removeCollector: (collectorId: string) => Promise<boolean>;
@@ -883,10 +883,11 @@ const mockUserService: UserService = {
   getPendingPickups: async (organizationId: string) => {
     await new Promise(resolve => setTimeout(resolve, 500));
     
-    // Return pickups that are assigned to this organization and are ongoing
+    // Return pickups that are assigned to this organization and are ongoing (not cancelled)
     return Object.values(mockPickups).filter(pickup => 
       pickup.organizationId === organizationId && 
-      pickup.status === 'Pending'
+      pickup.status === 'Pending' &&
+      pickup.pickupStatus !== 'Cancelled'  // Exclude cancelled pickups
     );
   },
   
@@ -1037,16 +1038,23 @@ const mockUserService: UserService = {
     return true;
   },
   
-  updatePickupStatus: async (pickupId: string, status: 'Out for pickup' | 'Collected' | 'Recycled') => {
+  updatePickupStatus: async (pickupId: string, status: 'Out for pickup' | 'Collected' | 'Recycled' | 'Cancelled') => {
     await new Promise(resolve => setTimeout(resolve, 500));
     
     if (mockPickups[pickupId]) {
+      // Update the pickup status and date
       mockPickups[pickupId] = {
         ...mockPickups[pickupId],
-        pickupStatus: status
+        pickupStatus: status,
+        // When cancelling, also update the main status field
+        ...(status === 'Cancelled' && { status: 'Cancelled' }),
+        date: new Date().toISOString().split('T')[0]
       };
+      
+      console.log(`Updated pickup ${pickupId} status to ${status}`);
       return true;
     }
+    
     return false;
   },
   
@@ -1427,7 +1435,7 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const updatePickupStatus = async (pickupId: string, status: 'Out for pickup' | 'Collected' | 'Recycled') => {
+  const updatePickupStatus = async (pickupId: string, status: 'Out for pickup' | 'Collected' | 'Recycled' | 'Cancelled') => {
     try {
       return await userService.updatePickupStatus(pickupId, status);
     } catch (error) {
