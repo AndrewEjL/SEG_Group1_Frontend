@@ -39,6 +39,13 @@ const isFormValid = useMemo(() => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;//valid email format
     const passwordRegex = /^(?=.*[0-9])(?=.*[\W_]).{8,}$/;// at least 8 characters, including a number and a special character.
 
+    if (!checked) {
+        setUncheckedError("Please check the terms and conditions and accept before submitting your registration.");
+        return;
+    } else {
+        setUncheckedError("");
+    }
+
     if (!emailRegex.test(email)) {
       setEmailError("Invalid email format.");
       return;
@@ -61,13 +68,6 @@ const isFormValid = useMemo(() => {
       return;
     } else {
       setConfirmPasswordError("");
-    }
-
-    if (!checked) {
-        setUncheckedError("Please check the terms and conditions and accept before submitting your registration.");
-        return;
-    } else {
-        setUncheckedError("");
     }
 
 
