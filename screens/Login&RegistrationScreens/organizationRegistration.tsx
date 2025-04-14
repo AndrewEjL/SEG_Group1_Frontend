@@ -31,33 +31,41 @@ const OrgRegistration = ({ navigation }) => {
     brn.trim() !== "" &&
     address.trim() !== "" &&
     email.trim() !== "" &&
-    phoneNumber.trim() !== "" &&
-    emailError === "" &&
-    brnError === "";
+    phoneNumber.trim() !== ""
 
- const handleSubmit = async () => {
-  //dummy data
+const handleSubmit = async () => {
+  // Dummy data
   const existingEmails = ["test@example.com", "user@gmail.com"];
   const existingBrns = ["123456789", "987654321"];
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;//valid email format
+  let hasError = false;
 
+  // Email format check
   if (!emailRegex.test(email)) {
     setEmailError("Invalid email format.");
-    return;
+    hasError = true;
+  } else if (existingEmails.includes(email)) {
+    setEmailError("Email is already in use.");
+    hasError = true;
   } else {
     setEmailError("");
   }
 
-  setEmailError(existingEmails.includes(email) ? "Email is already in use." : "");
-  setBrnError(existingBrns.includes(brn) ? "This Business registration number is already registered." : "");
-
-  if (existingEmails.includes(email) || existingBrns.includes(brn)) {
-    return;
+  // BRN check
+  if (existingBrns.includes(brn)) {
+    setBrnError("This Business registration number is already registered.");
+    hasError = true;
+  } else {
+    setBrnError("");
   }
 
-  navigation.navigate("OrgRegistrationCompleted");
- };
+  // Navigation if no errors
+  if (!hasError) {
+    navigation.navigate("OrgRegistrationCompleted");
+  }
+};
+
 
 
   return (

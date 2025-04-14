@@ -34,61 +34,66 @@ const isFormValid = useMemo(() => {
   );
 }, [username, email, phoneNumber, password, confirmPassword]);
 
-  const handleSubmit = async () => {
-    const existingEmails = ["test@example.com", "user@gmail.com"];
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;//valid email format
-    const passwordRegex = /^(?=.*[0-9])(?=.*[\W_]).{8,}$/;// at least 8 characters, including a number and a special character.
+const handleSubmit = async () => {
+  const existingEmails = ["test@example.com", "user@gmail.com"];
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const passwordRegex = /^(?=.*[0-9])(?=.*[\W_]).{8,}$/;
 
-    if (!checked) {
-        setUncheckedError("Please check the terms and conditions and accept before submitting your registration.");
-        return;
+  let hasError = false;
+
+  if (!checked) {
+    setUncheckedError("Please check the terms and conditions and accept before submitting your registration.");
+    hasError = true;
+  } else {
+    setUncheckedError("");
+  }
+
+  if (!emailRegex.test(email)) {
+    setEmailError("Invalid email format.");
+    hasError = true;
+  } else if (existingEmails.includes(email)) {
+    setEmailError("Email is already in use.");
+    hasError = true;
+  } else {
+    setEmailError("");
+  }
+
+  if (!passwordRegex.test(password)) {
+    setPasswordError("Password must be at least 8 characters long and include a number and a special character.");
+    hasError = true;
+  } else {
+    setPasswordError("");
+  }
+
+  if (password !== confirmPassword) {
+    setConfirmPasswordError("Passwords do not match.");
+    hasError = true;
+  } else {
+    setConfirmPasswordError("");
+  }
+
+  if (hasError) {
+    return;
+  }
+
+  setIsLoading(true);
+  try {
+    const success = await register(username, email, password, phoneNumber);
+
+    if (success) {
+      Alert.alert("Success", "Your account has been registered, you may login now.");
+      navigation.navigate("Login");
     } else {
-        setUncheckedError("");
+      Alert.alert("Error", "Registration failed. Please try again.");
     }
+  } catch (error) {
+    console.error("Registration error:", error);
+    Alert.alert("Error", "An unexpected error occurred. Please try again.");
+  } finally {
+    setIsLoading(false);
+  }
+};
 
-    if (!emailRegex.test(email)) {
-      setEmailError("Invalid email format.");
-      return;
-    }
-    if (existingEmails.includes(email)) {
-      setEmailError("Email is already in use.");
-      return;
-    } else {
-      setEmailError("");
-    }
-    if (!passwordRegex.test(password)) {
-        setPasswordError("Password must be at least 8 characters long and include a number and a special character.");
-        return;
-    }else {
-        setPasswordError("");
-    }
-
-    if (password !== confirmPassword) {
-      setConfirmPasswordError("Passwords do not match.");
-      return;
-    } else {
-      setConfirmPasswordError("");
-    }
-
-
-    setIsLoading(true);
-    try {
-      // Call the register function from UserContext
-      const success = await register(username, email, password, phoneNumber);
-      
-      if (success) {
-        Alert.alert("Success", "Your account has been registered, you may login now.");
-        navigation.navigate("Login");
-      } else {
-        Alert.alert("Error", "Registration failed. Please try again.");
-      }
-    } catch (error) {
-      console.error("Registration error:", error);
-      Alert.alert("Error", "An unexpected error occurred. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleAcceptTnC = () => {
       setChecked(true);
