@@ -10,7 +10,6 @@ type RootStackParamList = {
   PickupHistory: undefined;
   PickupDetails: { pickupId: string };
   rewards: undefined;
-  notifications: undefined;
 };
 
 type PickupHistoryScreenProps = {
@@ -18,9 +17,10 @@ type PickupHistoryScreenProps = {
 };
 
 const PickupHistoryScreen: React.FC<PickupHistoryScreenProps> = ({ navigation }) => {
-  const { getScheduledPickups } = useUser();
+  const { getScheduledPickups, getOrganizationName } = useUser();
   const [pickups, setPickups] = useState<ScheduledPickup[]>([]);
   const [loading, setLoading] = useState(true);
+  const [organizationNames, setOrganizationNames] = useState<{ [key: string]: string }>({});
 
   useEffect(() => {
     loadPickups();
@@ -30,9 +30,9 @@ const PickupHistoryScreen: React.FC<PickupHistoryScreenProps> = ({ navigation })
     setLoading(true);
     try {
       const allPickups = await getScheduledPickups();
-      // Filter to only show completed or cancelled pickups
+      // Filter to only show Recycled or Cancelled pickups
       const historyPickups = allPickups.filter(
-        pickup => pickup.status === 'completed' || pickup.status === 'cancelled'
+        pickup => pickup.status === 'Recycled' || pickup.status === 'Cancelled'
       );
       
       // Sort pickups by date (most recent first)
@@ -41,6 +41,22 @@ const PickupHistoryScreen: React.FC<PickupHistoryScreenProps> = ({ navigation })
       );
       
       setPickups(sortedPickups);
+
+      // Fetch organization names for the history pickups
+      const orgNames: { [key: string]: string } = {};
+      for (const pickup of sortedPickups) {
+        if (pickup.organizationId && !orgNames[pickup.organizationId]) { // Fetch only if needed
+          try {
+            const name = await getOrganizationName(pickup.organizationId);
+            orgNames[pickup.organizationId] = name;
+          } catch (nameError) {
+            console.error(`Failed to fetch name for org ${pickup.organizationId}:`, nameError);
+            orgNames[pickup.organizationId] = 'Unknown Facility'; // Fallback
+          }
+        }
+      }
+      setOrganizationNames(orgNames);
+
     } catch (error) {
       console.error('Failed to load pickup history:', error);
     } finally {
@@ -53,9 +69,9 @@ const PickupHistoryScreen: React.FC<PickupHistoryScreenProps> = ({ navigation })
   };
 
   const getStatusColor = (status: string) => {
-    if (status === 'completed') return '#4CAF50'; // Green for completed
-    if (status === 'cancelled') return '#F44336'; // Red for cancelled
-    return '#FFC107'; // Default yellow
+    if (status === 'Recycled') return '#4CAF50'; // Green for Recycled
+    if (status === 'Cancelled') return '#F44336'; // Red for Cancelled
+    return '#666666'; // Default grey for other potential statuses
   };
 
   // Format date to a more readable format
@@ -72,8 +88,7 @@ const PickupHistoryScreen: React.FC<PickupHistoryScreenProps> = ({ navigation })
 
   const handleTabPress = (screen: keyof RootStackParamList) => {
     if (screen === 'Home' || screen === 'CProfileScreen' || 
-        screen === 'PickupHistory' || screen === 'rewards' || 
-        screen === 'notifications') {
+        screen === 'PickupHistory' || screen === 'rewards') {
       navigation.navigate(screen);
     } else if (screen === 'PickupDetails') {
       console.log('Cannot navigate directly to PickupDetails without pickupId');
@@ -87,7 +102,9 @@ const PickupHistoryScreen: React.FC<PickupHistoryScreenProps> = ({ navigation })
       onPress={() => handleViewPickup(pickup.id)}
     >
       <View style={styles.pickupContent}>
-        <Text style={styles.facilityName}>{pickup.facilityName}</Text>
+        <Text style={styles.facilityName}>
+          {organizationNames[pickup.organizationId] || 'Loading...'}
+        </Text>
         <View style={styles.pickupDetails}>
           <View style={[styles.statusBadge, { backgroundColor: getStatusColor(pickup.status) }]}>
             <Text style={styles.statusText}>{pickup.status}</Text>
@@ -147,10 +164,6 @@ const PickupHistoryScreen: React.FC<PickupHistoryScreenProps> = ({ navigation })
         <TouchableOpacity style={styles.navItem} onPress={() => handleTabPress('rewards')}>
           <Icon name="star" size={24} color="#666" />
           <Text style={styles.navText}>Rewards</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem} onPress={() => handleTabPress('notifications')}>
-          <Icon name="notifications" size={24} color="#666" />
-          <Text style={styles.navText}>Notifications</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem} onPress={() => handleTabPress('CProfileScreen')}>
           <Icon name="person" size={24} color="#5E4DCD" />

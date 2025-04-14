@@ -18,13 +18,16 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
 
   useEffect(() => {
     if (user) {
+      let routeName: string = 'Home';
       if (user.role === 'organization') {
-        navigation.navigate('RHome');
+        routeName = 'RHome';
       } else if (user.role === 'collector') {
-        navigation.navigate('CLHome');
-      } else {
-        navigation.navigate('Home');
+        routeName = 'CLHome';
       }
+      navigation.reset({
+        index: 0,
+        routes: [{ name: routeName }],
+      });
     }
   }, [user, navigation]);
 
