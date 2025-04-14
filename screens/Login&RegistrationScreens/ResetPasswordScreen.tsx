@@ -1,18 +1,18 @@
-import React, { useState, useMemo } from "react";
-import { View, ScrollView, Text, StyleSheet, Dimensions, Alert } from "react-native";
-import { TextInput, Button, HelperText } from "react-native-paper";
+import React, { useState , useMemo} from "react";
+import { View, ScrollView, Text, StyleSheet, Dimensions, Alert ,Modal, TouchableOpacity} from "react-native";
+import { TextInput, Button, HelperText ,Checkbox} from "react-native-paper";
 import Icon from "react-native-vector-icons/MaterialIcons";
-import { useUser } from "../../contexts/UserContext";
 
 const { width, height } = Dimensions.get("window");
 
-const CollectorRegistration = ({ navigation }) => {
-  const { register } = useUser();
-  const [username, setUsername] = useState("");
-  const [email, setEmail] = useState("");
+const ResetPassword = ({ route,navigation }) => {
+
+  const email = route?.params?.email || "";
+
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [phoneNumber, setPhoneNumber] = useState("");
+  const [passwordVisible, setPasswordVisible] = useState(false);
+  const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [confirmPasswordError,setConfirmPasswordError]=useState("");
@@ -20,43 +20,22 @@ const CollectorRegistration = ({ navigation }) => {
 
 const isFormValid = useMemo(() => {
   return (
-    username.trim() !== "" &&
-    email.trim() !== "" &&
-    phoneNumber.trim() !== "" &&
     password.trim() !== "" &&
     confirmPassword.trim() !== ""
   );
-}, [username, email, phoneNumber, password, confirmPassword]);
-
- const clearData = () => {
-    setUsername("");
-    setEmail("");
-    setPhoneNumber("")
-    setPassword("");
-    setConfirmPassword("");
-    setEmailError("");
-    setPasswordError("");
-    setConfirmPasswordError("")
- }
-
-  const handleSubmit = async () => {
-    const existingEmails = ["test@example.com", "user@gmail.com"];
+}, [password, confirmPassword]);
+//backend team may work on this function for updating password
+const updatePassword = async (email, password, confirmPassword) => {
+    return true;
+}
+const handleSubmit = async () => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;//valid email format
     const passwordRegex = /^(?=.*[0-9])(?=.*[\W_]).{8,}$/;// at least 8 characters, including a number and a special character.
-
-    if (!emailRegex.test(email)) {
-      setEmailError("Invalid email format.");
-      return;
-    }
-    if (existingEmails.includes(email)) {
-      setEmailError("Email is already in use.");
-      return;
-    } else {
-      setEmailError("");
-    }
     if (!passwordRegex.test(password)) {
         setPasswordError("Password must be at least 8 characters long and include a number and a special character.");
         return;
+    }else {
+        setPasswordError("");
     }
 
     if (password !== confirmPassword) {
@@ -65,76 +44,49 @@ const isFormValid = useMemo(() => {
     } else {
       setConfirmPasswordError("");
     }
-
     setIsLoading(true);
     try {
       // Call the register function from UserContext
-      const success = await register(username, email, password, phoneNumber);
-      
+      const success = await updatePassword(email, password, confirmPassword);
+
       if (success) {
-        Alert.alert("Success", "Your account has been registered, you may login now.");
-        navigation.navigate("Login");
+        Alert.alert("Success", "Your account password has been updated, you may login now");
       } else {
-        Alert.alert("Error", "Registration failed. Please try again.");
+        Alert.alert("Error", "Updated password failed. Please try again.");
       }
     } catch (error) {
-      console.error("Registration error:", error);
+      console.error("Updated password error:", error);
       Alert.alert("Error", "An unexpected error occurred. Please try again.");
     } finally {
       setIsLoading(false);
     }
-    clearData();
-  };
+    navigation.reset({
+          index: 0,
+          routes: [{ name: 'Login' }],
+    });
+}
 
-  return (
-    <ScrollView
-      contentContainerStyle={styles.container}
-      showsVerticalScrollIndicator={false}
+
+
+return (
+    <View
+      style={styles.container}
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="on-drag"
     >
-      <Text style={styles.title}>Enter your profile</Text>
-      <TextInput
-        label="User Name"
-        mode="outlined"
-        value={username}
-        onChangeText={setUsername}
-        style={styles.input}
-      />
-      <TextInput
-        label="Email"
-        mode="outlined"
-        value={email}
-        onChangeText={setEmail}
-        style={styles.input}
-        error={emailError !== ""}
-      />
-      {emailError !== "" && (
-        <HelperText type="error" style={styles.helperText}>
-          <Icon name="error-outline" size={width * 0.03} color="red" /> {emailError}
-        </HelperText>
-      )}
-
-      <TextInput
-        label="Phone Number"
-        mode="outlined"
-        value={`+60${phoneNumber}`}
-        onChangeText={(text) => {
-          if (!text.startsWith("+60")) {
-            text = "+60";
-          }
-          const numberOnly = text.slice(3).replace(/\D/g, "");
-          setPhoneNumber(numberOnly);
-        }}
-        style={styles.input}
-      />
-
+      <Text style={styles.title}>New Password</Text>
       <TextInput
         label="Password"
         mode="outlined"
         value={password}
         onChangeText={setPassword}
-        secureTextEntry
+        secureTextEntry={!passwordVisible}
+        right={
+          <TextInput.Icon
+            icon={passwordVisible ? "eye-off" : "eye"}
+            onPress={() => setPasswordVisible(!passwordVisible)}
+          />
+        }
         style={styles.input}
         error={passwordError !== ""}
       />
@@ -147,7 +99,7 @@ const isFormValid = useMemo(() => {
           size={width * 0.03}
           color={passwordError ? "red" : "blue"}
         />{" "}
-        {passwordError || "At least 8 characters, including a number and a special character."}
+        {passwordError ? passwordError : "At least 8 characters, including a number and a special character."}
       </HelperText>
 
       <TextInput
@@ -155,7 +107,13 @@ const isFormValid = useMemo(() => {
         mode="outlined"
         value={confirmPassword}
         onChangeText={setConfirmPassword}
-        secureTextEntry
+        secureTextEntry={!confirmPasswordVisible}
+        right={
+          <TextInput.Icon
+            icon={confirmPasswordVisible ? "eye-off" : "eye"}
+            onPress={() => setConfirmPasswordVisible(!confirmPasswordVisible)}
+          />
+        }
         style={styles.input}
         error={confirmPasswordError !== ""}
       />
@@ -165,19 +123,18 @@ const isFormValid = useMemo(() => {
         </HelperText>
       ) : null}
 
-      <Button 
-        mode="contained" 
-        onPress={handleSubmit} 
-        style={styles.nextButton} 
+      <Button
+        mode="contained"
+        onPress={handleSubmit}
+        style={styles.nextButton}
         disabled={!isFormValid || isLoading}
         loading={isLoading}
       >
         Submit
       </Button>
-    </ScrollView>
-  );
-};
-
+    </View>
+)
+}
 const styles = StyleSheet.create({
   container: {
     width: "100%",
@@ -186,6 +143,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#f8f9fa",
     paddingTop: height * 0.03,
     paddingBottom: height * 0.1,
+    height:"100%",
   },
   title: {
     fontSize: width * 0.05,
@@ -212,6 +170,4 @@ const styles = StyleSheet.create({
   },
 
 });
-
-export default CollectorRegistration;
-
+export default ResetPassword;

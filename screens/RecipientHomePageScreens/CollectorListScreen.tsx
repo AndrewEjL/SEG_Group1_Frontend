@@ -114,6 +114,7 @@ const handleDelete = async (id: string) => {
     else if (!emailRegex.test(newEmployee.email)) validationErrors.email = "Invalid email format.";
     else if (existingEmails.includes(newEmployee.email)) validationErrors.email = "Email already exists.";
     if (!newEmployee.phoneNumber.trim()) validationErrors.phoneNumber = "Phone number is required.";
+    if (newEmployee.phoneNumber.length < 8) validationErrors.phoneNumber = "Phone number must have at least 9 digit";
     if (!newEmployee.password.trim()) validationErrors.password = "Password is required.";
     else if (!passwordRegex.test(newEmployee.password)) validationErrors.password = "At least 8 characters and include a number and a special character.";
     if (newEmployee.password !== newEmployee.confirmPassword) validationErrors.confirmPassword = "Passwords do not match.";
@@ -236,8 +237,8 @@ return (
           placeholder="Phone Number"
           value={newEmployee.phoneNumber ? `+60${newEmployee.phoneNumber}` : ""}
           onChangeText={(text) => {
-            const numberOnly = text.startsWith("+60") 
-              ? text.slice(3).replace(/\D/g, "") 
+            const numberOnly = text.startsWith("+60")
+              ? text.slice(3).replace(/\D/g, "")
               : text.replace(/\D/g, "");
             setNewEmployee({ ...newEmployee, phoneNumber: numberOnly });
           }}
