@@ -231,7 +231,6 @@ const isFormValid = useMemo(() => {
                 1) Once the e-waste has been collected by the assigned recycling facility, all items are deemed non-retrievable.{"\n\n"}
 
                 2) Clients will not be able to request the return of any collected e-waste under any circumstances.{"\n\n"}
-                All collected items will be handled in accordance with authorized recycling procedures.
               </Text>
                 <TouchableOpacity
                   style={styles.acceptButton}
