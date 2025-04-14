@@ -517,6 +517,12 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                           >
                             <Icon name="visibility" size={24} color="#666" />
                           </TouchableOpacity>
+                          <TouchableOpacity 
+                            style={styles.iconButton} 
+                            onPress={() => handleEditPickup(pickup)}
+                          >
+                            <Icon name="edit" size={24} color="#666" />
+                          </TouchableOpacity>
                         </>
                       )}
                     </View>
