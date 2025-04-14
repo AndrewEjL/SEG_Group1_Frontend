@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from "react";
-import { View, ScrollView, Text, StyleSheet, Dimensions, Alert } from "react-native";
-import { TextInput, Button, HelperText } from "react-native-paper";
+import { View, ScrollView, Text, StyleSheet, Dimensions, Alert ,Modal, TouchableOpacity} from "react-native";
+import { TextInput, Button, HelperText ,Checkbox} from "react-native-paper";
 import Icon from "react-native-vector-icons/MaterialIcons";
 import { useUser } from "../../contexts/UserContext";
 
@@ -15,9 +15,14 @@ const ClientRegistration = ({ navigation }) => {
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState("");
+  const [phoneNumberError, setPhoneNumberError] = useState("");
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [confirmPasswordError,setConfirmPasswordError]=useState("");
+  const [checked, setChecked] = useState(false);
+  const [uncheckedError, setUncheckedError] = useState("");
+  const [modalVisible, setModalVisible] = useState(false);
+
   const [isLoading, setIsLoading] = useState(false);
 
 const isFormValid = useMemo(() => {
@@ -30,51 +35,78 @@ const isFormValid = useMemo(() => {
   );
 }, [username, email, phoneNumber, password, confirmPassword]);
 
-  const handleSubmit = async () => {
-    const existingEmails = ["test@example.com", "user@gmail.com"];
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;//valid email format
-    const passwordRegex = /^(?=.*[0-9])(?=.*[\W_]).{8,}$/;// at least 8 characters, including a number and a special character.
+const handleSubmit = async () => {
+  const existingEmails = ["test@example.com", "user@gmail.com"];
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const passwordRegex = /^(?=.*[0-9])(?=.*[\W_]).{8,}$/;
 
-    if (!emailRegex.test(email)) {
-      setEmailError("Invalid email format.");
-      return;
-    }
-    if (existingEmails.includes(email)) {
-      setEmailError("Email is already in use.");
-      return;
+  let hasError = false;
+
+  if (!checked) {
+    setUncheckedError("Please check the terms and conditions and accept before submitting your registration.");
+    hasError = true;
+  } else {
+    setUncheckedError("");
+  }
+
+  if (!emailRegex.test(email)) {
+    setEmailError("Invalid email format.");
+    hasError = true;
+  } else if (existingEmails.includes(email)) {
+    setEmailError("Email is already in use.");
+    hasError = true;
+  } else {
+    setEmailError("");
+  }
+
+  if (!passwordRegex.test(password)) {
+    setPasswordError("Password must be at least 8 characters long and include a number and a special character.");
+    hasError = true;
+  } else {
+    setPasswordError("");
+  }
+
+  if (password !== confirmPassword) {
+    setConfirmPasswordError("Passwords do not match.");
+    hasError = true;
+  } else {
+    setConfirmPasswordError("");
+  }
+  if (phoneNumber.length < 8) {
+    setPhoneNumberError("Phone number must start with +60 and have at least 10 digits");
+    hasError = true;
+  } else {
+    setPhoneNumberError("");
+  }
+
+  if (hasError) {
+    return;
+  }
+
+  setIsLoading(true);
+  try {
+    const success = await register(username, email, password, phoneNumber);
+
+    if (success) {
+      Alert.alert("Success", "Your account has been registered, you may login now.");
+      navigation.navigate("Login");
     } else {
-      setEmailError("");
+      Alert.alert("Error", "Registration failed. Please try again.");
     }
-    if (!passwordRegex.test(password)) {
-        setPasswordError("Password must be at least 8 characters long and include a number and a special character.");
-        return;
-    }
+  } catch (error) {
+    console.error("Registration error:", error);
+    Alert.alert("Error", "An unexpected error occurred. Please try again.");
+  } finally {
+    setIsLoading(false);
+  }
+};
 
-    if (password !== confirmPassword) {
-      setConfirmPasswordError("Passwords do not match.");
-      return;
-    } else {
-      setConfirmPasswordError("");
-    }
 
-    setIsLoading(true);
-    try {
-      // Call the register function from UserContext
-      const success = await register(username, email, password, phoneNumber);
-      
-      if (success) {
-        Alert.alert("Success", "Your account has been registered, you may login now.");
-        navigation.navigate("Login");
-      } else {
-        Alert.alert("Error", "Registration failed. Please try again.");
-      }
-    } catch (error) {
-      console.error("Registration error:", error);
-      Alert.alert("Error", "An unexpected error occurred. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const handleAcceptTnC = () => {
+      setChecked(true);
+      setModalVisible(false);
+  }
+
 
   return (
     <ScrollView
@@ -117,7 +149,13 @@ const isFormValid = useMemo(() => {
           setPhoneNumber(numberOnly);
         }}
         style={styles.input}
+        error={phoneNumberError !== ""}
       />
+      {phoneNumberError !== "" && (
+        <HelperText type="error" style={styles.helperText}>
+          <Icon name="error-outline" size={width * 0.03} color="red" /> {phoneNumberError}
+        </HelperText>
+      )}
 
       <TextInput
         label="Password"
@@ -155,7 +193,7 @@ const isFormValid = useMemo(() => {
         right={
           <TextInput.Icon
             icon={confirmPasswordVisible ? "eye-off" : "eye"}
-            onPress={() => setConfirmPasswordVisible(!passwordVisible)}
+            onPress={() => setConfirmPasswordVisible(!confirmPasswordVisible)}
           />
         }
         style={styles.input}
@@ -167,6 +205,25 @@ const isFormValid = useMemo(() => {
         </HelperText>
       ) : null}
 
+      <View style={styles.termsRow}>
+        <Checkbox
+          status={checked ? 'checked' : 'unchecked'}
+          onPress={() => setChecked(!checked)}
+        />
+        <TouchableOpacity onPress={() => setModalVisible(true)}>
+          <Text style={styles.termsText}>
+            I agree to the Terms and Conditions.
+          </Text>
+        </TouchableOpacity>
+      </View>
+      { uncheckedError ? (
+        <HelperText type="error" style={styles.helperText2}>
+          <Icon name="error-outline" size={width * 0.03} color="red" /> {uncheckedError}
+        </HelperText>
+      ) : null}
+
+
+
       <Button 
         mode="contained" 
         onPress={handleSubmit} 
@@ -176,7 +233,35 @@ const isFormValid = useMemo(() => {
       >
         Submit
       </Button>
+      <Modal visible={modalVisible} animationType="slide" transparent={true}>
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <TouchableOpacity onPress={() => setModalVisible(false)} style={{ alignSelf: "flex-start" }}>
+              <Icon name="close" size={24} color="#333333" />
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Terms & Conditions </Text>
+              <ScrollView style={styles.modalScrollView}>
+              <Text style={styles.modalText}>
+                <Text style={styles.modalSubTitle}>Non-Retrievable E-Waste Policy{"\n"}</Text>
+
+                {"\n"}By using this application and its e-waste collection services, you agree to the following condition:{"\n\n"}
+
+                1) Once the e-waste has been collected by the assigned recycling facility, all items are deemed non-retrievable.{"\n\n"}
+
+                2) Clients will not be able to request the return of any collected e-waste under any circumstances.{"\n\n"}
+              </Text>
+                <TouchableOpacity
+                  style={styles.acceptButton}
+                  onPress={handleAcceptTnC}
+                >
+                  <Text style={styles.acceptText}>accept</Text>
+                </TouchableOpacity>
+              </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
+
   );
 };
 
@@ -212,6 +297,81 @@ const styles = StyleSheet.create({
     fontSize: width * 0.03,
     marginTop: -40,
   },
+  helperText2: {
+    alignSelf: "flex-start",
+    marginLeft: "5%",
+    color: "#f20a0a",
+    fontSize: width * 0.03,
+    marginTop: -5,
+  },
+ termsRow: {
+   flexDirection: "row",
+   alignItems: "center",
+   width: "80%",
+   marginTop: 5,
+ },
+ termsText: {
+   color: "#007bff",
+   textDecorationLine: "underline",
+ },
+  modalContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.5)",
+  },
+  modalContent: {
+    width: 300,
+    backgroundColor: "white",
+    padding: 20,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+
+  modalContent: {
+    width: '90%',
+    maxWidth: 400,
+    backgroundColor: "white",
+    padding: 15,
+    borderRadius: 10,
+    alignItems: "center",
+    maxHeight: '90%',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginBottom: 10,
+    color: "#333333",
+  },
+  modalSubTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    marginBottom: 20,
+    color: "#333333",
+  },
+  modalText: {
+    fontSize: 14,
+    marginBottom: 20,
+    color: "#333333",
+  },
+  modalScrollView: {
+      width: '100%',
+      maxHeight: '90%',
+      paddingTop: 30,
+  },
+  acceptButton: {
+    backgroundColor: "#5E4DCD",
+    padding: 10,
+    borderRadius: 5,
+    width: "100%",
+    alignItems: "center",
+    marginTop: 40,
+  },
+  acceptText: {
+    color: "white",
+    fontWeight: "bold",
+  },
+
 
 });
 
