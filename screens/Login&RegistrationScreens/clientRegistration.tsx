@@ -15,6 +15,7 @@ const ClientRegistration = ({ navigation }) => {
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState("");
+  const [phoneNumberError, setPhoneNumberError] = useState("");
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [confirmPasswordError,setConfirmPasswordError]=useState("");
@@ -70,6 +71,12 @@ const handleSubmit = async () => {
     hasError = true;
   } else {
     setConfirmPasswordError("");
+  }
+  if (phoneNumber.length < 8) {
+    setPhoneNumberError("Phone number must start with +60 and have at least 10 digits");
+    hasError = true;
+  } else {
+    setPhoneNumberError("");
   }
 
   if (hasError) {
@@ -142,7 +149,13 @@ const handleSubmit = async () => {
           setPhoneNumber(numberOnly);
         }}
         style={styles.input}
+        error={phoneNumberError !== ""}
       />
+      {phoneNumberError !== "" && (
+        <HelperText type="error" style={styles.helperText}>
+          <Icon name="error-outline" size={width * 0.03} color="red" /> {phoneNumberError}
+        </HelperText>
+      )}
 
       <TextInput
         label="Password"

@@ -24,6 +24,7 @@ const OrgRegistration = ({ navigation }) => {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [emailError, setEmailError] = useState("");
   const [brnError, setBrnError] = useState("");
+  const [phoneNumberError, setPhoneNumberError] = useState("");
 
   const isFormValid =
     orgName.trim() !== "" &&
@@ -58,6 +59,12 @@ const handleSubmit = async () => {
     hasError = true;
   } else {
     setBrnError("");
+  }
+  if (phoneNumber.length < 8) {
+    setPhoneNumberError("Phone number must start with +60 and have at least 10 digits");
+    hasError = true;
+  } else {
+    setPhoneNumberError("");
   }
 
   // Navigation if no errors
@@ -163,7 +170,13 @@ const handleSubmit = async () => {
         }}
         keyboardType="numeric"
         style={styles.input}
+        error={phoneNumberError !== ""}
       />
+      {phoneNumberError !== "" && (
+        <HelperText type="error" style={styles.helperText}>
+          <Icon name="error-outline" size={width * 0.03} color="red" /> {phoneNumberError}
+        </HelperText>
+      )}
 
       <Button mode="contained" onPress={handleSubmit} style={styles.nextButton} disabled={!isFormValid}>
         Submit
