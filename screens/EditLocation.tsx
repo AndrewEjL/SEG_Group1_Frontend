@@ -10,7 +10,8 @@ import {
   Keyboard, 
   TextInput,
   TouchableWithoutFeedback,
-  KeyboardAvoidingView
+  KeyboardAvoidingView,
+  FlatList
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import MapView, { Marker } from 'react-native-maps';
@@ -42,7 +43,8 @@ const EditLocation: React.FC<EditLocationProps> = ({ navigation, route }) => {
   const [error, setError] = useState<string | null>(null);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [itemData, setItemData] = useState<any>(null);
-  
+  const [locationSuggestions, setLocationSuggestions] = useState([]);
+
   // Map and location state
   const mapRef = useRef(null);
   const markerRef = useRef(null);
@@ -122,7 +124,25 @@ const EditLocation: React.FC<EditLocationProps> = ({ navigation, route }) => {
       console.error("Geocoding error", error);
     }
   };
+  const fetchAutocompleteSuggestions = async (input, setSuggestions) => {
+    if (!input) {
+      setSuggestions([]);
+      return;
+    }
+    const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(
+      input
+    )}&key=${GOOGLE_MAPS_API_KEY}&components=country:MY`;
 
+    try {
+      const response = await fetch(url);
+      const data = await response.json();
+      if (data.status === "OK") {
+        setSuggestions(data.predictions);
+      }
+    } catch (error) {
+      console.error("Error fetching autocomplete:", error);
+    }
+  };
   // Convert coordinates to address
   const fetchAddress = async (latitude, longitude) => {
     const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${GOOGLE_MAPS_API_KEY}`;
@@ -258,7 +278,11 @@ const EditLocation: React.FC<EditLocationProps> = ({ navigation, route }) => {
                   placeholder="Enter Address"
                   placeholderTextColor="#666666"
                   value={location.address}
-                  onChangeText={(text) => setLocation({ ...location, address: text })}
+                  onChangeText={(text) => {
+                      setLocation({ ...location, address: text });
+                      fetchAutocompleteSuggestions(text, setLocationSuggestions);
+                  }}
+
                   color="#000000"
                 />
                 <TouchableOpacity 
@@ -298,7 +322,25 @@ const EditLocation: React.FC<EditLocationProps> = ({ navigation, route }) => {
           </View>
         </TouchableWithoutFeedback>
       </ScrollView>
-
+              {locationSuggestions.length > 0 && (
+                <FlatList
+                  data={locationSuggestions}
+                  nestedScrollEnabled={true}
+                  keyExtractor={(item) => item.place_id}
+                  style={styles.flatlist}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity
+                      style={styles.suggestionItem}
+                      onPress={() => {
+                        setLocation({ ...location, address: item.description });
+                        setLocationSuggestions([]);
+                      }}
+                    >
+                      <Text style={styles.suggestionText}>{item.description}</Text>
+                    </TouchableOpacity>
+                  )}
+                />
+              )}
       {/* Save Edit Button - Fixed at bottom */}
       <View style={[
         styles.buttonContainer,
@@ -481,6 +523,24 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+  },
+  suggestionItem: {
+    padding: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
+    backgroundColor: '#fff',
+  },
+  suggestionText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  flatlist: {
+      position: "absolute",
+      maxHeight: 250,
+      width: "60%",
+      left: "9%",
+      top: 150,
+      zIndex: 2,
   },
 });
 

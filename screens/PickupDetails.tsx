@@ -59,7 +59,90 @@ const PickupDetails: React.FC<PickupDetailsProps> = ({ navigation, route }) => {
   const [pickup, setPickup] = useState<ScheduledPickup | null>(null);
   const [itemDetails, setItemDetails] = useState<{ [key: string]: ListedItem | null }>({});
   const [isLoading, setIsLoading] = useState(true);
+  const [organizationName, setOrganizationName] = useState<string>('');
 
+  useEffect(() => {
+    loadPickupDetails();
+  }, [pickupId]);
+
+  const loadPickupDetails = async () => {
+    setIsLoading(true);
+    try {
+      const details = await getPickupDetails(pickupId);
+      if (details) {
+        setPickup(details);
+        
+        // Get all active listed items
+        const allListedItems = await getListedItems();
+        const activeItemsMap = allListedItems.reduce((acc, item) => {
+          acc[item.id] = item;
+          return acc;
+        }, {} as { [key: string]: ListedItem });
+        
+        // Load detailed information for each item in the pickup
+        const detailsMap: { [key: string]: ListedItem | null } = {};
+        
+        for (const pickupItem of details.items) {
+          // First check if the item exists in active listings
+          if (activeItemsMap[pickupItem.id]) {
+            detailsMap[pickupItem.id] = activeItemsMap[pickupItem.id];
+          } else {
+            // If not in active listings, try to get from historical records
+            const historicalItem = await getHistoricalItemDetails(pickupItem.id);
+            detailsMap[pickupItem.id] = historicalItem;
+          }
+        }
+        
+        setItemDetails(detailsMap);
+      }
+    } catch (error) {
+      console.error('Error loading pickup details:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Helper function to render item details safely
+  const renderItemDetails = (pickupItem: PickupItem) => {
+    const item = itemDetails[pickupItem.id];
+    
+    // If the item details are not available at all
+    if (!item) {
+      return (
+        <View style={styles.itemCard}>
+          <View style={styles.itemDetails}>
+            <Text style={styles.itemName}>{pickupItem.name}</Text>
+            <Text style={styles.itemSubtext}>
+              Item details are not available
+            </Text>
+          </View>
+        </View>
+      );
+    }
+    
+    // Item details are available (either from active listings or historical records)
+    return (
+      <View style={styles.itemCard}>
+        <View style={styles.itemDetails}>
+          <Text style={styles.itemName}>{item.name}</Text>
+          <Text style={styles.itemSubtext}>
+            {item.type} • {item.condition}
+          </Text>
+          <Text style={styles.itemDimensions}>
+            Dimensions: {item.dimensions.length}×{item.dimensions.width}×{item.dimensions.height} cm
+          </Text>
+          <Text style={styles.itemQuantity}>
+            Quantity: {item.quantity}
+          </Text>
+          {item.address && (
+            <Text style={styles.itemAddress}>
+              Address: {item.address}
+            </Text>
+          )}
+        </View>
+      </View>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>

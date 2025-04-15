@@ -21,6 +21,7 @@ const OrgRegistration = ({ navigation }) => {
   const [emailError, setEmailError] = useState("");
   const [brnError, setBrnError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [phoneNumberError, setPhoneNumberError] = useState("");
 
   const isFormValid =
     orgName.trim() !== "" &&
@@ -28,9 +29,7 @@ const OrgRegistration = ({ navigation }) => {
     brn.trim() !== "" &&
     address.trim() !== "" &&
     email.trim() !== "" &&
-    phoneNumber.trim() !== "" &&
-    emailError === "" &&
-    brnError === "";
+    phoneNumber.trim() !== ""
 
  const handleSubmit = async () => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;//valid email format
@@ -64,6 +63,7 @@ const OrgRegistration = ({ navigation }) => {
       setIsLoading(false);
   }
  };
+
 
 
   return (
@@ -164,7 +164,13 @@ const OrgRegistration = ({ navigation }) => {
         }}
         keyboardType="numeric"
         style={styles.input}
+        error={phoneNumberError !== ""}
       />
+      {phoneNumberError !== "" && (
+        <HelperText type="error" style={styles.helperText}>
+          <Icon name="error-outline" size={width * 0.03} color="red" /> {phoneNumberError}
+        </HelperText>
+      )}
 
       <Button mode="contained" onPress={handleSubmit} style={styles.nextButton} disabled={!isFormValid}>
         Submit

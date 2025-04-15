@@ -15,16 +15,22 @@ export interface PickupItem {
 
 export interface ScheduledPickup {
   id: string;
-  facilityName: string;
+  itemId: string;
+  userId: string;
+  organizationId: string;
   items: PickupItem[];
   listedItemIds: string[];  // Array of listed item IDs that are part of this pickup
-  status: 'ongoing' | 'completed' | 'cancelled'; // Status of the pickup
-  date: string; // Add date field to track when pickup was scheduled/completed/cancelled
+  status: 'Pending' | 'Accepted' | 'Out for pickup' | 'Collected' | 'Recycled' | 'Cancelled';
+  date: string; // Date when the status was last updated
   collector?: string; // Name of the collector assigned to this pickup
-  organizationId?: string; // ID of the organization that has accepted the pickup
+  collectorId?: string; // ID of the collector assigned to this pickup
   clientId?: string; // ID of the client who created the pickup
-  pickupStatus?: 'Out for pickup' | 'Collected' | 'Recycled'; // Status for organization view
-  // Backend team can add more properties here (e.g., date, status, location, etc.)
+  pickupStatus?: 'Out for pickup' | 'Collected' | 'Recycled' | 'Cancelled'; // Status for organization view
+  address?: string;
+  weight?: number; // Add weight property
+  collectedTimestamp?: string; // Add collectedTimestamp property
+  readyForClaiming?: boolean; // Add flag for client UI
+  // Backend team can add more properties here (e.g., status, location, etc.)
 }
 
 export interface ListedItem {
@@ -75,11 +81,12 @@ export interface User {
   points: number;
   address: string;   // Adding address field
   phoneNumber: string;  // Adding phone number field
-  role: 'client' | 'organization';  // Add role field to distinguish user types
+  role: 'client' | 'organization' | 'collector';  // Add collector role
   scheduledPickups: string[];  // Array of pickup IDs - references to pickups in the database
   listedItems: string[];      // Array of listed item IDs
   redeemedRewards?: RewardRedemption[];  // Array of redeemed rewards
   collectorEmployees?: string[]; // Array of collector IDs for organization
+  organizationId?: string; // ID of the organization the collector belongs to (for collector role)
 }
 
 /**
@@ -97,6 +104,7 @@ interface UserContextType {
   updateUserProfile: (data: { name?: string; email?: string; address?: string; phoneNumber?: string }) => Promise<boolean>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<boolean>;
   getScheduledPickups: () => Promise<ScheduledPickup[]>;
+  getCollectorPickups: () => Promise<ScheduledPickup[]>; // Add method to get pickups for collectors
   getPickupDetails: (pickupId: string) => Promise<ScheduledPickup | null>;
   listItem: (item: Omit<ListedItem, 'id' | 'userId' | 'createdAt'>) => Promise<boolean>;
   getListedItems: () => Promise<ListedItem[]>;
@@ -109,13 +117,14 @@ interface UserContextType {
   // New methods for organization/recipient functionality
   getAvailablePickups: () => Promise<ListedItem[]>; // Get items available for pickup (for organizations)
   getPendingPickups: () => Promise<ScheduledPickup[]>; // Get pickups that are assigned but not completed
-  acceptPickup: (itemId: string, collectorName: string) => Promise<boolean>; // Accept a pickup and assign a collector - LEGACY
-  acceptMultiplePickups: (itemIds: string[], collectorName: string) => Promise<boolean>; // Accept multiple items in one pickup
+  acceptPickup: (itemId: string, collectorId: string) => Promise<boolean>; // Accept a pickup and assign a collector - LEGACY
+  acceptMultiplePickups: (itemIds: string[], collectorId: string) => Promise<boolean>; // Accept multiple items in one pickup
   updatePickupStatus: (pickupId: string, status: 'Out for pickup' | 'Collected' | 'Recycled') => Promise<boolean>;
-  getCollectors: () => Promise<{label: string, value: string}[]>; // Get list of collectors for an organization
+  getCollectors: () => Promise<{label: string, value: string, email: string, phoneNumber: string}[]>; // Get list of collectors for an organization
   addCollector: (name: string, email: string, phoneNumber: string, password: string) => Promise<boolean>; // Add a collector to the organization
   removeCollector: (id: string) => Promise<boolean>; // Remove a collector from the organization
   getOrganizationName: (organizationId: string) => Promise<string>; // Get organization name by ID
+  updatePickup: (pickup: ScheduledPickup) => void; // Update a pickup's status and data
 }
 
 /**
@@ -142,8 +151,8 @@ interface UserService {
   // New methods for organization functionality
   getAvailablePickups: () => Promise<ListedItem[]>;
   getPendingPickups: (organizationId: string) => Promise<ScheduledPickup[]>;
-  acceptPickup: (itemId: string, organizationId: string, collectorName: string) => Promise<boolean>;
-  acceptMultiplePickups: (itemIds: string[], organizationId: string, collectorName: string) => Promise<boolean>;
+  acceptPickup: (itemId: string, organizationId: string, collectorName: string, collectorId: string) => Promise<boolean>;
+  acceptMultiplePickups: (itemIds: string[], organizationId: string, collectorName: string, collectorId: string) => Promise<boolean>;
   updatePickupStatus: (pickupId: string, status: 'Out for pickup' | 'Collected' | 'Recycled') => Promise<boolean>;
   getCollectors: (organizationId: string) => Promise<{id: string, name: string, email: string, phoneNumber: string}[]>;
   addCollector: (organizationId: string, name: string, email: string, phoneNumber: string, password: string) => Promise<boolean>;
@@ -261,6 +270,29 @@ const mockListedItems: { [key: string]: ListedItem } = {
     createdAt: new Date(),
     address: 'Jalan Dato Sulaiman, Taman Century, 80250 Johor Bahru, Johor, Malaysia', // Same address as item1 and item10
   },
+  // Adding more items that will be available for pickup
+  'item12': {
+    id: 'item12',
+    userId: '1',
+    name: 'Sony Headphones',
+    type: 'Audio',
+    condition: 'Working',
+    dimensions: { length: '18', width: '18', height: '8' },
+    quantity: '1',
+    createdAt: new Date(),
+    address: 'Jalan Permas Jaya, Permas Jaya, 81750 Johor Bahru, Johor, Malaysia',
+  },
+  'item13': {
+    id: 'item13',
+    userId: '1',
+    name: 'Xiaomi Mi 11',
+    type: 'Smartphone',
+    condition: 'Partially Working',
+    dimensions: { length: '16', width: '7', height: '1' },
+    quantity: '1',
+    createdAt: new Date(),
+    address: 'Jalan Harmonium, Taman Desa Tebrau, 81100 Johor Bahru, Johor, Malaysia',
+  },
 };
 
 // Historical record of all items, including those no longer in active listings
@@ -303,8 +335,10 @@ const mockOrganizations: { [key: string]: User } = {
     address: '456 Business Ave, City',
     phoneNumber: '+601244445555',
     role: 'organization',
-    scheduledPickups: ['pickup1', 'pickup5', 'pickup6'],
+    scheduledPickups: ['pickup1', 'pickup5', 'pickup6', 'pickup7', 'pickup8'],
     listedItems: [],
+    redeemedRewards: [],
+    collectorEmployees: ['collector1', 'collector2', 'collector3', 'collector4']
   },
   '3': {
     id: '3',
@@ -333,86 +367,132 @@ const mockOrganizations: { [key: string]: User } = {
 const mockPickups: { [key: string]: ScheduledPickup } = {
   'pickup1': {
     id: 'pickup1',
-    facilityName: 'GreenTech Recyclers',
+    itemId: 'item1',
+    userId: '1',
+    organizationId: '2',
     items: [
       { id: 'item1', name: 'S24 Ultra' },
       { id: 'item10', name: 'Samsung Galaxy Tab S9' },
     ],
-    listedItemIds: ['item1', 'item10'],  // Only include specific item IDs, no wildcards
-    status: 'ongoing',
-    date: new Date().toISOString(), // Today
-    organizationId: '2', // Assign to the organization
+    listedItemIds: ['item1', 'item10'],
+    status: 'Pending',
+    date: new Date().toISOString().split('T')[0],
+    collector: 'John Collector',
     clientId: '1',
-    collector: 'John Doe',
-    pickupStatus: 'Out for pickup'
+    pickupStatus: 'Out for pickup',
+    address: 'Jalan Dato Sulaiman, Taman Century, 80250 Johor Bahru, Johor, Malaysia',
   },
   'pickup2': {
     id: 'pickup2',
-    facilityName: 'EcoLife Solutions',
+    itemId: 'item4',
+    userId: '1',
+    organizationId: '3',
     items: [
       { id: 'item4', name: 'iPhone 15' },
     ],
-    listedItemIds: ['item4'],  // This item is a listed item
-    status: 'ongoing',
-    date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days ago
-    organizationId: '3', // Assign to the different organization
-    clientId: '1',
+    listedItemIds: ['item4'],
+    status: 'Pending',
+    date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     collector: 'Jane Smith',
-    pickupStatus: 'Collected'
+    clientId: '1',
+    pickupStatus: 'Out for pickup',
+    address: 'Jalan Tun Abdul Razak, Larkin, 80350 Johor Bahru, Johor, Malaysia',
   },
   'pickup3': {
     id: 'pickup3',
-    facilityName: 'ReNew Electronics',
+    itemId: 'item5',
+    userId: '1',
+    organizationId: '4',
     items: [
       { id: 'item5', name: 'Dell Laptop' },
     ],
     listedItemIds: ['item5'],
-    status: 'completed',
-    date: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(), // 15 days ago
-    organizationId: '4', // Assign to a different organization
+    status: 'Collected',
+    date: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    collector: 'Michael Brown',
     clientId: '1',
-    collector: 'Michael Brown'
+    pickupStatus: 'Collected',
+    address: 'Jalan Bakawali 54, Taman Johor Jaya, 81100 Johor Bahru, Johor, Malaysia',
   },
   'pickup4': {
     id: 'pickup4',
-    facilityName: 'ReNew Electronics',
+    itemId: 'item6',
+    userId: '1',
+    organizationId: '4',
     items: [
       { id: 'item6', name: 'HP Printer' },
     ],
     listedItemIds: ['item6'],
-    status: 'cancelled',
-    date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days ago
-    organizationId: '4', // Same organization as pickup3
+    status: 'Cancelled',
+    date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    collector: 'John Doe',
     clientId: '1',
-    collector: 'John Doe'
+    pickupStatus: 'Cancelled',
+    address: 'Jalan Perang, Taman Pelangi, 80400 Johor Bahru, Johor, Malaysia',
   },
   'pickup5': {
     id: 'pickup5',
-    facilityName: 'GreenTech Recyclers',
+    itemId: 'item2',
+    userId: '1',
+    organizationId: '2',
     items: [
       { id: 'item2', name: 'S24' },
     ],
     listedItemIds: ['item2'],
-    status: 'ongoing',
-    date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
-    organizationId: '2',
+    status: 'Pending',
+    date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    collector: 'John Collector',
     clientId: '1',
-    collector: 'Jane Smith',
-    pickupStatus: 'Out for pickup'
+    pickupStatus: 'Out for pickup',
+    address: 'Jalan Tebrau, Taman Maju, 80300 Johor Bahru, Johor, Malaysia',
   },
   'pickup6': {
     id: 'pickup6',
-    facilityName: 'GreenTech Recyclers',
+    itemId: 'item3',
+    userId: '1',
+    organizationId: '2',
     items: [
       { id: 'item3', name: 'S24 Plus' },
     ],
     listedItemIds: ['item3'],
-    status: 'ongoing',
-    date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 days ago
-    organizationId: '2',
-    clientId: '1',
+    status: 'Pending',
+    date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     collector: 'Michael Brown',
-    pickupStatus: 'Out for pickup'
+    clientId: '1',
+    pickupStatus: 'Out for pickup',
+    address: 'Jalan Stulang Laut, Stulang, 80300 Johor Bahru, Johor, Malaysia',
+  },
+  'pickup7': {
+    id: 'pickup7',
+    itemId: 'item7',
+    userId: '1',
+    organizationId: '2',
+    items: [
+      { id: 'item7', name: 'MacBook Pro' },
+    ],
+    listedItemIds: ['item7'],
+    status: 'Collected',
+    date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    collector: 'John Collector',
+    clientId: '1',
+    pickupStatus: 'Collected',
+    address: 'Jalan Indah 15, Taman Bukit Indah, 81200 Johor Bahru, Johor, Malaysia',
+  },
+  'pickup8': {
+    id: 'pickup8',
+    itemId: 'item8',
+    userId: '1',
+    organizationId: '2',
+    items: [
+      { id: 'item8', name: 'iPad Pro' },
+    ],
+    listedItemIds: ['item8'],
+    status: 'Cancelled',
+    date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    collector: 'Michael Brown',
+    clientId: '1',
+    pickupStatus: 'Cancelled',
+    address: 'Jalan Bayu Puteri 1, Taman Bayu Puteri, 80150 Johor Bahru, Johor, Malaysia',
   }
 };
 
@@ -430,6 +510,7 @@ const mockCollectors = [
   { id: 'collector1', name: 'John Doe', email: 'john@example.com', phoneNumber: '+60123456789'},
   { id: 'collector2', name: 'Jane Smith', email: 'jane@example.com', phoneNumber: '+60123456780'},
   { id: 'collector3', name: 'Michael Brown', email: 'michael@example.com', phoneNumber: '+60123456781'},
+  { id: 'collector4', name: 'John Collector', email: 'collector@example.com', phoneNumber: '+601244448888'},
 ];
 
 // Add this near the top with other mock data
@@ -442,7 +523,7 @@ const mockUsers: { [key: string]: User } = {
     address: '123 Main St, City',
     phoneNumber: '+601233335555',
     role: 'client',
-    scheduledPickups: ['pickup1', 'pickup2', 'pickup3', 'pickup4', 'pickup5', 'pickup6'],
+    scheduledPickups: ['pickup1', 'pickup2', 'pickup3', 'pickup4', 'pickup5', 'pickup6', 'pickup7', 'pickup8'],
     listedItems: ['item1', 'item2', 'item3', 'item4', 'item7', 'item8', 'item9', 'item10', 'item11'],
     redeemedRewards: [
       {
@@ -471,10 +552,10 @@ const mockUsers: { [key: string]: User } = {
     address: '456 Business Ave, City',
     phoneNumber: '+601244445555',
     role: 'organization',
-    scheduledPickups: ['pickup1', 'pickup5', 'pickup6'],
+    scheduledPickups: ['pickup1', 'pickup5', 'pickup6', 'pickup7', 'pickup8'],
     listedItems: [],
     redeemedRewards: [],
-    collectorEmployees: ['collector1', 'collector2', 'collector3']
+    collectorEmployees: ['collector1', 'collector2', 'collector3', 'collector4']
   },
   '3': {
     id: '3',
@@ -501,6 +582,58 @@ const mockUsers: { [key: string]: User } = {
     listedItems: [],
     redeemedRewards: [],
     collectorEmployees: ['collector3']
+  },
+  '5': {
+    id: '5',
+    name: 'John Collector',
+    email: 'collector@example.com',
+    points: 0,
+    address: '456 Business Ave, City',
+    phoneNumber: '+601244448888',
+    role: 'collector',
+    scheduledPickups: ['pickup1', 'pickup5', 'pickup7', 'pickup8'],
+    listedItems: [],
+    redeemedRewards: [],
+    organizationId: '2' // Works for GreenTech Recyclers
+  },
+  '6': {
+    id: '6',
+    name: 'John Doe',
+    email: 'john@example.com',
+    points: 0,
+    address: '456 Business Ave, City',
+    phoneNumber: '+60123456789',
+    role: 'collector',
+    scheduledPickups: [],
+    listedItems: [],
+    redeemedRewards: [],
+    organizationId: '2' // Works for GreenTech Recyclers
+  },
+  '7': {
+    id: '7',
+    name: 'Jane Smith',
+    email: 'jane@example.com',
+    points: 0,
+    address: '456 Business Ave, City',
+    phoneNumber: '+60123456780',
+    role: 'collector',
+    scheduledPickups: ['pickup2'],
+    listedItems: [],
+    redeemedRewards: [],
+    organizationId: '2' // Works for GreenTech Recyclers
+  },
+  '8': {
+    id: '8',
+    name: 'Michael Brown',
+    email: 'michael@example.com',
+    points: 0,
+    address: '456 Business Ave, City',
+    phoneNumber: '+60123456781',
+    role: 'collector',
+    scheduledPickups: ['pickup3', 'pickup6'],
+    listedItems: [],
+    redeemedRewards: [],
+    organizationId: '4' // Works for ReNew Electronics
   }
 };
 
@@ -509,6 +642,10 @@ const mockUserPasswords: { [key: string]: string } = {
   '2': 'password', // org@example.com
   '3': 'password', // eco@example.com
   '4': 'password', // renew@example.com
+  '5': 'password', // collector@example.com
+  '6': 'password', // john@example.com
+  '7': 'password', // jane@example.com
+  '8': 'password', // michael@example.com
 };
 
 /**
@@ -699,7 +836,7 @@ const mockUserService: UserService = {
     if (mockListedItems[itemId]) {
       // Check if the item is part of any ONGOING pickup (allow deletion for completed/cancelled)
       const isInActivePickup = Object.values(mockPickups).some(pickup => 
-        pickup.listedItemIds.includes(itemId) && pickup.status === 'ongoing'
+        pickup.listedItemIds.includes(itemId) && pickup.status === 'Pending'
       );
       
       // Only allow deletion if the item is not in an active pickup
@@ -726,12 +863,17 @@ const mockUserService: UserService = {
     // Return all items that are not part of any ongoing pickup, regardless of user
     const availableItems = Object.values(mockListedItems).filter(item => {
       // Check if the item is not in any ongoing pickup
-      const isInAnyOngoingPickup = Object.values(mockPickups).some(pickup => 
-        pickup.listedItemIds.includes(item.id) && pickup.status === 'ongoing'
+      const isInAnyActivePickup = Object.values(mockPickups).some(pickup => 
+        pickup.listedItemIds.includes(item.id) && 
+        (
+          // Consider both status and pickupStatus
+          (pickup.status === 'Pending' || pickup.status === 'Out for pickup') &&
+          pickup.pickupStatus !== 'Cancelled' && pickup.pickupStatus !== 'Recycled' && pickup.pickupStatus !== 'Collected'
+        )
       );
       
-      // Return true if the item is not in any ongoing pickup
-      return !isInAnyOngoingPickup;
+      // Return true if the item is not in any active pickup
+      return !isInAnyActivePickup;
     });
     
     console.log(`Available items for pickup: ${availableItems.length}`, 
@@ -746,11 +888,11 @@ const mockUserService: UserService = {
     // Return pickups that are assigned to this organization and are ongoing
     return Object.values(mockPickups).filter(pickup => 
       pickup.organizationId === organizationId && 
-      pickup.status === 'ongoing'
+      pickup.status === 'Pending'
     );
   },
   
-  acceptPickup: async (itemId: string, organizationId: string, collectorName: string) => {
+  acceptPickup: async (itemId: string, organizationId: string, collectorName: string, collectorId: string) => {
     await new Promise(resolve => setTimeout(resolve, 500));
     
     // Get the item details
@@ -764,7 +906,7 @@ const mockUserService: UserService = {
     
     // Check if there's an existing ongoing pickup with the same address
     const existingPickup = Object.values(mockPickups).find(pickup => 
-      pickup.status === 'ongoing' && 
+      pickup.status === 'Pending' && 
       pickup.organizationId === organizationId &&
       pickup.collector === collectorName &&
       // Check if any item in this pickup has the same address
@@ -791,15 +933,18 @@ const mockUserService: UserService = {
       
       mockPickups[pickupId] = {
         id: pickupId,
-        facilityName: organization?.name || 'Unknown Organization',
+        itemId: item.id,
+        userId: item.userId,
+        organizationId: organizationId,
         items: [{ id: item.id, name: item.name }],
         listedItemIds: [item.id],
-        status: 'ongoing',
-        date: new Date().toISOString(),
+        status: 'Pending',
+        date: new Date().toISOString().split('T')[0],
         collector: collectorName,
-        organizationId: organizationId,
+        collectorId: collectorId, // Store the collector ID
         clientId: item.userId,
-        pickupStatus: 'Out for pickup'
+        pickupStatus: 'Out for pickup',
+        address: item.address // Store the address
       };
       
       // Update the user's scheduledPickups array
@@ -822,7 +967,7 @@ const mockUserService: UserService = {
     }
   },
   
-  acceptMultiplePickups: async (itemIds: string[], organizationId: string, collectorName: string) => {
+  acceptMultiplePickups: async (itemIds: string[], organizationId: string, collectorName: string, collectorId: string) => {
     await new Promise(resolve => setTimeout(resolve, 500));
     
     // Verify all items exist and get their details
@@ -853,7 +998,7 @@ const mockUserService: UserService = {
     for (const [address, addressItems] of Object.entries(itemsByAddress)) {
       // Check if there's an existing pickup with this address
       const existingPickup = Object.values(mockPickups).find(pickup => 
-        pickup.status === 'ongoing' && 
+        pickup.status === 'Pending' && 
         pickup.organizationId === organizationId &&
         pickup.collector === collectorName &&
         // Check if any item in this pickup has the same address
@@ -875,15 +1020,18 @@ const mockUserService: UserService = {
         
         mockPickups[pickupId] = {
           id: pickupId,
-          facilityName: organization?.name || 'Unknown Organization',
+          itemId: items[0].id,
+          userId: items[0].userId,
+          organizationId: organizationId,
           items: addressItems.map(item => ({ id: item.id, name: item.name })),
           listedItemIds: addressItems.map(item => item.id),
-          status: 'ongoing',
-          date: new Date().toISOString(),
+          status: 'Pending',
+          date: new Date().toISOString().split('T')[0],
           collector: collectorName,
-          organizationId: organizationId,
+          collectorId: collectorId, // Store the collector ID
           clientId: clientId,
-          pickupStatus: 'Out for pickup'
+          pickupStatus: 'Out for pickup',
+          address: addressItems[0].address // Store the address
         };
       }
     }
@@ -907,7 +1055,12 @@ const mockUserService: UserService = {
   getCollectors: async (organizationId: string) => {
     await new Promise(resolve => setTimeout(resolve, 500));
     // In a real implementation, we would filter collectors by organization ID
-    return mockCollectors;
+    return mockCollectors.map(collector => ({
+      id: collector.id,
+      name: collector.name,
+      email: collector.email,
+      phoneNumber: collector.phoneNumber
+    }));
   },
   
   addCollector: async (organizationId: string, name: string, email: string, phoneNumber: string, password: string) => {
@@ -940,6 +1093,25 @@ const mockUserService: UserService = {
       }
       mockUsers[organizationId].collectorEmployees.push(collectorId);
     }
+
+    // Create a user entry for the collector
+    const newUserId = String(Object.keys(mockUsers).length + 1);
+    mockUsers[newUserId] = {
+      id: newUserId,
+      name,
+      email,
+      points: 0,
+      address: mockUsers[organizationId]?.address || '',
+      phoneNumber: formattedPhone,
+      role: 'collector',
+      scheduledPickups: [],
+      listedItems: [],
+      redeemedRewards: [],
+      organizationId: organizationId
+    };
+    
+    // Add password for the new collector
+    mockUserPasswords[newUserId] = password;
     
     // For demonstration purposes, log the collector
     console.log(`Added new collector: ${name} (${collectorId}) to organization ${organizationId}`);
@@ -967,6 +1139,18 @@ const mockUserService: UserService = {
           }
         }
       });
+      
+      // Find and remove the user entry for this collector
+      const userIdToRemove = Object.keys(mockUsers).find(userId => {
+        const user = mockUsers[userId];
+        return user.role === 'collector' && user.email === removedCollector.email;
+      });
+      
+      if (userIdToRemove) {
+        delete mockUsers[userIdToRemove];
+        delete mockUserPasswords[userIdToRemove];
+        console.log(`Removed collector user account: ${userIdToRemove}`);
+      }
       
       return true;
     }
@@ -1080,6 +1264,32 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  const getCollectorPickups = async () => {
+    if (!user || user.role !== 'collector') return [];
+    try {
+      // For debugging
+      console.log("Getting pickups for collector:", user.name, "ID:", user.id);
+      console.log("All pickups:", Object.values(mockPickups).length);
+      
+      // Filter all pickups assigned to this collector, regardless of status
+      const collectorPickups = Object.values(mockPickups).filter(pickup => {
+        const collectorMatch = (pickup.collectorId === user.id) || (pickup.collector === user.name);
+        const orgMatch = pickup.organizationId === user.organizationId;
+        
+        console.log(`Pickup ${pickup.id}: collector=${pickup.collector}, collectorId=${pickup.collectorId}, expected=${user.id}, match=${collectorMatch}, status=${pickup.pickupStatus}`);
+        
+        // Return true if the collector and organization match
+        return collectorMatch && orgMatch;
+      });
+      
+      console.log("Matched collector pickups:", collectorPickups.length);
+      return collectorPickups;
+    } catch (error) {
+      console.error('Get collector pickups error:', error);
+      return [];
+    }
+  };
+
   const getPickupDetails = async (pickupId: string) => {
     return userService.getPickupDetails(pickupId);
   };
@@ -1184,20 +1394,28 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const acceptPickup = async (itemId: string, collectorName: string) => {
+  const acceptPickup = async (itemId: string, collectorId: string) => {
     if (!user) return false;
     try {
-      return await userService.acceptPickup(itemId, user.id, collectorName);
+      // Get the collector's name from the mockCollectors array
+      const collector = mockCollectors.find(c => c.id === collectorId);
+      const collectorName = collector ? collector.name : "Unknown Collector";
+      
+      return await userService.acceptPickup(itemId, user.id, collectorName, collectorId);
     } catch (error) {
       console.error('Accept pickup error:', error);
       return false;
     }
   };
 
-  const acceptMultiplePickups = async (itemIds: string[], collectorName: string) => {
+  const acceptMultiplePickups = async (itemIds: string[], collectorId: string) => {
     if (!user) return false;
     try {
-      return await userService.acceptMultiplePickups(itemIds, user.id, collectorName);
+      // Get the collector's name from the mockCollectors array
+      const collector = mockCollectors.find(c => c.id === collectorId);
+      const collectorName = collector ? collector.name : "Unknown Collector";
+      
+      return await userService.acceptMultiplePickups(itemIds, user.id, collectorName, collectorId);
     } catch (error) {
       console.error('Accept multiple pickups error:', error);
       return false;
@@ -1217,7 +1435,12 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (!user) return [];
     try {
       const collectors = await userService.getCollectors(user.id);
-      return collectors.map(c => ({ label: c.name, value: c.name }));
+      return collectors.map(c => ({ 
+        label: c.name, 
+        value: c.id,
+        email: c.email,
+        phoneNumber: c.phoneNumber
+      }));
     } catch (error) {
       console.error('Get collectors error:', error);
       return [];
@@ -1252,6 +1475,16 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  const updatePickup = (pickup: ScheduledPickup) => {
+    // Update the pickup in our mock data
+    if (mockPickups[pickup.id]) {
+      mockPickups[pickup.id] = {
+        ...mockPickups[pickup.id],
+        ...pickup
+      };
+    }
+  };
+
   return (
     <UserContext.Provider value={{ 
       user, 
@@ -1263,6 +1496,7 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       updateUserProfile,
       changePassword,
       getScheduledPickups,
+      getCollectorPickups,
       getPickupDetails,
       listItem,
       getListedItems,
@@ -1281,7 +1515,8 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       getCollectors,
       addCollector,
       removeCollector,
-      getOrganizationName
+      getOrganizationName,
+      updatePickup
     }}>
       {children}
     </UserContext.Provider>

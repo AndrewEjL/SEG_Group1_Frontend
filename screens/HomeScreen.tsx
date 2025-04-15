@@ -11,6 +11,7 @@ import { useDeleteItem } from './api/items/deleteItem';
 import { grabTransactionOrg } from './api/transaction/grabTransactionOrg';
 import { useOrganization } from './api/transaction/getOrganization';
 import { useClient } from './api/user/getClient';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type RootStackParamList = {
   Home: {id: number};
@@ -31,6 +32,8 @@ interface PickupItem {
   facility: string;
 }
 
+
+const COMPLETED_PICKUPS_STORAGE_KEY = 'completedPickupIds';
 
 const LoadingIcon: React.FC = () => {
   const spinValue = useRef(new Animated.Value(0)).current;
@@ -79,17 +82,41 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const [isPickupsLoading, setIsPickupsLoading] = useState(true);
   const [isItemsLoading, setIsItemsLoading] = useState(true);
   const [organizationNames, setOrganizationNames] = useState<{[key: string]: string}>({});
+  // Track which pickups are completed and ready for claiming points
+  const [completedPickupIds, setCompletedPickupIds] = useState<string[]>([]);
+  // State to track if AsyncStorage loading is complete
+  const [isStorageLoaded, setIsStorageLoaded] = useState(false);
 
-  // Load data when component mounts
+  // Load completed IDs from storage on mount
   useEffect(() => {
-    loadData();
+    const loadCompletedIds = async () => {
+      try {
+        const storedIds = await AsyncStorage.getItem(COMPLETED_PICKUPS_STORAGE_KEY);
+        if (storedIds) {
+          setCompletedPickupIds(JSON.parse(storedIds));
+        }
+      } catch (e) {
+        console.error("Failed to load completed pickup IDs from storage", e);
+      }
+      setIsStorageLoaded(true); // Indicate storage loading is complete
+    };
+    loadCompletedIds();
   }, []);
 
-  // Refresh data when screen comes into focus
+  // Load data when component mounts, only after storage is loaded
+  useEffect(() => {
+    if (isStorageLoaded) {
+      loadData();
+    }
+  }, [isStorageLoaded]); // Depend on storage loaded state
+
+  // Refresh data when screen comes into focus, only after storage is loaded
   useFocusEffect(
     useCallback(() => {
-      loadData();
-    }, [])
+      if (isStorageLoaded) {
+        loadData();
+      }
+    }, [isStorageLoaded]) // Depend on storage loaded state
   );
 
   const loadData = async () => {
@@ -122,7 +149,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     navigation.navigate('PickupDetails', { id, orgId });
   };
 
-  const handleEditPickup = (pickupId: string) => {
+  const handleEditPickup = (pickup: ScheduledPickup) => {
     // Show options to update pickup status
     Alert.alert(
       "Update Pickup",
@@ -133,15 +160,68 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           style: "cancel"
         },
         {
-          text: "Mark as Completed",
+          text: "Mark as Collected",
           onPress: async () => {
             // In a real app, this would call an API to update the pickup
+            const updatedPickup: ScheduledPickup = {
+              ...pickup,
+              status: 'Collected',
+              date: new Date().toISOString().split('T')[0]
+            };
+            
+            // Update the pickup
+            updatePickup(updatedPickup);
+            
             Alert.alert(
               "Success", 
-              "Pickup has been marked as completed. You can view it in your Pickup History."
+              "Pickup has been marked as collected."
             );
             
             // Trigger data reload to reflect the changes
+            loadData();
+          }
+        },
+        {
+          text: "Mark as Completed",
+          onPress: async () => {
+            // Add debug logging
+            console.log("1. STARTING Mark as Completed process for pickup ID:", pickup.id);
+            
+            // Mark as collected in the database and add readyForClaiming property
+            const updatedPickup: ScheduledPickup = {
+              ...pickup,
+              status: 'Collected', // This is a valid status in the ScheduledPickup type
+              date: new Date().toISOString().split('T')[0],
+              // Add readyForClaiming with @ts-ignore since it's not in the type definition
+              // @ts-ignore
+              readyForClaiming: true
+            };
+            
+            console.log("3. Updated pickup object with readyForClaiming:", updatedPickup);
+            
+            // Update the pickup in the backend
+            updatePickup(updatedPickup);
+            console.log("4. Called updatePickup");
+            
+            // Also update it in our local state immediately
+            setScheduledPickups(prev => 
+              prev.map(p => p.id === pickup.id ? 
+                {
+                  ...p,
+                  // @ts-ignore - Adding property not in type definition
+                  readyForClaiming: true
+                } : p
+              )
+            );
+            console.log("5. Updated local scheduledPickups state");
+            
+            Alert.alert(
+              "Success", 
+              "Pickup has been marked as completed. You can now claim your points!"
+            );
+            
+            // Trigger data reload to reflect the changes
+            console.log("6. Calling loadData");
             loadData();
           }
         },
@@ -150,9 +230,27 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           style: "destructive",
           onPress: async () => {
             // In a real app, this would call an API to update the pickup
+            const updatedPickup: ScheduledPickup = {
+              ...pickup,
+              status: 'Cancelled',
+              date: new Date().toISOString().split('T')[0]
+            };
+            
+            // Update the pickup
+            updatePickup(updatedPickup);
+            
+            // Remove from completed pickups if it was there and save to storage
+            const updatedIds = completedPickupIds.filter(id => id !== pickup.id);
+            setCompletedPickupIds(updatedIds);
+            try {
+              await AsyncStorage.setItem(COMPLETED_PICKUPS_STORAGE_KEY, JSON.stringify(updatedIds));
+            } catch (e) {
+              console.error("Failed to save completed pickup IDs to storage", e);
+            }
+            
             Alert.alert(
               "Success", 
-              "Pickup has been cancelled. You can view it in your Pickup History."
+              "Pickup has been cancelled."
             );
             
             // Trigger data reload to reflect the changes
@@ -323,7 +421,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
 
       {/* Add Pickup Item Button */}
       <TouchableOpacity 
-        style={styles.addButton}
+        style={styles.addButton} 
         onPress={handleAddPickupItem}
       >
         <Text style={styles.addButtonText}>Add Pickup Item</Text>
@@ -361,6 +459,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
+    position: 'relative',
   },
   header: {
     padding: 16,
@@ -424,11 +523,6 @@ const styles = StyleSheet.create({
     color: '#333',
     fontWeight: '500',
   },
-  organizationText: {
-    fontSize: 14,
-    color: '#5E4DCD',
-    marginTop: 2,
-  },
   collectorText: {
     fontSize: 12,
     color: '#666',
@@ -457,7 +551,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     borderRadius: 24,
     alignSelf: 'center',
-    marginBottom: 24,
+    marginBottom: 80, // Increased to account for bottom nav
   },
   addButtonText: {
     color: '#FFFFFF',
@@ -475,6 +569,8 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
+    height: 60,
+    zIndex: 999,
   },
   navItem: {
     alignItems: 'center',
@@ -530,6 +626,31 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 4,
+  },
+  statusTag: {
+    marginTop: 6,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  statusText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '500',
+  },
+  claimButton: {
+    backgroundColor: '#4CAF50',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  claimButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '500',
   },
 });
 

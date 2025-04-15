@@ -31,6 +31,7 @@ const PickupHistoryScreen: React.FC<PickupHistoryScreenProps> = ({ navigation })
   const { pickupStatus, loadingName } = useItemTypes();
   const [pickups, setPickups] = useState<ScheduledPickup[]>([]);
   const [loading, setLoading] = useState(true);
+  const [organizationNames, setOrganizationNames] = useState<{ [key: string]: string }>({});
 
   const groupHistoryByOrganization = (history: any[]) =>{
     return history.reduce((acc, curr) =>{

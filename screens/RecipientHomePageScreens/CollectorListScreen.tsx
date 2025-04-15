@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert, Modal, TextInput } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useUser } from '../../contexts/UserContext';
@@ -57,6 +57,38 @@ const CollectorListScreen: React.FC<CollectorListProps> = ({navigation}) => {
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
 
+  // Load collectors when component mounts
+  useEffect(() => {
+    loadCollectors();
+  }, []);
+
+  const loadCollectors = async () => {
+    setLoading(true);
+    try {
+      // Get all collectors from the organization
+      const collectorsData = await getCollectors();
+      
+      // Convert to the Employee format
+      const formattedCollectors = collectorsData.map(collector => ({
+        id: collector.value,
+        name: collector.label,
+        email: collector.email,
+        phoneNumber: collector.phoneNumber.startsWith('+60') ? collector.phoneNumber.slice(3) : collector.phoneNumber,
+        password: 'Password@123' // Default password for UI only
+      }));
+
+      // Extract emails for validation
+      const emails = formattedCollectors.map(c => c.email);
+      setExistingEmails(emails);
+      
+      setCollectors(formattedCollectors);
+    } catch (error) {
+      console.error("Error loading collectors:", error);
+      Alert.alert("Error", "Failed to load collectors. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleDelete = async (cid: number) => {
     Alert.alert(
@@ -94,6 +126,7 @@ const CollectorListScreen: React.FC<CollectorListProps> = ({navigation}) => {
     else if (!emailRegex.test(newEmployee.email)) validationErrors.email = "Invalid email format.";
     else if (emailExists) validationErrors.email = "Email already exists.";
     if (!newEmployee.phoneNumber.trim()) validationErrors.phoneNumber = "Phone number is required.";
+    if (newEmployee.phoneNumber.length < 8) validationErrors.phoneNumber = "Phone number must have at least 9 digit";
     if (!newEmployee.password.trim()) validationErrors.password = "Password is required.";
     else if (!passwordRegex.test(newEmployee.password)) validationErrors.password = "At least 8 characters and include a number and a special character.";
     if (newEmployee.password !== newEmployee.confirmPassword) validationErrors.confirmPassword = "Passwords do not match.";
@@ -123,6 +156,9 @@ const CollectorListScreen: React.FC<CollectorListProps> = ({navigation}) => {
       setErrors({});
       navigation.replace("CollectorList", {id: id});
       Alert.alert("Success", "Collector added successfully");
+      
+      // Reload collectors to get the updated list including the new collector
+      loadCollectors();
     } else {
       Alert.alert("Error", "Failed to add collector. The email might already be in use.");
     }
@@ -204,8 +240,8 @@ return (
           placeholder="Phone Number"
           value={newEmployee.phoneNumber ? `+60${newEmployee.phoneNumber}` : ""}
           onChangeText={(text) => {
-            const numberOnly = text.startsWith("+60") 
-              ? text.slice(3).replace(/\D/g, "") 
+            const numberOnly = text.startsWith("+60")
+              ? text.slice(3).replace(/\D/g, "")
               : text.replace(/\D/g, "");
             setNewEmployee({ ...newEmployee, phoneNumber: numberOnly });
           }}
@@ -273,24 +309,20 @@ const styles = StyleSheet.create({
     padding: 16,
     backgroundColor: '#fff'
   },
-
   header: {
     flexDirection: 'row',
     justifyContent: "flex-end",
     marginBottom: 16
   },
-
   addButton: {
     backgroundColor: "#5E4DCD",
     padding: 10,
     borderRadius: 5
   },
-
   addButtonText: {
     color: 'white',
     fontWeight: 'bold'
   },
-
   itemContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -298,7 +330,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0'
   },
-
   avatar: {
     width: 40,
     height: 40,
@@ -308,55 +339,60 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 10
   },
-
   avatarText: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#333333'
   },
-
   collectorInfo: {
     flex: 1,
     justifyContent: 'center',
   },
-  
   collectorName: {
     fontSize: 16,
     fontWeight: 'bold',
     color: '#333333',
   },
-  
   collectorEmail: {
     fontSize: 14,
     color: '#333333',
   },
-  
   collectorPhone: {
     fontSize: 12,
     color: '#666666',
   },
-
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#666666',
+  },
   modalContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "rgba(0,0,0,0.5)"
   },
-
   modalContent: {
     width: "80%",
     backgroundColor: "#fff",
     padding: 20,
     borderRadius: 10
   },
-
   modalTitle: {
     fontSize: 18,
     fontWeight: "bold",
     marginBottom: 20,
     color: '#333333'
   },
-
   input: {
     width: "100%",
     height: 40,
@@ -367,31 +403,26 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     color: '#333333'
   },
-
   saveButton: {
     backgroundColor: "#5E4DCD",
     padding: 10,
     borderRadius: 5,
     alignItems: "center"
   },
-
   buttonText: {
     color: "#fff",
     fontWeight: "bold"
   },
-
   errorText: {
     color: "#E53935",
     fontSize: 12,
     marginBottom: 10
   },
-
   hintText: {
     color: "#555555",
     fontSize: 12,
     marginBottom: 10
   },
-
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -399,7 +430,6 @@ const styles = StyleSheet.create({
     width: "100%",
     position: "relative"
   },
-
   eyeIcon: {
     position: "absolute",
     right: 0,
