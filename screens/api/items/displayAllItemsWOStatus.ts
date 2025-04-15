@@ -1,31 +1,34 @@
 import { useState, useEffect } from "react";
 import { Alert } from "react-native";
 import { ip_address } from "../ipAddress";
-const base_api = `${ip_address}/api/organization`;
-// const base_api = "http://192.168.0.183:8080/api/organization";
+const base_api= `${ip_address}/api/item`;
+// const base_api = "http://192.168.0.183:8080/api/item";
 
-export const useOrganization = () => {
-    const [displayOrg, setOrg] = useState<string[]>([]);
+export const displayEveryItemsWOStatus = () => {
+    const [displayAllItemsWS, setDisplayAllItemsWS] = useState([]);
     const [loading, setLoading] = useState(true);
       
     useEffect(() => {
-      const fetchOrg = async () => {
+      const fetchAllItems = async () => {
         try {
-            const response = await fetch(`${base_api}/organization/all`);
+          // with user id
+            const response = await fetch(`${base_api}/pickup_items/allWStatus`);
               
             if (!response.ok) {
                 throw new Error(`HTTP error! Status: ${response.status}`);
             }
         
             const data = await response.json();
-            setOrg(data);
+            setDisplayAllItemsWS(data);
         } catch (err) {
             console.error("Fetch error:", err);
         } finally {
             setLoading(false);
         }
       };
-        fetchOrg();
+      
+      fetchAllItems();
     }, []);
-    return { displayOrg, loading};
+    return { displayAllItemsWS, loading};
 };
+      

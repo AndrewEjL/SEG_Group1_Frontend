@@ -1,29 +1,18 @@
 import { useState, useEffect } from 'react';
 import { ip_address } from '../ipAddress';
-const base_api = `${ip_address}/api/item`;
-// const base_api = "http://192.168.0.183:8080/api/item";
+const base_api = `${ip_address}/api/userRewards`;
 
-export const addItem = async (
+export const addRewards = async (
     userDonorID: number,
-    itemName: string,
-    itemTypeID: number,
-    deviceConditionID: number,
-    dimensionLength: number,
-    dimensionWidth: number,
-    dimensionHeight: number,
-    pickupLocation: String
+    rewardID: number,
+    rewardPin: number,
 ): Promise<boolean> => {
     try{
-        const url = `${base_api}/pickup_items/add`;
+        const url = `${base_api}/user_donor_rewards/add`;
         const body = JSON.stringify({
             user_donor_id: userDonorID,
-            item_name: itemName,
-            item_type_id: itemTypeID,
-            device_condition_id: deviceConditionID,
-            dimension_length: dimensionLength,
-            dimension_width: dimensionWidth,
-            dimension_height: dimensionHeight,
-            pickup_location: pickupLocation,
+            rewards_id: rewardID,
+            rewards_pin: rewardPin
         });
 
         const response = await fetch(url, {

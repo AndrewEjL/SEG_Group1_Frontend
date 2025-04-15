@@ -1,18 +1,17 @@
 import { useEffect, useState } from "react";
 import { ip_address } from "../ipAddress";
-const base_api = `${ip_address}/api/item`;
-// const base_api = "http://192.168.0.183:8080/api/item";
+const base_api = `${ip_address}/api/user`;
+// const base_api = "http://192.168.0.183:8080/api/user";
 
-export const useDeleteItem = () => {
-    const [displayItems, setDisplayItems] = useState([]);
+export const useDeleteCollector= () => {
     const [loadingDelete, setLoading] = useState(false);
     const [error, setError] = useState(null);
 
-    const deleteItem = async (id:number) => {
+    const deleteCollector = async (id:number) => {
         setLoading(true);
         setError(null);
         try {
-          const response = await fetch(`${base_api}/pickup_items/delete/${id}`, {
+          const response = await fetch(`${base_api}/user_recipient/delete/${id}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
           });
@@ -27,5 +26,5 @@ export const useDeleteItem = () => {
         }
       };
     
-    return { deleteItem, loadingDelete, error };
+    return { deleteCollector, loadingDelete, error };
 };

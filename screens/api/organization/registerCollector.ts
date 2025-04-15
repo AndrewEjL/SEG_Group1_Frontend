@@ -1,13 +1,13 @@
-import { ip_address } from "./ipAddress";
+import { ip_address } from "../ipAddress";
 
-const base_api = `${ip_address}/api/organization`;
-// const base_api = "http://192.168.0.183:8080/api/organization";
+const base_api = `${ip_address}/api/user`;
+// const base_api = "http://192.168.0.183:8080/api/user";
 
 // check email
 export const checkEmailExists = async (email: string): Promise<boolean> => {
   try {
     const url = `${base_api}/checkEmail?email=${encodeURIComponent(email)}`;
-    console.log('Fetching URL:', url.toString()); 
+    console.log('Fetching URL:', url.toString()); // Debugging
 
     const response = await fetch(url.toString(), {
       method: 'GET',
@@ -16,7 +16,7 @@ export const checkEmailExists = async (email: string): Promise<boolean> => {
       },
     });
 
-    console.log('Response Status:', response.status); 
+    console.log('Response Status:', response.status); // Debugging
 
 
     if (!response.ok) {
@@ -24,7 +24,7 @@ export const checkEmailExists = async (email: string): Promise<boolean> => {
     }
 
     const data = await response.json();
-    console.log('Response Data:', data);
+    console.log('Response Data:', data); // Debugging
     return data.exists; 
   } catch (error) {
     console.error("Error checking email:", error);
@@ -32,28 +32,27 @@ export const checkEmailExists = async (email: string): Promise<boolean> => {
   }
 };
 
-// register organization
-export const registerOrganization = async (
-    organizationName: string,
-    registrationNumber: string,
-    registrationTypeID: number,
-    address: string,
+
+// register user donor
+export const registerCollector = async (
+    username: string,
     email: string,
+    password: string,
     phoneNumber: string,
-  ): Promise<{success: boolean, organizationID:number}> => {
+    organizatioID: number
+  ): Promise<boolean> => {
     try {
-      const url = `${base_api}/organization/add`;
+      const url = `${base_api}/user_recipient/add`;
       const body = JSON.stringify({
-        organization_name: organizationName,
-        registration_number: registrationNumber,
-        registration_type_id: registrationTypeID,
-        address: address,
+        user_name: username,
         email: email,
+        password: password,
         phone_number: phoneNumber,
+        organization_id: organizatioID,
       });
   
-      console.log('Fetching URL:', url); 
-      console.log('Request Body:', body); 
+      console.log('Fetching URL:', url); // Debugging
+      console.log('Request Body:', body); // Debugging
   
       const response = await fetch(url, {
         method: 'POST',
@@ -63,16 +62,15 @@ export const registerOrganization = async (
         body: body,
       });
   
-      console.log('Response Status:', response.status); 
+      console.log('Response Status:', response.status); // Debugging
   
       if (!response.ok) {
         throw new Error(`HTTP error! Status: ${response.status}`);
       }
   
       const data = await response.json();
-      console.log('Response Data:', data);
-      console.log('Response Data:', data.data.organizationID); 
-      return {success: data.success, organizationID: data.data.organizationID};
+      console.log('Response Data:', data); // Debugging
+      return data.success;
     } catch (error) {
       console.error("Registration error:", error);
       throw error;

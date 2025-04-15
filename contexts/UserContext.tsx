@@ -28,6 +28,11 @@ export interface ScheduledPickup {
 }
 
 export interface ListedItem {
+  pickup_items_id(pickup_items_id: any): unknown;
+  itemType: any;
+  deviceCondition: any;
+  user: any;
+  itemName: ReactNode;
   id: string;
   userId: string;
   name: string;

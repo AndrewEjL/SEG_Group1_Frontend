@@ -4,10 +4,28 @@ import Icon from "react-native-vector-icons/MaterialIcons";
 import { Dropdown } from "react-native-element-dropdown";
 import RouteInfo from "./RouteInfo.tsx";
 import { useUser, type ListedItem, type ScheduledPickup } from "../../contexts/UserContext";
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect, useRoute } from "@react-navigation/native";
 import { Checkbox } from "react-native-paper";
+import { displayEveryItems } from "../api/items/displayAllItems.ts";
+import { displayItemByItemID } from "../api/items/displayItemByItemID.ts";
+import { Item } from "react-native-paper/lib/typescript/components/Drawer/Drawer";
+import { useDisplayItem } from "../api/organization/displayItemInOrg.ts";
+import { useItemTypes } from "../api/items/itemTypes.ts";
+import { useItemUser } from "../api/organization/getItemUser.ts";
+import { useCollector } from "../api/organization/getCollector.ts";
+import { addTransaction } from "../api/transaction/addTransaction.ts";
+import { useOrgTransaction } from "../api/organization/getOrgTransaction.ts";
+import { useAllCollector } from "../api/organization/getAllCollector.ts";
+import { displayEveryItemsWOStatus } from "../api/items/displayAllItemsWOStatus.ts";
+
+type RootStackParamList = {
+  RHome: {id: number};
+  RStats: {id: number};
+  RProfile: {id: number};
+}
 
 type NavigationProp = {
+  replace(arg0: string, arg1: { id: any; }): unknown;
   navigate: (screen: string) => void;
 };
 
@@ -16,8 +34,19 @@ type RHomeScreenProps = {
 };
 
 const RHomeScreen: React.FC<RHomeScreenProps> = ({ navigation }) => {
+  const route = useRoute();
+  const {id} = route.params;
+  console.log(id);
   const { getAvailablePickups, getPendingPickups, acceptPickup, acceptMultiplePickups, getCollectors } = useUser();
-  
+  const { itemTypes, deviceCondition, pickupStatus, loadingName } = useItemTypes();
+  const { itemUser, loadingUser } = useItemUser();
+  const { displayCollector, loading: loadingCollector } = useCollector(id);
+  const { displayOrgTransaction, loading: loadingOrg } = useOrgTransaction(id);
+  const { displayAllItems, loading: loadingAllItems } = displayEveryItems();
+  const { displayAllItemsWS, loading: loadingAllItemsWS } = displayEveryItemsWOStatus();
+  const { fetchItem } = useDisplayItem();
+  const { allCollector, loading: loadingAllCollector } = useAllCollector();
+
   // State for available pickups (items ready to be picked up)
   const [availablePickups, setAvailablePickups] = useState<ListedItem[]>([]);
   
@@ -33,8 +62,8 @@ const RHomeScreen: React.FC<RHomeScreenProps> = ({ navigation }) => {
   const [modal2Visible, setModal2Visible] = useState(false);
   const [modal3Visible, setModal3Visible] = useState(false);
   const [selectedPickup, setSelectedPickup] = useState<ListedItem | ScheduledPickup | null>(null);
-  const [selectedCollector, setSelectedCollector] = useState<string | null>(null);
-  const [collectors, setCollectors] = useState<{label: string, value: string}[]>([]);
+  const [selectedCollector, setSelectedCollector] = useState<number | null>(null);
+  const [collector, setCollectors] = useState<{label: string, value: number}[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
   // Get screen dimensions
@@ -48,54 +77,54 @@ const RHomeScreen: React.FC<RHomeScreenProps> = ({ navigation }) => {
   // Calculate each table's height
   const tableHeight = (windowHeight - headerHeight - navHeight - spacing) / 2;
 
-  // Load data when component mounts and when screen comes into focus
   useEffect(() => {
-    loadData();
-  }, []);
-
-  useFocusEffect(
-    React.useCallback(() => {
-      loadData();
-    }, [])
-  );
-
-  const loadData = async () => {
-    setLoading(true);
-    try {
-      // Load available items for pickup from context
-      const availableItems = await getAvailablePickups();
-      setAvailablePickups(availableItems);
-      
-      // Load pending pickups from context
-      const pendingPickupsData = await getPendingPickups();
-      setPendingPickups(pendingPickupsData);
-      
-      // Load collectors from context
-      const collectorsData = await getCollectors();
-      setCollectors(collectorsData);
-    } catch (error) {
-      console.error("Error loading data:", error);
-      Alert.alert("Error", "Failed to load pickup data. Please try again.");
-    } finally {
-      setLoading(false);
+    if(displayCollector){
+      const formattedCollector = displayCollector.map(collector => ({
+        label: collector.user_name,
+        value: collector.id,
+        rawData: collector
+      }));
+      setCollectors(formattedCollector);
     }
-  };
+  }, [displayCollector])
 
-  const handleViewPickupDetails = (pickup: ListedItem) => {
-    setSelectedPickup(pickup);
+  const handleViewPickupDetails = async (pickupID: number) => {
+  try{
+    const itemDetails = await fetchItem(pickupID);
+
+    const transformItem = {
+      ...itemDetails,
+      id: itemDetails.pickup_item_id,
+      user: itemDetails.user_donor_id,
+      itemName: itemDetails.item_name,
+      itemType: itemDetails.item_type_id,
+      deviceCondition: itemDetails.device_condition_id,
+      address: itemDetails.pickup_location,
+      dimensions: {
+        length: itemDetails.dimension_length,
+        width: itemDetails.dimension_width,
+        height: itemDetails.dimension_height
+      }
+    };
+
+    setSelectedPickup(transformItem);
     setModal1Visible(true);
+  } catch (error) {
+    Alert.alert("Error", "Failed to fetch item details");
+    console.error("Item details error:", error);
+  }
   };
 
   const handleAcceptPickup = (pickup: ListedItem) => {
     // If multiSelectMode is active, we just toggle the selection
     if (multiSelectMode) {
-      toggleItemSelection(pickup.id);
+      toggleItemSelection(pickup.pickup_items_id);
       return;
     }
     
     // Otherwise, proceed with single item pickup
     setSelectedPickup(pickup);
-    setSelectedItems([pickup.id]);
+    setSelectedItems([pickup.pickup_items_id]);
     setModal2Visible(true);
   };
   
@@ -130,8 +159,8 @@ const RHomeScreen: React.FC<RHomeScreenProps> = ({ navigation }) => {
     }
   };
 
-  const handleViewPendingPickupStatus = (pickup: ScheduledPickup) => {
-    setSelectedPickup(pickup);
+  const handleViewPendingPickupStatus = (transaction: typeof displayOrgTransaction[0]) => {
+    setSelectedPickup(transaction);
     setModal3Visible(true);
   };
 
@@ -140,27 +169,29 @@ const RHomeScreen: React.FC<RHomeScreenProps> = ({ navigation }) => {
     if (!selectedCollector || selectedItems.length === 0) {
       return;
     }
+
+    console.log("selected Items Array", selectedItems)
     
     try {
-      let success;
-      
-      if (selectedItems.length === 1) {
-        // For a single item, use the legacy method
-        success = await acceptPickup(selectedItems[0], selectedCollector);
-      } else {
-        // For multiple items, use the new method
-        success = await acceptMultiplePickups(selectedItems, selectedCollector);
-      }
+      const pickupItemId = parseInt(selectedItems[0]);
+      const success = await addTransaction(
+        pickupItemId,        //item_id
+        selectedPickup?.user_donor_id, //user_donor_id
+        selectedCollector,        // user_recipient_id
+        id  // organization_id
+      )   
+      console.log("item id: " + pickupItemId)
+      console.log("user id: " + selectedPickup?.user_donor_id)
+      console.log("collector: " + selectedCollector)
+      console.log(id)
       
       if (success) {
+        navigation.replace("RHome", {id: id});
         Alert.alert("Success", `Pickup${selectedItems.length > 1 ? 's' : ''} assigned successfully`);
         setModal2Visible(false);
         setSelectedCollector(null);
         setSelectedItems([]);
-        setMultiSelectMode(false);
-        
-        // Reload data to update both lists
-        loadData();
+        setMultiSelectMode(false);        
       } else {
         Alert.alert("Error", "Failed to assign pickup. Please try again.");
       }
@@ -170,8 +201,8 @@ const RHomeScreen: React.FC<RHomeScreenProps> = ({ navigation }) => {
     }
   };
 
-  const handleTabPress = (tabName: string) => {
-    navigation.navigate(tabName);
+  const handleTabPress = (tabName: keyof RootStackParamList) => {
+    navigation.navigate(tabName, { id:id });
   };
 
   const formatDimensions = (item: ListedItem) => {
@@ -198,6 +229,9 @@ const RHomeScreen: React.FC<RHomeScreenProps> = ({ navigation }) => {
       <View style={styles.headerSection}>
         <View style={styles.headerRow}>
           <Text style={styles.header}>Available pickups</Text>
+          <TouchableOpacity onPress={() => navigation.replace("RHome", {id: id})}>
+            <Icon name="refresh" size={24} color="#5E4DCD" />
+          </TouchableOpacity>
           {addressesWithMultipleItems.length > 0 && (
             <TouchableOpacity 
               style={[styles.multiSelectButton, multiSelectMode && styles.multiSelectButtonActive]} 
@@ -224,7 +258,7 @@ const RHomeScreen: React.FC<RHomeScreenProps> = ({ navigation }) => {
       <View style={styles.contentContainer}>
         {/* Available Pickups Table */}
         <View style={[styles.tableContainer, { height: tableHeight }]}>
-          {availablePickups.length === 0 ? (
+          {displayAllItems.length === 0 ? (
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyText}>
                 {loading ? "Loading available pickups..." : "No available pickups"}
@@ -233,32 +267,32 @@ const RHomeScreen: React.FC<RHomeScreenProps> = ({ navigation }) => {
           ) : (
             <FlatList
               style={styles.flatList}
-              data={availablePickups}
-              keyExtractor={(item) => item.id}
+              data={displayAllItems}
+              keyExtractor={(item) => item.pickup_items_id}
               scrollEnabled={true}
               renderItem={({ item }) => (
                 <View style={[
                   styles.pickupCard, 
-                  multiSelectMode && selectedItems.includes(item.id) && styles.selectedPickupCard
+                  multiSelectMode && selectedItems.includes(item.pickup_items_id) && styles.selectedPickupCard
                 ]}>
                   <View style={styles.pickupInfo}>
-                    <Text style={styles.itemText}>{item.name}</Text>
-                    {addressesWithMultipleItems.includes(item.address) && (
+                    <Text style={styles.itemText}>{item.item_name}</Text>
+                    {addressesWithMultipleItems.includes(item.pickup_location) && (
                       <Text style={styles.addressHint}>
-                        Same location as {groupedItems[item.address].length - 1} other item(s)
+                        Same location as {groupedItems[item.pickup_location].length - 1} other item(s)
                       </Text>
                     )}
                   </View>
                   <View style={styles.iconRow}>
                     {multiSelectMode ? (
                       <Checkbox
-                        status={selectedItems.includes(item.id) ? 'checked' : 'unchecked'}
-                        onPress={() => toggleItemSelection(item.id)}
+                        status={selectedItems.includes(item.pickup_items_id) ? 'checked' : 'unchecked'}
+                        onPress={() => toggleItemSelection(item.pickup_items_id)}
                         color="#5E4DCD"
                       />
                     ) : (
                       <>
-                        <TouchableOpacity onPress={() => handleViewPickupDetails(item)}>
+                        <TouchableOpacity onPress={() => handleViewPickupDetails(item.pickup_items_id)}>
                           <Icon name="visibility" size={20} color="#333333" />
                         </TouchableOpacity>
                         <TouchableOpacity style={styles.acceptButton} onPress={() => handleAcceptPickup(item)}>
@@ -278,36 +312,42 @@ const RHomeScreen: React.FC<RHomeScreenProps> = ({ navigation }) => {
         
         {/* Pending Pickups Table */}
         <View style={[styles.tableContainer, { height: tableHeight }]}>
-          {pendingPickups.length === 0 ? (
+          {displayOrgTransaction.length === 0 ? (
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyText}>
                 {loading ? "Loading pending pickups..." : "No pending pickups"}
               </Text>
             </View>
-          ) : (
-            <FlatList
-              style={styles.flatList}
-              data={pendingPickups}
-              keyExtractor={(item) => item.id}
-              scrollEnabled={true}
-              renderItem={({ item }) => (
-                <View style={styles.pendingCard}>
-                  <View style={styles.pickupInfo}>
-                    <Text style={styles.itemText}>
-                      {item.items.length > 1 
-                        ? `${item.items[0]?.name} + ${item.items.length - 1} more`
-                        : item.items[0]?.name || "Unknown Item"}
-                    </Text>
-                    <Text style={styles.collectorText}>Collector: {item.collector || "Unassigned"}</Text>
-                  </View>
-                  <View style={styles.iconRow}>
-                    <TouchableOpacity onPress={() => handleViewPendingPickupStatus(item)}>
-                      <Icon name="hourglass-empty" size={20} color="#333333" />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              )}
-            />
+          ) : (              
+              <FlatList
+                style={styles.flatList}
+                data={displayOrgTransaction}
+                keyExtractor={(item) => item.pickup_transaction_id}
+                scrollEnabled={true}
+                renderItem={({ item }) => {
+                  const userN = itemUser.find((t) => t.id === item.user_donor_id);
+                  const itemN = displayAllItemsWS.find((t) => t.pickup_items_id === item.pickup_item_id);
+                  const collectorN = allCollector.find((t) => t.id === item.user_recipient_id);
+                  const statusN = pickupStatus.find((t) => t.id === item.pickup_status_id);
+                  return(
+                    <View style={styles.pendingCard}>
+                      <View style={styles.pickupInfo}>
+                        <Text style={styles.itemText}>
+                          {itemN?.item_name}
+                        </Text>
+                        <Text style={styles.collectorText}>Client: {userN?.user_name || "Unassigned"}</Text>
+                        <Text style={styles.collectorText}>Collector: {collectorN?.user_name || "Unassigned"}</Text>
+                        <Text style={styles.collectorText}>Status: {statusN?.name || "Unassigned"}</Text>
+                      </View>
+                      <View style={styles.iconRow}>
+                        <TouchableOpacity onPress={() => handleViewPendingPickupStatus(item)}>
+                          <Icon name="hourglass-empty" size={20} color="#333333" />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  );                  
+                }}
+              />              
           )}
         </View>
       </View>
@@ -337,19 +377,27 @@ const RHomeScreen: React.FC<RHomeScreenProps> = ({ navigation }) => {
             <Text style={styles.modalTitle}>Pickup details</Text>
 
             {selectedPickup && 'dimensions' in selectedPickup && (
-              <ScrollView style={styles.modalScrollView}>
-                <View style={styles.mapWrapper}>
-                  <RouteInfo initialDestination={selectedPickup.address}/>
-                </View>
-                <View style={styles.detailsContainer}>
-                  <Text style={styles.label}><Text style={styles.bold}>Item Name:</Text> {selectedPickup.name}</Text>
-                  <Text style={styles.label}><Text style={styles.bold}>Type:</Text> {selectedPickup.type}</Text>
-                  <Text style={styles.label}><Text style={styles.bold}>Condition:</Text> {selectedPickup.condition}</Text>
-                  <Text style={styles.label}><Text style={styles.bold}>Size:</Text> {formatDimensions(selectedPickup)}</Text>
-                  <Text style={styles.label}><Text style={styles.bold}>Quantity:</Text> {selectedPickup.quantity}</Text>
-                  <Text style={styles.label}><Text style={styles.bold}>Address:</Text> {selectedPickup.address}</Text>
-                </View>
-              </ScrollView>
+              (() => {
+                const type = itemTypes.find((t) => t.id === selectedPickup.itemType);
+                const condition = deviceCondition.find((t) => t.id === selectedPickup.deviceCondition);    
+                const userN = itemUser.find((t) => t.id === selectedPickup.user);
+
+                return(
+                <ScrollView style={styles.modalScrollView}>
+                  <View style={styles.mapWrapper}>
+                    <RouteInfo initialDestination={selectedPickup.address}/>
+                  </View>
+                  <View style={styles.detailsContainer}>
+                  <Text style={styles.label}><Text style={styles.bold}>User:</Text> {userN?.user_name}</Text>
+                    <Text style={styles.label}><Text style={styles.bold}>Item Name:</Text> {selectedPickup.itemName}</Text>
+                    <Text style={styles.label}><Text style={styles.bold}>Type:</Text> {type?.name}</Text>
+                    <Text style={styles.label}><Text style={styles.bold}>Condition:</Text> {condition?.name}</Text>
+                    <Text style={styles.label}><Text style={styles.bold}>Size:</Text> {selectedPickup.dimensions.length} x {selectedPickup.dimensions.width} x {selectedPickup.dimensions.height}</Text>
+                    <Text style={styles.label}><Text style={styles.bold}>Address:</Text> {selectedPickup.address}</Text>
+                  </View>
+                </ScrollView>
+                );
+              })()                            
             )}
           </View>
         </View>
@@ -399,7 +447,7 @@ const RHomeScreen: React.FC<RHomeScreenProps> = ({ navigation }) => {
               selectedTextStyle={styles.selectedTextStyle}
               inputSearchStyle={styles.inputSearchStyle}
               itemTextStyle={styles.itemTextStyle}
-              data={collectors}
+              data={collector}
               labelField="label"
               valueField="value"
               placeholder="Select a collector..."
@@ -428,22 +476,22 @@ const RHomeScreen: React.FC<RHomeScreenProps> = ({ navigation }) => {
 
             <Text style={styles.modalTitle}>Pending Pickup Details</Text>
 
-            {selectedPickup && 'pickupStatus' in selectedPickup && (
+            {selectedPickup && (
               <View>
                 <View style={styles.statusContainer}>
-                  {selectedPickup.pickupStatus === "Out for pickup" && (
+                  {selectedPickup.pickup_status_id === 1 && (
+                    <>
+                      <Icon name="check-circle" size={80} color="#5E4DCD" />
+                      <Text style={styles.statusText}>Collector Assigned</Text>
+                    </>
+                  )}
+                  {selectedPickup.pickup_status_id === 2 && (
                     <>
                       <Icon name="local-shipping" size={80} color="#5E4DCD" />
                       <Text style={styles.statusText}>Collector out for pickup</Text>
                     </>
                   )}
-                  {selectedPickup.pickupStatus === "Collected" && (
-                    <>
-                      <Icon name="move-to-inbox" size={80} color="#F9A826" />
-                      <Text style={styles.statusText}>Collector received</Text>
-                    </>
-                  )}
-                  {selectedPickup.pickupStatus === "Recycled" && (
+                  {selectedPickup.pickup_status_id === 3 && (
                     <>
                       <Icon name="check-circle-outline" size={80} color="#4CAF50" />
                       <Text style={styles.statusText}>Company received, completed pickup</Text>
@@ -451,13 +499,23 @@ const RHomeScreen: React.FC<RHomeScreenProps> = ({ navigation }) => {
                   )}
                 </View>
                 <ScrollView style={{maxHeight: 250}}>
-                  {selectedPickup.items.map((item, index) => (
-                    <Text key={index} style={styles.label}>
-                      <Text style={styles.bold}>Item {index + 1}:</Text> {item.name}
-                    </Text>
-                  ))}
-                  <Text style={styles.label}><Text style={styles.bold}>Collector:</Text> {selectedPickup.collector || "Unassigned"}</Text>
-                  <Text style={styles.label}><Text style={styles.bold}>Date:</Text> {new Date(selectedPickup.date).toLocaleDateString()}</Text>
+                  {/* Display item information */}
+                  {displayAllItemsWS
+                    .filter(item => item.pickup_items_id === selectedPickup.pickup_item_id)
+                    .map(item => (
+                      <Text key={item.pickup_items_id} style={styles.label}>
+                        <Text style={styles.bold}>Item:</Text> {item.item_name}
+                      </Text>
+                    ))
+                  }
+                  <Text style={styles.label}>
+                    <Text style={styles.bold}>Collector:</Text> {
+                      allCollector.find(c => c.id  === selectedPickup.user_recipient_id)?.user_name || "Unassigned"
+                    }
+                  </Text>
+                  <Text style={styles.label}>
+                    <Text style={styles.bold}>Date:</Text> {new Date(selectedPickup.createdDate).toLocaleDateString()}
+                  </Text>
                 </ScrollView>
               </View>
             )}

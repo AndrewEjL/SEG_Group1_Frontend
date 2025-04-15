@@ -1,17 +1,16 @@
 import { useState, useEffect } from "react";
 import { Alert } from "react-native";
 import { ip_address } from "../ipAddress";
-const base_api = `${ip_address}/api/transaction`;
-// const base_api = "http://192.168.0.183:8080/api/transaction";
+const base_api = `${ip_address}/api/userRewards`;
 
-export const useOrgItem = (id:number, orgID:number) => {
-    const [displayOrgItem, setOrgItem] = useState<any[]>([]);
+export const useAllUserRewards = (id:number) => {
+    const [displayUserRewards, setAllUserRewards] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
       
     useEffect(() => {
-      const fetchOrgItem = async () => {
+      const fetchUserRewards = async () => {
         try {
-            const response = await fetch(`${base_api}/pickup_transaction/${id}/${orgID}`, {
+            const response = await fetch(`${base_api}/user_donor_rewards/${id}`, {
                 method: 'GET',
                 headers: {
                   'Content-Type': 'application/json',
@@ -26,14 +25,14 @@ export const useOrgItem = (id:number, orgID:number) => {
             }
         
             const data = await response.json();
-            setOrgItem(data);
+            setAllUserRewards(data);
         } catch (err) {
             console.error("Fetch error:", err);
         } finally {
             setLoading(false);
         }
       };
-        fetchOrgItem();
-    }, [id, orgID]);
-    return { displayOrgItem, loading};
+        fetchUserRewards();
+    }, []);
+    return { displayUserRewards, loading};
 };

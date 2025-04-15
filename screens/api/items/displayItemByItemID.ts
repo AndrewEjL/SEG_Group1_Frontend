@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Alert } from "react-native";
-const base_api= "http://10.100.17.243:8080/api/item";
+import { ip_address } from "../ipAddress";
+const base_api= `${ip_address}/api/item`;
 // const base_api = "http://192.168.0.183:8080/api/item";
 
 export const displayItemByItemID = (id:number) => {

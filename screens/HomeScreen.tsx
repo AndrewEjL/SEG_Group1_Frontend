@@ -69,6 +69,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const { itemTypes, deviceCondition, itemsStatus, loadingName } = useItemTypes();
   const {id} = route.params;
   const { displayItems, loading } = displayItem(id);
+  console.log(displayItems);
   const { displayTransactionOrg, loadingT1} = grabTransactionOrg(id)
   const { displayOrg, loading: loadingOrg} = useOrganization();
   const { deleteItem, loadingDelete, error } = useDeleteItem();
@@ -183,7 +184,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             const success = await deleteItem(itemId);
             if (success) {
               // Refresh the list after deletion
-              navigation.navigate('Home', {id});
+              navigation.replace('Home', {id});
             } else {
               Alert.alert(
                 "Error",
@@ -219,7 +220,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         <View style={styles.pointsContainer}>
           <Icon name="stars" size={20} color="#5E4DCD" />
           <Text style={styles.points}>Points {displayClient?.reward_points || 0}</Text>
-        </View>
+        </View>    
       </View>
 
       {/* Scheduled Pickups Section */}
@@ -238,7 +239,6 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                 return(
                 <View key={pickup.pickup_transaction_id} style={styles.tableRow}>              
                   <Text style={styles.facilityText}>
-                    {/* {organization?.organization_name} */}
                     {organization?.organization_name}
                   </Text>                  
                   <View style={styles.actionButtons}>
@@ -344,13 +344,6 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         >
           <Icon name="star" size={24} color="#666" />
           <Text style={styles.navText}>Rewards</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={styles.navItem}
-          onPress={() => handleTabPress('notifications')}
-        >
-          <Icon name="notifications" size={24} color="#666" />
-          <Text style={styles.navText}>Notifications</Text>
         </TouchableOpacity>
         <TouchableOpacity 
           style={styles.navItem}

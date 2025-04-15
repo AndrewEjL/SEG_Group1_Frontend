@@ -5,6 +5,7 @@ import { Dropdown } from "react-native-element-dropdown";
 import Icon from "react-native-vector-icons/MaterialIcons";
 import { useRegistrationTypes } from "../api/useRegistrationType";
 import { checkEmailExists, registerOrganization } from "../api/registerOrganization";
+import { registerOrganizationStats } from "../api/registerOrganizationStats";
 
 const { width, height } = Dimensions.get("window");
 
@@ -35,7 +36,6 @@ const OrgRegistration = ({ navigation }) => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;//valid email format
 
   setEmailError("");
-
   if (!emailRegex.test(email)) {
     setEmailError("Invalid email format.");
     return;
@@ -50,8 +50,9 @@ const OrgRegistration = ({ navigation }) => {
       return;
     }
 
-    const success = await registerOrganization(orgName, brn, businessType, address, email, `+60${phoneNumber}`);
-      if (success) {
+    const {success, organizationID} = await registerOrganization(orgName, brn, businessType, address, email, `+60${phoneNumber}`);
+      if (success && organizationID) {
+        await registerOrganizationStats(organizationID);
         navigation.navigate("OrgRegistrationCompleted");
       } else {
         Alert.alert("Error", "Registration failed. Please try again.");

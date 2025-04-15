@@ -1,4 +1,6 @@
-const base_api = "http://10.100.17.243:8080/api/user";
+import { ip_address } from "./ipAddress";
+
+const base_api = `${ip_address}/api/user`;
 // const base_api = "http://192.168.0.183:8080/api/user";
 
 // check email

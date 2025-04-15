@@ -4,18 +4,18 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useUser, ScheduledPickup, ListedItem, PickupItem } from '../contexts/UserContext';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useRoute, type RouteProp } from '@react-navigation/native';
-import { useOrgItem } from './api/transaction/getTransaction';
 import { useOrganization } from './api/transaction/getOrganization';
 import { displayItemsByItemID } from './api/items/displayItemsByItemID';
 import { useItemTypes } from './api/items/itemTypes';
+import { useOrgHistoryItem } from './api/transaction/getHistoryTransaction';
 
 type RootStackParamList = {
-  PickupDetails: { id: number, orgId: number };
+  PickupHistoryDetails: { id: number, orgId: number };
 };
 
-type PickupDetailsProps = {
-  navigation: NativeStackNavigationProp<RootStackParamList, 'PickupDetails'>;
-  route: RouteProp<RootStackParamList, 'PickupDetails'>;
+type PickupHistoryDetailsProps = {
+  navigation: NativeStackNavigationProp<RootStackParamList, 'PickupHistoryDetails'>;
+  route: RouteProp<RootStackParamList, 'PickupHistoryDetails'>;
 };
 
 const LoadingIcon: React.FC = () => {
@@ -49,41 +49,35 @@ const LoadingIcon: React.FC = () => {
   );
 };
 
-const PickupDetails: React.FC<PickupDetailsProps> = ({ navigation, route }) => {
+const PickupHistoryDetails: React.FC<PickupHistoryDetailsProps> = ({ navigation, route }) => {
   const { id, orgId } = route.params;
-  const { displayOrgItem, loading: loadingOrgItem } = useOrgItem(id, orgId)
+  const { displayOrgHistoryItem, loading: loadingOrgHistoryItem } = useOrgHistoryItem(id, orgId)
+  console.log(displayOrgHistoryItem)
   const { displayOrg, loading: loadingOrg} = useOrganization();
-  const pickupItemID = displayOrgItem.map(item => item.pickup_item_id);
+  const pickupItemID = displayOrgHistoryItem.map(item => item.pickup_item_id);
   const { displayItems: displayItemByID, loading } = displayItemsByItemID(pickupItemID);
-  const { itemTypes, deviceCondition, itemsStatus, loadingName } = useItemTypes();
+  const { itemTypes, deviceCondition, itemsStatus, pickupStatus, loadingName } = useItemTypes();
   const [pickup, setPickup] = useState<ScheduledPickup | null>(null);
   const [itemDetails, setItemDetails] = useState<{ [key: string]: ListedItem | null }>({});
   const [isLoading, setIsLoading] = useState(true);
 
-  // useEffect(() => {
-  //   loadPickupDetails();
-  // }, [pickupId]);
+  const getStatusColor = (status: number) => {
+    if (status === 3) return '#4CAF50'; // Green for completed
+    if (status === 4) return '#F44336'; // Red for cancelled
+    return '#FFC107'; // Default yellow
+  };
 
-  // const loadPickupDetails = async () => {
-  //   setIsLoading(true);
-  //   try {
-  //     const details = await getPickupDetails(pickupId);
-  //     if (details) {
-  //       setPickup(details);
-  //       // Get all listed items and create a map for easy lookup
-  //       const allListedItems = await getListedItems();
-  //       const itemsMap = allListedItems.reduce((acc, item) => {
-  //         acc[item.id] = item;
-  //         return acc;
-  //       }, {} as { [key: string]: ListedItem });
-  //       setListedItems(itemsMap);
-  //     }
-  //   } catch (error) {
-  //     console.error('Error loading pickup details:', error);
-  //   } finally {
-  //     setIsLoading(false);
-  //   }
-  // };
+   // Format date to a more readable format
+   const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-MY', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -95,18 +89,18 @@ const PickupDetails: React.FC<PickupDetailsProps> = ({ navigation, route }) => {
         >
           <Icon name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
-        <Text style={styles.title}>Pickup Details</Text>
+        <Text style={styles.title}>Pickup History Details</Text>
         <View style={styles.headerRight} />
       </View>
 
-      {loadingOrgItem ? (
+      {loadingOrgHistoryItem ? (
         <View style={styles.loadingContainer}>
           <LoadingIcon />
         </View>
-      ) : displayOrgItem.length > 0 ? (
+      ) : displayOrgHistoryItem.length > 0 ? (
         // Get the organization only once (assuming all items belong to the same org)
         (() => {
-          const organization = displayOrg.find((org) => org.organizationID === displayOrgItem[0]?.organization_id);
+          const organization = displayOrg.find((org) => org.organizationID === displayOrgHistoryItem[0]?.organization_id);
           return (
             <ScrollView 
               style={styles.content}
@@ -122,20 +116,28 @@ const PickupDetails: React.FC<PickupDetailsProps> = ({ navigation, route }) => {
 
               {/* Items List */}
               <View style={styles.itemsContainer}>
-                <Text style={styles.itemsLabel}>Items for Pickup</Text>
+                <Text style={styles.itemsLabel}>Items History</Text>
                 {displayItemByID.length > 0 ? (
                   displayItemByID.map((item) => {
                     const type = itemTypes.find((t) => t.id === item.item_type_id);
                     const cond = deviceCondition.find((t) => t.id === item.device_condition_id);
+                    const pickup = displayOrgHistoryItem.find((t) => t.pickup_item_id === item.pickup_items_id);
+                    const pickStatus = pickupStatus.find((t) => t.id === pickup?.pickup_status_id);
+                    console.log("status: "+pickup?.updateDate)
+                    console.log("name: "+pickStatus?.name)
                     return(
-                      <View key={item.id} style={styles.itemCard}>
+                      <View key={item.pickup_items_id} style={styles.itemCard}>
                       <View style={styles.itemDetails}>
+                        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(pickup?.pickup_status_id) }]}>
+                          <Text style={styles.statusText}>{pickStatus?.name}</Text>
+                        </View>
                         <Text style={styles.itemName}>{item.item_name}</Text>
                         <Text style={styles.itemSubtext}>{type?.name} • {cond?.name}</Text>
                         <Text style={styles.itemDimensions}>
                           Dimensions: {item.dimension_length}×{item.dimension_width}×{item.dimension_height} cm
                         </Text>
                         <Text style={styles.itemAddress}>Address: {item.pickup_location}</Text>
+                        <Text style={styles.itemAddress}>Date: {formatDate(pickup?.updateDate)}</Text>
                       </View>
                     </View>
                     )                    
@@ -280,6 +282,12 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     textTransform: 'capitalize',
   },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+    marginRight: 8,
+  },
 });
 
-export default PickupDetails; 
+export default PickupHistoryDetails; 

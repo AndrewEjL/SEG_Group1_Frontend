@@ -12,25 +12,30 @@ import {
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useUser } from '../contexts/UserContext';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useRoute } from '@react-navigation/native';
+import { useAllUserRewards } from './api/rewards/getUserRewards';
+import { useAllRewards } from './api/rewards/getRewards';
+import { useItemTypes } from './api/items/itemTypes';
 
 // Define navigation types
 type RootStackParamList = {
-  Home: undefined;
-  rewards: undefined;
-  notifications: undefined;
-  profile: undefined;
-  CProfileScreen: undefined;
-  RewardsHistory: undefined;
+  Home: { id:number };
+  rewards: { id:number };
+  profile: { id:number };
+  CProfileScreen: { id:number };
+  RewardsHistory: { id:number };
 };
 
 // Define redemption type
 type RewardRedemption = {
-  id: string;
-  name: string;
-  value: string;
-  pin: string;
-  date: string;
-  imageSource: any;
+  id: number;
+  rewards_id: number;
+  rewards_name: string;
+  description: string;
+  rewards_pin: string;
+  created_date: string;
+  rewards_image: string;
+  rewards_type: number;
 };
 
 type RewardsHistoryProps = {
@@ -38,42 +43,61 @@ type RewardsHistoryProps = {
 };
 
 const RewardsHistory: React.FC<RewardsHistoryProps> = ({ navigation }) => {
+  const route = useRoute();
+  const {id} = route.params;
   const { user } = useUser();
+  const { displayUserRewards, loading: loadingAllUserRewards } = useAllUserRewards(id);
+  console.log(displayUserRewards)
+  const { displayRewards, loading: loadingAllReward } = useAllRewards();
+  const { rewardsT, loadingName } = useItemTypes();
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedReward, setSelectedReward] = useState<RewardRedemption | null>(null);
   const [sortedRewards, setSortedRewards] = useState<RewardRedemption[]>([]);
+  const [mergedRewards, setMergedRewards] = useState<RewardRedemption[]>([]);
 
   // Get TnG icon for all rewards
-  const tngIcon = require('./assets/TnG_Icon.png');
+  const imageMap: Record<string, any> = {
+    'TnG_Icon.png': require('../screens/assets/TnG_Icon.png'),
+  }
 
-  // Populate the rewards array with proper icons and sort by date (newest first)
   useEffect(() => {
-    if (user?.redeemedRewards) {
-      // Make a copy of the rewards with proper icons
-      const rewardsWithIcons = user.redeemedRewards.map(reward => ({
-        ...reward,
-        imageSource: reward.imageSource || tngIcon
-      }));
+    if (displayUserRewards && displayRewards) {
+      const merge = displayUserRewards.map(userReward => {
+        const rewardDetails = displayRewards.find(
+          reward => reward.rewards_id === userReward.rewards_id
+        );
+
+        const rewardTypeName = rewardsT.find((t) => t.id === rewardDetails?.rewards_type)?.name;
+
+        return {
+          id: userReward.id,
+          rewards_id: userReward.rewards_id,
+          rewards_name: rewardDetails?.rewards_name,
+          description: rewardDetails?.description,
+          rewards_pin: userReward.rewards_pin,
+          created_date: userReward.createdDate,
+          rewards_image: rewardDetails?.rewards_image,
+          imageSource: imageMap[rewardDetails?.rewards_image],
+          rewards_type: rewardTypeName
+        };
+      });
       
-      // Sort by date, most recent first
-      const sorted = [...rewardsWithIcons].sort((a, b) => 
-        new Date(b.date).getTime() - new Date(a.date).getTime()
-      );
-      
-      setSortedRewards(sorted);
+      merge.sort((a, b) => new Date(b.created_date).getTime() - new Date(a.created_date).getTime())
+      setSortedRewards(merge);
     }
-  }, [user?.redeemedRewards]);
+  }, [displayUserRewards, displayRewards]);
 
   // Format date to a more readable format
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-MY', {
+    return new Intl.DateTimeFormat('en-MY', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
-    });
+      minute: '2-digit',
+      timeZone: 'Asia/Kuala_Lumpur',
+      hour12: true
+    }).format(new Date(dateString));
   };
 
   const openRewardDetails = (item: RewardRedemption) => {
@@ -86,11 +110,11 @@ const RewardsHistory: React.FC<RewardsHistoryProps> = ({ navigation }) => {
       style={styles.historyItem}
       onPress={() => openRewardDetails(item)}
     >
-      <Image source={item.imageSource || tngIcon} style={styles.rewardImage} />
+      <Image source={imageMap[item.rewards_image]} style={styles.rewardImage} />
       <View style={styles.rewardInfo}>
-        <Text style={styles.rewardName}>{item.value}</Text>
-        <Text style={styles.rewardDescription}>Touch 'n Go eWallet</Text>
-        <Text style={styles.rewardDate}>{formatDate(item.date)}</Text>
+        <Text style={styles.rewardName}>{item.rewards_name}</Text>
+        <Text style={styles.rewardDescription}>{item.description}</Text>
+        <Text style={styles.rewardDate}>{formatDate(item.created_date)}</Text>
       </View>
       <Icon name="chevron-right" size={24} color="#666" />
     </TouchableOpacity>
@@ -111,7 +135,7 @@ const RewardsHistory: React.FC<RewardsHistoryProps> = ({ navigation }) => {
       </View>
 
       {/* History List */}
-      {sortedRewards.length > 0 ? (
+      {displayUserRewards.length > 0 ? (
         <FlatList
           data={sortedRewards}
           renderItem={renderRewardItem}
@@ -124,7 +148,7 @@ const RewardsHistory: React.FC<RewardsHistoryProps> = ({ navigation }) => {
           <Text style={styles.emptyText}>No redeemed rewards yet</Text>
           <TouchableOpacity 
             style={styles.exploreButton}
-            onPress={() => navigation.navigate('rewards')}
+            onPress={() => navigation.navigate('rewards', {id: id})}
           >
             <Text style={styles.exploreButtonText}>Explore Rewards</Text>
           </TouchableOpacity>
@@ -151,23 +175,23 @@ const RewardsHistory: React.FC<RewardsHistoryProps> = ({ navigation }) => {
               <>
                 <Text style={styles.modalTitle}>Reward Details</Text>
                 <Image 
-                  source={selectedReward.imageSource || tngIcon} 
+                  source={ imageMap[selectedReward.rewards_image] } 
                   style={styles.modalImage} 
                 />
-                <Text style={styles.modalValue}>{selectedReward.value}</Text>
+                <Text style={styles.modalValue}>{selectedReward.rewards_name}</Text>
                 <Text style={styles.modalDescription}>
-                  Touch 'n Go eWallet Gift Card
+                  {selectedReward.description} {selectedReward.rewards_type}
                 </Text>
                 <View style={styles.detailRow}>
                   <Text style={styles.detailLabel}>Redeemed:</Text>
-                  <Text style={styles.detailValue}>{formatDate(selectedReward.date)}</Text>
+                  <Text style={styles.detailValue}>{formatDate(selectedReward.created_date)}</Text>
                 </View>
                 <View style={styles.pinContainer}>
                   <Text style={styles.pinLabel}>Redemption PIN:</Text>
-                  <Text style={styles.pinValue}>{selectedReward.pin}</Text>
+                  <Text style={styles.pinValue}>{selectedReward.rewards_pin}</Text>
                 </View>
                 <Text style={styles.pinInstructions}>
-                  Use this PIN to redeem your gift card in the Touch 'n Go eWallet app.
+                  Use this PIN to redeem your {selectedReward.rewards_type}in the {selectedReward.description} app.
                 </Text>
               </>
             )}

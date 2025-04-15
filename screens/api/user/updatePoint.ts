@@ -1,32 +1,27 @@
 import { useState, useEffect } from 'react';
 import { ip_address } from '../ipAddress';
 const base_api = `${ip_address}/api/user`;
-// const base_api = "http://192.168.0.183:8080/api/user";
 
-export const updateUser = async(
+export const updateUserPoints = async(
     id: number,
-    userName: String,
-    email: String,
-    phoneNumber: String
+    rewardPoints: number
 ) => {
-    console.log("Sending profile update:", { id, userName, email, phoneNumber });
 
-    const response = await fetch(`${base_api}/user_donor/update/profile/${id}`, {
+    const response = await fetch(`${base_api}/user_donor/update/rewardsPoint/${id}`, {
         method: "PUT",
         headers: {
             "Content-Type": "application/json",
         },
         body: JSON.stringify({
-            user_name: userName,
-            email: email,
-            phone_number: phoneNumber,
+            reward_points: rewardPoints,
         }),
     });
+    console.log(rewardPoints)
     if (!response.ok) {
         throw new Error(`HTTP error! Status: ${response.status}`);
     }
 
     const data = await response.json();
+    console.log(data)
     return data;
 };
-

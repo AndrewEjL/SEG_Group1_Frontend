@@ -8,12 +8,12 @@ import { useRoute } from "@react-navigation/native";
 import { useClient } from './api/user/getClient';
 import { updateUser } from "./api/user/updateUserProfile";
 import { updatePassword } from "./api/user/updatePassword";
+import { checkEmailExists } from "./api/registerClient";
 
 // Add type definitions for navigation
 type RootStackParamList = {
   Home: { id: number };
   rewards: { id: number };
-  notifications: { id: number };
   CProfileScreen: { id: number };
   PickupHistory: {id: number};
   RewardsHistory: { id: number };
@@ -25,7 +25,7 @@ type CProfileScreenProps = {
 };
 
 const CProfileScreen: React.FC<CProfileScreenProps> = ({ navigation }) => {
-  const { user, updateUserProfile, changePassword } = useUser();
+  const { user, updateUserProfile, changePassword, logout } = useUser();
   const route = useRoute();
   const {id} = route.params;
   const { displayClient, loading: loadingClient } = useClient(id); 
@@ -33,6 +33,8 @@ const CProfileScreen: React.FC<CProfileScreenProps> = ({ navigation }) => {
   const handleTabPress = (screen: keyof RootStackParamList) => {
     if (screen === 'Home') {
       navigation.navigate('Home', { id: id });
+    } else if(screen === 'Login') {
+      navigation.navigate('Login');
     } else {
       navigation.navigate(screen, {id: id});
     }
@@ -60,6 +62,7 @@ useEffect(() => {
   }
 }, [displayClient]);
 
+
 const validateEmail = (email: string): boolean => {
   const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
   return emailRegex.test(email);
@@ -74,41 +77,43 @@ const handlePhoneNumberChange = (text: string) => {
   setTempUser((prev) => ({ ...prev, phoneNumber: text }));
 };
 
-
-
 const handleSave = async () => {
-  console.log("Hello world")
-
   let newErrors = { email: "", phoneNumber: "", organization: "" };
-
-  if (!validateEmail(tempUser.email)) {
-    newErrors.email = "Invalid email format";
-  }
-  if (!tempUser.phoneNumber.startsWith("+60") || tempUser.phoneNumber.length < 10) {
-    newErrors.phoneNumber = "Phone number must start with +60 and have at least 10 digits";
-  }
-  if (!tempUser.organization || tempUser.organization.trim() === "") {
-    newErrors.organization = "Username cannot be empty";
-  }
-
-  setErrors(newErrors);
-
-  if (!newErrors.email && !newErrors.phoneNumber  && !newErrors.organization) {
-    const success = await updateUser(
-      id,
-      tempUser.organization,
-      tempUser.email,
-      tempUser.phoneNumber,
-    );
-    
-    if (success) {
-      setModal1Visible(false);
-      handleTabPress("CProfileScreen");
-      Alert.alert("Success", "Profile updated successfully!");
-    } else {
-      Alert.alert("Error", "Failed to update profile. Please try again.");
+  if(tempUser.email != displayClient.email){
+    const emailExists = await checkEmailExists(tempUser.email);
+    if(emailExists){
+      newErrors.email = "Email already exist";      
     }
-  }
+  
+    if (!validateEmail(tempUser.email)) {
+      newErrors.email = "Invalid email format";
+    }
+    if (!tempUser.phoneNumber.startsWith("+60") || tempUser.phoneNumber.length < 10) {
+      newErrors.phoneNumber = "Phone number must start with +60 and have at least 10 digits";
+    }
+    if (!tempUser.organization || tempUser.organization.trim() === "") {
+      newErrors.organization = "Username cannot be empty";
+    }
+  
+    setErrors(newErrors);
+  
+    if (!newErrors.email && !newErrors.phoneNumber  && !newErrors.organization) {
+      const success = await updateUser(
+        id,
+        tempUser.organization,
+        tempUser.email,
+        tempUser.phoneNumber,
+      );
+      
+      if (success) {
+        setModal1Visible(false);
+        navigation.replace("CProfileScreen", {id: id});
+        Alert.alert("Success", "Profile updated successfully!");
+      } else {
+        Alert.alert("Error", "Failed to update profile. Please try again.");
+      }
+    }
+  }  
 };
 
 const handleChangePassword = async () => {
@@ -118,8 +123,6 @@ const handleChangePassword = async () => {
 
   if (!tempPassword.originPassword){
     newErrors.originPassword = "Please enter your original password"
-  } else if (tempPassword.originPassword != displayClient?.password){
-    newErrors.originPassword = "Please enter correct origin password"
   }
 
   if (!tempPassword.password) {
@@ -134,38 +137,27 @@ const handleChangePassword = async () => {
 
   setPasswordErrors(newErrors);
 
-  if (!newErrors.originPassword && !newErrors.password && !newErrors.confirmPassword) {
-    const success = await updatePassword(id, tempPassword.password);
-    
-    if (success) {
-      setTempPassword({ originPassword: "", password: "", confirmPassword: "" });
-      setModal2Visible(false);
-      Alert.alert("Success", "Password changed successfully!");
-    }
+  if (newErrors.originPassword || newErrors.password || newErrors.confirmPassword) {
+    return;
   }
-};
 
-const handleLogout = async () => {
-  Alert.alert(
-    "Logout",
-    "Are you sure you want to logout?",
-    [
-      {
-        text: "Cancel",
-        style: "cancel"
-      },
-      {
-        text: "Logout",
-        onPress: async () => {
-          await logout();
-          navigation.reset({
-            index: 0,
-            routes: [{ name: 'Login' }],
-          });
-        }
-      }
-    ]
-  );
+  try{
+    const success = await updatePassword(id, tempPassword.password, tempPassword.originPassword);
+
+    if (success?.success) {
+      setPasswordErrors({ originPassword: "", password: "", confirmPassword: "" });
+      setTempPassword({ originPassword: "", password: "", confirmPassword: "" });      
+      setModal2Visible(false);
+      navigation.replace("CProfileScreen", {id: id});
+      Alert.alert("Success", "Password changed successfully!");
+    }else {
+      Alert.alert("Error", success?.message || "Failed to change password");
+    }
+
+  } catch (error) {
+    console.error("Error changing password:", error);
+    Alert.alert("Error", "Something went wrong. Please try again later.");
+  }
 };
 
 const handleLogout = async () => {
@@ -193,7 +185,7 @@ const handleLogout = async () => {
 
   return (
     <View style={styles.container}>
-      {user && (
+      {displayClient && (
         <>
           <View style={styles.profileHeader}>
             <View style={styles.avatarContainer}>
@@ -234,7 +226,7 @@ const handleLogout = async () => {
         <Text style={styles.sectionTitle}>Rewards</Text>
         <TouchableOpacity 
           style={styles.listItem}
-          onPress={() => navigation.navigate('RewardsHistory', id)}
+          onPress={() => navigation.navigate('RewardsHistory', {id})}
         >
           <Icon name="star" size={20} color="#5E4DCD" />
           <Text style={styles.listText}>Rewards History</Text>
@@ -262,10 +254,6 @@ const handleLogout = async () => {
         <TouchableOpacity style={styles.navItem} onPress={() => handleTabPress("rewards")}>
           <MaterialIcon name="star" size={24} color="#666" />
           <Text style={styles.navText}>Rewards</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem} onPress={() => handleTabPress("notifications")}>
-          <MaterialIcon name="notifications" size={24} color="#666" />
-          <Text style={styles.navText}>Notifications</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem} onPress={() => handleTabPress("CProfileScreen")}>
           <MaterialIcon name="person" size={24} color="#5E4DCD" />

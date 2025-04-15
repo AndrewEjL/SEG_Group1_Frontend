@@ -15,18 +15,16 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login, user } = useUser();
   const [passwordVisible, setPasswordVisible] = useState(false);
-
-  useEffect(() => {
-    if (user) {
-      if (user.role === 'organization') {
-        navigation.navigate('RHome');
-      } else {
-        navigation.navigate('Home');
-      }
-    }
-  }, [user, navigation]);
+  // useEffect(() => {
+  //   if (user) {
+  //     if (user.role === 'organization') {
+  //       navigation.navigate('RHome');
+  //     } else {
+  //       navigation.navigate('Home');
+  //     }
+  //   }
+  // }, [user, navigation]);
 
   const handleSignIn = async () => {
       if (!email || !password) {
@@ -48,10 +46,11 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
               } else if (result.userType === "recipient") {
                   navigation.navigate("");
               } else if (result.userType === "organization") {
-                  navigation.navigate("");
+                  navigation.navigate('RHome', {id: result.id, userType: result.userType});
               }
           } else {
-              setError('Invalid email or password');
+            console.log(result)
+            setError('Invalid email or password');
           }
       } catch (err) {
           setError('An error occurred during login');

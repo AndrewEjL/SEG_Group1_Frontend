@@ -1,31 +1,31 @@
 import { useState, useEffect } from "react";
 import { Alert } from "react-native";
 import { ip_address } from "../ipAddress";
-const base_api = `${ip_address}/api/organization`;
-// const base_api = "http://192.168.0.183:8080/api/organization";
+const base_api = `${ip_address}/api/transaction`;
+// const base_api = "http://192.168.0.183:8080/api/transaction";
 
-export const useOrganization = () => {
-    const [displayOrg, setOrg] = useState<string[]>([]);
+export const useOrgTransaction = (id: number) => {
+    const [displayOrgTransaction, setOrgTransaction] = useState<string[]>([]);
     const [loading, setLoading] = useState(true);
       
     useEffect(() => {
-      const fetchOrg = async () => {
+      const fetchOrgTransaction = async () => {
         try {
-            const response = await fetch(`${base_api}/organization/all`);
+            const response = await fetch(`${base_api}/pickup_transaction/org/${id}`);
               
             if (!response.ok) {
                 throw new Error(`HTTP error! Status: ${response.status}`);
             }
         
             const data = await response.json();
-            setOrg(data);
+            setOrgTransaction(data);
         } catch (err) {
             console.error("Fetch error:", err);
         } finally {
             setLoading(false);
         }
       };
-        fetchOrg();
-    }, []);
-    return { displayOrg, loading};
+        fetchOrgTransaction();
+    }, [id]);
+    return { displayOrgTransaction, loading};
 };

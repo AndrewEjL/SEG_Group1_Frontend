@@ -4,14 +4,14 @@ import { ip_address } from "../ipAddress";
 const base_api = `${ip_address}/api/transaction`;
 // const base_api = "http://192.168.0.183:8080/api/transaction";
 
-export const useOrgItem = (id:number, orgID:number) => {
-    const [displayOrgItem, setOrgItem] = useState<any[]>([]);
+export const useAllOrgItem = () => {
+    const [displayAllOrgItem, setAllOrgItem] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
       
     useEffect(() => {
       const fetchOrgItem = async () => {
         try {
-            const response = await fetch(`${base_api}/pickup_transaction/${id}/${orgID}`, {
+            const response = await fetch(`${base_api}/pickup_transaction/all`, {
                 method: 'GET',
                 headers: {
                   'Content-Type': 'application/json',
@@ -26,7 +26,7 @@ export const useOrgItem = (id:number, orgID:number) => {
             }
         
             const data = await response.json();
-            setOrgItem(data);
+            setAllOrgItem(data);
         } catch (err) {
             console.error("Fetch error:", err);
         } finally {
@@ -34,6 +34,6 @@ export const useOrgItem = (id:number, orgID:number) => {
         }
       };
         fetchOrgItem();
-    }, [id, orgID]);
-    return { displayOrgItem, loading};
+    }, []);
+    return { displayAllOrgItem, loading};
 };

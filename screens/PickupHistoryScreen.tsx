@@ -15,7 +15,6 @@ type RootStackParamList = {
   PickupHistory: { id:number };
   PickupDetails: { id:number, orgId: number };
   rewards: { id:number };
-  notifications: { id:number };
   PickupHistoryDetails: { id:number, orgId: number};
 };
 
@@ -33,31 +32,25 @@ const PickupHistoryScreen: React.FC<PickupHistoryScreenProps> = ({ navigation })
   const [pickups, setPickups] = useState<ScheduledPickup[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // useEffect(() => {
-  //   loadPickups();
-  // }, []);
+  const groupHistoryByOrganization = (history: any[]) =>{
+    return history.reduce((acc, curr) =>{
+      const orgId = curr.organization_id;
 
-  // const loadPickups = async () => {
-  //   setLoading(true);
-  //   try {
-  //     const allPickups = await getScheduledPickups();
-  //     // Filter to only show completed or cancelled pickups
-  //     const historyPickups = allPickups.filter(
-  //       pickup => pickup.status === 'completed' || pickup.status === 'cancelled'
-  //     );
-      
-  //     // Sort pickups by date (most recent first)
-  //     const sortedPickups = [...historyPickups].sort((a, b) => 
-  //       new Date(b.date).getTime() - new Date(a.date).getTime()
-  //     );
-      
-  //     setPickups(sortedPickups);
-  //   } catch (error) {
-  //     console.error('Failed to load pickup history:', error);
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
+      if (!acc[orgId]) {
+        acc[orgId] = {
+          organization_id: orgId,
+          organization_name: displayOrg.find((org) => org.organizationID === orgId)?.organization_name,
+          items: [curr],
+        };
+      } else {
+        acc[orgId].items.push(curr);
+      }
+      return acc;
+    }, {} as Record<number, {organization_id: number, organization_name: string, items: any[] }>)
+  };
+
+  const groupedHistory = groupHistoryByOrganization(displayHistory);
+  const groupedHistoryArray = Object.values(groupedHistory);
 
   const handleViewPickup = (orgId: number) => {
     navigation.navigate('PickupHistoryDetails', { id, orgId });
@@ -69,59 +62,33 @@ const PickupHistoryScreen: React.FC<PickupHistoryScreenProps> = ({ navigation })
     return '#FFC107'; // Default yellow
   };
 
-  // Format date to a more readable format
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-MY', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
   const handleTabPress = (screen: keyof RootStackParamList) => {
     if (screen === 'Home' || screen === 'CProfileScreen' || 
-        screen === 'PickupHistory' || screen === 'rewards' || 
-        screen === 'notifications') {
+        screen === 'PickupHistory' || screen === 'rewards') {
       navigation.navigate(screen, {id:id});
-    } else if (screen === 'PickupDetails') {
+    } else if (screen === 'PickupHistoryDetails') {
       console.log('Cannot navigate directly to PickupDetails without pickupId');
     }
   };
   
 
-  const renderPickupItem = ({item}) => {
+  const renderPickupItem = ({item}: {item: any}) => {
     const organization = displayOrg.find((org) => org.organizationID === item.organization_id);
-    const status = pickupStatus.find((t) => t.id === item.pickup_status_id)
-    const formattedDate = item?.updateDate 
-    ? new Date(item.updateDate).toLocaleDateString('en-MY', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      }) 
-    : 'Unknown Date';    
-    const itemCount = item.items ? item.items.length : 1;
+    // const status = pickupStatus.find((t) => t.id === item.pickup_status_id)   
+    const itemCount = Array.isArray(item.items) ? item.items.length : 0;
 
     return(
       <TouchableOpacity 
-        key={item.id} 
+        key={item.pickup_transaction_id} 
         style={styles.pickupCard}
         onPress={() => handleViewPickup(item.organization_id)}
       >
         <View style={styles.pickupContent}>
           <Text style={styles.facilityName}>{organization?.organization_name}</Text>
-        <View style={styles.pickupDetails}>
-        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.pickup_status_id) }]}>
-          <Text style={styles.statusText}>{status?.name}</Text>
-        </View>
-          <Text style={styles.dateText}>{formattedDate}</Text>
-        </View>
+        {/* <View style={styles.pickupDetails}>
+        </View> */}
           <Text style={styles.itemCountText}>
-            {itemCount}
+            {itemCount} items       
           </Text>
         </View>
             
@@ -154,9 +121,9 @@ const PickupHistoryScreen: React.FC<PickupHistoryScreenProps> = ({ navigation })
         </View>
       ) : (
         <FlatList
-          data={displayHistory}
+          data={groupedHistoryArray}
           renderItem={renderPickupItem}
-          keyExtractor={item => item.id}          
+          keyExtractor={item => item.pickup_item_id}          
           contentContainerStyle={styles.listContainer}
         />
       )}
@@ -170,10 +137,6 @@ const PickupHistoryScreen: React.FC<PickupHistoryScreenProps> = ({ navigation })
         <TouchableOpacity style={styles.navItem} onPress={() => handleTabPress('rewards')}>
           <Icon name="star" size={24} color="#666" />
           <Text style={styles.navText}>Rewards</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem} onPress={() => handleTabPress('notifications')}>
-          <Icon name="notifications" size={24} color="#666" />
-          <Text style={styles.navText}>Notifications</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem} onPress={() => handleTabPress('CProfileScreen')}>
           <Icon name="person" size={24} color="#5E4DCD" />

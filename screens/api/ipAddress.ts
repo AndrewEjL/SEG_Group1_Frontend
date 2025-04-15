@@ -1,0 +1,1 @@
+export const ip_address = "http://10.100.19.22:8080"

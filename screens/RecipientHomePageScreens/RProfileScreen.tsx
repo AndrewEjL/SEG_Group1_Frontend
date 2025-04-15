@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { View, Text, TouchableOpacity, TextInput, Modal, StyleSheet, Alert } from "react-native";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import MenuIcon from "react-native-vector-icons/MaterialIcons";
@@ -6,13 +6,22 @@ import { Dropdown } from "react-native-element-dropdown";
 import { Checkbox } from "react-native-paper";
 import { useUser } from '../../contexts/UserContext';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useRoute } from "@react-navigation/native";
+import { useOrganizationByID } from "../api/organization/getOrg";
+import { updateUser } from "../api/user/updateUserProfile";
+import { updateOrg } from "../api/organization/updateOrgProfile";
+import { updateOrgPassword } from "../api/organization/updateOrgPassword";
+import { useItemTypes } from "../api/items/itemTypes";
+import { useDisplayCities } from "../api/organization/getCities";
+import RNPickerSelect from 'react-native-picker-select';
+import { checkEmailExists } from "../api/registerOrganization";
 
 // Add type definitions for navigation
 type RootStackParamList = {
-  RHome: undefined;
-  RStats: undefined;
-  RProfile: undefined;
-  CollectorList: undefined;
+  RHome: {id:number};
+  RStats: {id:number};
+  RProfile: {id:number};
+  CollectorList: {id:number};
   Login: undefined;
   // Add other screens as needed
 };
@@ -21,39 +30,33 @@ type RProfileScreenProps = {
   navigation: NativeStackNavigationProp<RootStackParamList, 'RProfile'>;
 };
 
-const EWasteTypes = [
-  { type: 'Select Type', selected: false },
-  { type: 'Smartphone', selected: false },
-  { type: 'Tablet', selected: false },
-  { type: 'Laptop', selected: false },
-  { type: 'Desktop Computer', selected: false },
-  { type: 'Monitor', selected: false },
-  { type: 'Printer', selected: false },
-  { type: 'Gaming Console', selected: false },
-  { type: 'TV', selected: false }
-];
-
 
 const RProfileScreen: React.FC<RProfileScreenProps> = ({ navigation }) => {
+  const route = useRoute();
+  const {id} = route.params;
+  console.log(id)
   const { user, logout, changePassword } = useUser();
+  const { displayOrg, loading: loadingOrg } = useOrganizationByID(id); 
+  const { itemTypes, statusType, citiesT, loadingName } = useItemTypes();
+  const { displayCities, loading: loadingCities, error, fetchCities } = useDisplayCities();
   
   const handleTabPress = (screen: keyof RootStackParamList) => {
-    navigation.navigate(screen);
+    if(screen === 'Login') {
+      navigation.navigate('Login');
+    } else {
+      navigation.navigate(screen, {id: id});
+    }
   };
-
-  // Create a local state to store user profile data that can be edited
-  const [localUser, setLocalUser] = useState({
-    organization: user?.name || "Organization Name",
-    email: user?.email || "email@example.com",
-    address: user?.address || "Address",
-    phoneNumber: user?.phoneNumber || "+601233335555",
-  });
 
   const [modal1Visible, setModal1Visible] = useState(false);
   const [modal2Visible, setModal2Visible] = useState(false);
   const [modal3Visible, setModal3Visible] = useState(false);
   const [modal4Visible, setModal4Visible] = useState(false);
-  const [tempUser, setTempUser] = useState(localUser);
+  const [tempUser, setTempUser] = useState({
+    email: '',
+    phoneNumber: '',
+    address: '',
+  });
   const [tempPassword, setTempPassword] = useState({ originPassword: "", password: "", confirmPassword: "" });
   const [errors, setErrors] = useState({ email: "", phoneNumber: "", address: "" });
   const [passwordErrors, setPasswordErrors] = useState({ originPassword: "", password: "", confirmPassword: "" });
@@ -62,6 +65,16 @@ const RProfileScreen: React.FC<RProfileScreenProps> = ({ navigation }) => {
     new: false,
     confirm: false,
   });
+
+  useEffect(() => {
+    if(displayOrg){
+      setTempUser({
+        email: displayOrg.email || '',
+        phoneNumber: displayOrg.phone_number || '',
+        address: displayOrg.address || '',
+      });
+    }
+  }, [displayOrg]);
 
   const clearModal2Data = () => {
     setTempPassword({originPassword: "", password: "", confirmPassword: ""});
@@ -87,25 +100,43 @@ const RProfileScreen: React.FC<RProfileScreenProps> = ({ navigation }) => {
     return tempUser.address.trim().length > 0;
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     let newErrors = { email: "", phoneNumber: "", address: "" };
-
-    if (!validateEmail(tempUser.email)) {
-      newErrors.email = "Invalid email format";
-    }
-    if (!tempUser.phoneNumber.startsWith("+60") || tempUser.phoneNumber.length < 10) {
-      newErrors.phoneNumber = "Phone number must start with +60 and have at least 10 digits";
-    }
-    if (!validateAddress()) {
-      newErrors.address = "Address cannot be empty";
-    }
-
-    setErrors(newErrors);
-
-    if (!newErrors.email && !newErrors.phoneNumber && !newErrors.address) {
-      setLocalUser(tempUser);
-      setModal1Visible(false);
-      Alert.alert("Success", "Profile updated successfully!");
+    if(tempUser.email!=displayOrg.email){
+      const emailExists = await checkEmailExists(tempUser.email);
+      if(emailExists){
+        newErrors.email = "Email already exist";      
+      }
+  
+      if (!validateEmail(tempUser.email)) {
+        newErrors.email = "Invalid email format";
+      }
+      if (!tempUser.phoneNumber.startsWith("+60") || tempUser.phoneNumber.length < 10) {
+        newErrors.phoneNumber = "Phone number must start with +60 and have at least 10 digits";
+      }
+      if (!validateAddress()) {
+        newErrors.address = "Address cannot be empty";
+      }
+  
+      setErrors(newErrors);
+  
+      if (!newErrors.email && !newErrors.phoneNumber && !newErrors.address) {
+        const success = await updateOrg(
+          id,
+          tempUser.email,
+          tempUser.phoneNumber,
+          tempUser.address,
+        );
+  
+        if(success){
+          setModal1Visible(false);
+          navigation.replace("RProfile", {id: id});
+          Alert.alert("Success", "Profile updated successfully!");
+        }else {
+          Alert.alert("Error", "Failed to update profile. Please try again.");
+        }
+       
+      }
     }
   };
 
@@ -114,6 +145,10 @@ const RProfileScreen: React.FC<RProfileScreenProps> = ({ navigation }) => {
 
     // Password validation regex - at least 8 chars, 1 number, 1 special char
     const passwordRegex = /^(?=.*[0-9])(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$/;
+
+    if (!tempPassword.originPassword){
+      newErrors.originPassword = "Please enter your original password"
+    }
 
     if (!tempPassword.password) {
       newErrors.password = "New password cannot be empty";
@@ -127,26 +162,27 @@ const RProfileScreen: React.FC<RProfileScreenProps> = ({ navigation }) => {
 
     setPasswordErrors(newErrors);
 
-    if (!newErrors.password && !newErrors.confirmPassword) {
-      // Call the changePassword method from UserContext
-      const success = await changePassword(tempPassword.originPassword, tempPassword.password);
-      
-      if (success) {
-        // Clear the form
-        setTempPassword({ originPassword: "", password: "", confirmPassword: "" });
-        setPasswordVisibility({ origin: false, new: false, confirm: false });
-        
-        // Close the modal
+    if (newErrors.originPassword || newErrors.password || newErrors.confirmPassword) {
+      return;
+    }
+
+    
+    try{
+      const success = await updateOrgPassword(id, tempPassword.password, tempPassword.originPassword);
+    
+      if (success?.success) {
+        setPasswordErrors({ originPassword: "", password: "", confirmPassword: "" });
+        setTempPassword({ originPassword: "", password: "", confirmPassword: "" });      
         setModal2Visible(false);
-        
-        // Show success message
+        navigation.replace("RProfile", {id: id});
         Alert.alert("Success", "Password changed successfully!");
-      } else {
-        setPasswordErrors(prev => ({
-          ...prev,
-          originPassword: "Incorrect current password"
-        }));
+      }else {
+        Alert.alert("Error", success?.message || "Failed to change password");
       }
+    
+    } catch (error) {
+      console.error("Error changing password:", error);
+      Alert.alert("Error", "Something went wrong. Please try again later.");
     }
   };
 
@@ -162,14 +198,27 @@ const RProfileScreen: React.FC<RProfileScreenProps> = ({ navigation }) => {
     "Malacca": [{ name: "Krubong", selected: false }, { name: "Ujong Pasir", selected: false }],
   };
 
+  const EWasteTypes = [
+    { type: 'Select Type', selected: false },
+    { type: 'Smartphone', selected: false },
+    { type: 'Tablet', selected: false },
+    { type: 'Laptop', selected: false },
+    { type: 'Desktop Computer', selected: false },
+    { type: 'Monitor', selected: false },
+    { type: 'Printer', selected: false },
+    { type: 'Gaming Console', selected: false },
+    { type: 'TV', selected: false }
+  ];
+
 
   const selectedState = states.find(state => state.selected)?.name || "State 1";
 
   const [cities, setCities] = useState(stateCities[selectedState] || []);
-
-
   const [tempSelectedState, setTempSelectedState] = useState(selectedState);
   const [tempCities, setTempCities] = useState(cities);
+  const [selectedStateId, setSelectedStateId] = useState<number | null>(null);
+  const [selectedCityId, setSelectedCityId] = useState<number | null>(null);
+
 
   const handleTempStateChange = (newStateName) => {
     setTempSelectedState(newStateName);
@@ -236,30 +285,32 @@ const RProfileScreen: React.FC<RProfileScreenProps> = ({ navigation }) => {
     );
   };
 
-
-
-
   return (
     <View style={styles.container}>
-      <View style={styles.profileHeader}>
-        <View style={styles.avatarContainer}>
-          <Icon name="account-circle" size={60} color="#a393eb" />
+      {displayOrg && (
+        <>
+        <View style={styles.profileHeader}>
+          <View style={styles.avatarContainer}>
+            <Icon name="account-circle" size={60} color="#a393eb" />
+          </View>
+          <View style={styles.userInfo}>
+            <Text style={styles.username}>{displayOrg?.organization_name}</Text>
+            <Text style={styles.email}>{displayOrg?.email}</Text>
+            <TouchableOpacity
+              style={styles.editProfileButton}
+              onPress={() => setModal1Visible(true)}
+            >
+              <Text style={styles.editProfileText}>Edit Profile</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-        <View style={styles.userInfo}>
-          <Text style={styles.username}>{user?.name || localUser.organization}</Text>
-          <Text style={styles.email}>{user?.email || localUser.email}</Text>
-          <TouchableOpacity
-            style={styles.editProfileButton}
-            onPress={() => setModal1Visible(true)}
-          >
-            <Text style={styles.editProfileText}>Edit Profile</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+        </>
+      )}
+      
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Account management</Text>
-        <TouchableOpacity style={styles.listItem} onPress={() => navigation.navigate("CollectorList")}>
+        <TouchableOpacity style={styles.listItem} onPress={() => navigation.navigate("CollectorList", {id: id})}>
           <Icon name="clipboard-list" size={20} color="#5E4DCD" />
           <Text style={styles.listText}>Collector list</Text>
         </TouchableOpacity>
@@ -275,7 +326,7 @@ const RProfileScreen: React.FC<RProfileScreenProps> = ({ navigation }) => {
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Statistics</Text>
-        <TouchableOpacity style={styles.listItem} onPress={() => navigation.navigate("RStats")}>
+        <TouchableOpacity style={styles.listItem} onPress={() => navigation.navigate("RStats", {id: id})}>
           <Icon name="chart-pie" size={20} color="#5E4DCD" />
           <Text style={styles.listText}>Recycling Volume Statistics</Text>
         </TouchableOpacity>
@@ -308,6 +359,7 @@ const RProfileScreen: React.FC<RProfileScreenProps> = ({ navigation }) => {
           <Text style={styles.activeNavText}>Profile</Text>
         </TouchableOpacity>
       </View>
+
       <Modal
         animationType="slide"
         transparent={true}
@@ -316,7 +368,7 @@ const RProfileScreen: React.FC<RProfileScreenProps> = ({ navigation }) => {
       >
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
-            <TouchableOpacity onPress={() => {setModal1Visible(false);setTempUser(localUser);}} style={{ alignSelf: "flex-start" }}>
+            <TouchableOpacity onPress={() => {setModal1Visible(false);}} style={{ alignSelf: "flex-start" }}>
                 <Icon name="close" size={24} color="#333333" />
             </TouchableOpacity>
             <Text style={styles.modalTitle}>Edit Profile</Text>
@@ -444,6 +496,7 @@ const RProfileScreen: React.FC<RProfileScreenProps> = ({ navigation }) => {
            </View>
          </View>
        </Modal>
+
        <Modal
          animationType="slide"
          transparent={true}
@@ -456,30 +509,33 @@ const RProfileScreen: React.FC<RProfileScreenProps> = ({ navigation }) => {
                <Icon name="close" size={24} color="#333333" />
              </TouchableOpacity>
              <Text style={styles.modalTitle}>Select Service Area</Text>
-              <Dropdown
-                style={styles.dropdown}
-                placeholderStyle={styles.placeholderStyle}
-                selectedTextStyle={styles.selectedTextStyle}
-                inputSearchStyle={styles.inputSearchStyle}
-                itemTextStyle={styles.itemTextStyle}
-                data={states.map((state) => ({ label: state.name, value: state.name }))}
-                labelField="label"
-                valueField="value"
-                value={tempSelectedState}
-                onChange={(item) => handleTempStateChange(item.value)}
-                placeholder="Select a state"
+             <RNPickerSelect
+                onValueChange={(value) => {
+                  setSelectedStateId(value);
+                  if (value !== null) {
+                    fetchCities(value); // fetch cities using selected state ID
+                  }
+                }}
+                items={statusType.map(state => ({
+                  label: state.name,
+                  value: state.id
+                }))}
+                placeholder={{ label: 'Select a state...', value: null }}
+                value={selectedStateId}
               />
 
-              <Text style={styles.modalTitle}>Select Cities</Text>
-              {tempCities.map((city, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={styles.checkboxContainer}
-                  onPress={() => toggleTempCitySelection(index)}>
-                  <Checkbox status={city.selected ? "checked" : "unchecked"} />
-                  <Text style={styles.checkboxLabel}>{city.name}</Text>
-                </TouchableOpacity>
-              ))}
+
+              {/* Cities Selection */}
+              <RNPickerSelect
+                onValueChange={(value) => setSelectedCityId(value)}
+                items={(displayCities || []).map(city => ({
+                  label: city.name,
+                  value: city.id
+                }))}
+                placeholder={{ label: 'Select a city...', value: null }}
+                value={selectedCityId}
+              />
+
               <View style={styles.modalButtons}>
                 <TouchableOpacity
                   style={styles.saveButton}
@@ -491,6 +547,7 @@ const RProfileScreen: React.FC<RProfileScreenProps> = ({ navigation }) => {
            </View>
          </View>
        </Modal>
+
        <Modal
          animationType="slide"
          transparent={true}
@@ -503,13 +560,13 @@ const RProfileScreen: React.FC<RProfileScreenProps> = ({ navigation }) => {
                <Icon name="close" size={24} color="#333333" />
              </TouchableOpacity>
              <Text style={styles.modalTitle}>Specify e-waste type</Text>
-             {tempEWasteTypes.slice(1).map((item, index) => (
+             {itemTypes.slice(1).map((item, index) => (
               <View key={index} style={styles.checkboxContainer}>
                 <Checkbox
                   status={item.selected ? 'checked' : 'unchecked'}
-                  onPress={() => handleEWasteTypeChange(item.type)}
+                  onPress={() => handleEWasteTypeChange(item.id)}
                 />
-                <Text style={styles.checkboxText}>{item.type}</Text>
+                <Text style={styles.checkboxText}>{item.name}</Text>
               </View>
             ))}
             <View style={styles.modalButtons}>

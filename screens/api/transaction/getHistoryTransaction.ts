@@ -4,21 +4,20 @@ import { ip_address } from "../ipAddress";
 const base_api = `${ip_address}/api/transaction`;
 // const base_api = "http://192.168.0.183:8080/api/transaction";
 
-export const useOrgItem = (id:number, orgID:number) => {
-    const [displayOrgItem, setOrgItem] = useState<any[]>([]);
+export const useOrgHistoryItem = (id:number, orgID:number) => {
+    const [displayOrgHistoryItem, setOrgHistoryItem] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
       
     useEffect(() => {
-      const fetchOrgItem = async () => {
+      const fetchOrgHistoryItem = async () => {
         try {
-            const response = await fetch(`${base_api}/pickup_transaction/${id}/${orgID}`, {
+            const response = await fetch(`${base_api}/pickup_transaction/orgHistory/${id}/${orgID}`, {
                 method: 'GET',
                 headers: {
                   'Content-Type': 'application/json',
                 },
               });
-              
-              
+                            
             if (!response.ok) {
                 const errorText = await response.text();
                 console.error(`HTTP error! Status: ${response.status}, Response: ${errorText}`);
@@ -26,14 +25,14 @@ export const useOrgItem = (id:number, orgID:number) => {
             }
         
             const data = await response.json();
-            setOrgItem(data);
+            setOrgHistoryItem(data);
         } catch (err) {
             console.error("Fetch error:", err);
         } finally {
             setLoading(false);
         }
       };
-        fetchOrgItem();
+        fetchOrgHistoryItem();
     }, [id, orgID]);
-    return { displayOrgItem, loading};
+    return { displayOrgHistoryItem, loading};
 };

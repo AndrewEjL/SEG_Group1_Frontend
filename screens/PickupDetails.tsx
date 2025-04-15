@@ -60,30 +60,6 @@ const PickupDetails: React.FC<PickupDetailsProps> = ({ navigation, route }) => {
   const [itemDetails, setItemDetails] = useState<{ [key: string]: ListedItem | null }>({});
   const [isLoading, setIsLoading] = useState(true);
 
-  // useEffect(() => {
-  //   loadPickupDetails();
-  // }, [pickupId]);
-
-  // const loadPickupDetails = async () => {
-  //   setIsLoading(true);
-  //   try {
-  //     const details = await getPickupDetails(pickupId);
-  //     if (details) {
-  //       setPickup(details);
-  //       // Get all listed items and create a map for easy lookup
-  //       const allListedItems = await getListedItems();
-  //       const itemsMap = allListedItems.reduce((acc, item) => {
-  //         acc[item.id] = item;
-  //         return acc;
-  //       }, {} as { [key: string]: ListedItem });
-  //       setListedItems(itemsMap);
-  //     }
-  //   } catch (error) {
-  //     console.error('Error loading pickup details:', error);
-  //   } finally {
-  //     setIsLoading(false);
-  //   }
-  // };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -128,7 +104,7 @@ const PickupDetails: React.FC<PickupDetailsProps> = ({ navigation, route }) => {
                     const type = itemTypes.find((t) => t.id === item.item_type_id);
                     const cond = deviceCondition.find((t) => t.id === item.device_condition_id);
                     return(
-                      <View key={item.id} style={styles.itemCard}>
+                      <View key={item.pickup_items_id} style={styles.itemCard}>
                       <View style={styles.itemDetails}>
                         <Text style={styles.itemName}>{item.item_name}</Text>
                         <Text style={styles.itemSubtext}>{type?.name} • {cond?.name}</Text>

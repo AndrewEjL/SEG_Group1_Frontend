@@ -3,8 +3,28 @@ import { View, Text, TouchableOpacity, TextInput, Alert, Modal , StyleSheet} fro
 import { Dropdown } from "react-native-element-dropdown";
 import MenuIcon from "react-native-vector-icons/MaterialIcons";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
+import { useRoute } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { useOrganizationStatsByID } from "../api/organization/getOrgStats";
+import { updateOrgStats } from "../api/organization/updateOrgStats";
 
-const RStatsScreen = ({navigation}) => {
+type RootStackParamList = {
+  RHome: {id:number};
+  RStats: {id:number};
+  RProfile: {id:number};
+  CollectorList: {id:number};
+  // Add other screens as needed
+};
+
+type RStatsScreenProps = {
+  navigation: NativeStackNavigationProp<RootStackParamList, 'RStats'>;
+};
+
+const RStatsScreen: React.FC<RStatsScreenProps> = ({navigation}) => {
+  const route = useRoute();
+  const {id} = route.params;
+  const { displayOrgStats, loading: loadingOrgStats } = useOrganizationStatsByID(id);
+  console.log(displayOrgStats);
   const [collected, setCollected] = useState(365.0);
   const [processed, setProcessed] = useState(0.0);
   const [recycled, setRecycled] = useState(0.0);
@@ -22,19 +42,21 @@ const RStatsScreen = ({navigation}) => {
     }
 
 
-    if (selectedOption === "processed" && (value + processed) > collected) {
+    if (selectedOption === "processed" && (value + displayOrgStats?.processed) > displayOrgStats?.collected) {
       Alert.alert("Error", "Processed cannot be greater than Collected.");
       return;
     }
-    if (selectedOption === "recycled" && (value + recycled) > processed) {
+    if (selectedOption === "recycled" && (value + displayOrgStats?.recycled) > displayOrgStats?.processed) {
       Alert.alert("Error", "Recycled cannot be greater than Processed.");
       return;
     }
 
     if (selectedOption === "processed") {
-      setProcessed(prevProcessed => prevProcessed + value);
+      updateOrgStats(id, value, 0);
+      navigation.replace('RStats', {id: id});
     } else if (selectedOption === "recycled") {
-      setRecycled(prevProcessed => prevProcessed + value);
+      updateOrgStats(id, 0, value);
+      navigation.replace('RStats', {id: id});
     }
     setInputValue("");
     setSelectedOption(null);
@@ -46,22 +68,22 @@ const RStatsScreen = ({navigation}) => {
     { label: "Add Recycled", value: "recycled" }
   ];
 
-  const handleTabPress = (tabName) => {
-      navigation.navigate(tabName)
+  const handleTabPress = (tabName: keyof RootStackParamList) => {
+      navigation.navigate(tabName, {id:id})
   };
 
   return (
     <View style={styles.container}>
       <View style={[styles.circle, { borderColor: "red" }]}>
-        <Text style={styles.statText}>{collected.toFixed(2)} kg</Text>
+        <Text style={styles.statText}>{displayOrgStats?.collected} kg</Text>
         <Text style={styles.desText}>Collected</Text>
       </View>
       <View style={[styles.circle, { borderColor: "orange" }]}>
-        <Text style={styles.statText}>{processed.toFixed(2)} kg</Text>
+        <Text style={styles.statText}>{displayOrgStats?.processed} kg</Text>
         <Text style={styles.desText}>Processed</Text>
       </View>
       <View style={[styles.circle, { borderColor: "green" }]}>
-        <Text style={styles.statText}>{recycled.toFixed(2)} kg</Text>
+        <Text style={styles.statText}>{displayOrgStats?.recycled} kg</Text>
         <Text style={styles.desText}>Recycled</Text>
       </View>
 
