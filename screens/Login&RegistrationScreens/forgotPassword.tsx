@@ -2,32 +2,60 @@ import React, { useState } from "react";
 import { View, ScrollView, Text, StyleSheet, Dimensions, Alert ,Modal, TouchableOpacity} from "react-native";
 import { TextInput, Button, HelperText ,Checkbox} from "react-native-paper";
 import Icon from "react-native-vector-icons/MaterialIcons";
+import { useClientVerify } from "../api/user/getForgotPassVerify";
+import { checkEmailExists} from "../api/registerClient";
+import { generateCode } from "../api/user/generateCode";
+import { useOrgVerify } from "../api/organization/getOrgForgotPassVerify";
+import { checkEmailExistsOrg } from "../api/registerOrganization";
+
 
 const { width, height } = Dimensions.get("window");
 
 const forgotPassword = ({ navigation }) => {
 
-const existingEmails = ["test@example.com", "user123@gmail.com"];
-
 const [email, setEmail] = useState("");
 const [emailError, setEmailError] = useState("");
 const [isLoading, setIsLoading] = useState(false);
 
+const { verifyEmailCode, loading, error, success } = useClientVerify();
+const { verifyOrgEmailCode, loading: loadingOrg, error:Org, success:org } = useOrgVerify();
 
+const { generate1Code, loading: loading1Code } = generateCode();
 
-const handleSend = () => {
+const [verifyCode, setVerifyCode] = useState('');
+
+const handleSend = async () => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;//valid email format
+    const emailExists = await checkEmailExists(email);
+    const emailExistsOrg = await checkEmailExistsOrg(email)
+    
 
     if (!emailRegex.test(email)) {
       setEmailError("Invalid email format.");
       return;
     }
-   if (!existingEmails.includes(email)) {
+   if (!emailExists && !emailExistsOrg) {
       setEmailError("This email is not registered.");
       return;
    }else{
-       setEmailError("");
-       navigation.navigate("CodeVerification", { email });
+      setEmailError("");
+      setIsLoading(true);
+
+      const generateCode = generate1Code.code;
+      setVerifyCode(generate1Code);
+
+      let userType = "";
+
+      if (emailExists) {
+        await verifyEmailCode(email, generateCode); // user email API
+        userType = "user";
+      } else if (emailExistsOrg) {
+        await verifyOrgEmailCode(email, generateCode); // org email API
+        userType = "organization";
+      }
+
+      navigation.navigate("CodeVerification", { email, verifyCode: generateCode , userType});
+      
    }
 }
 

@@ -4,6 +4,19 @@ import Icon from "react-native-vector-icons/MaterialIcons";
 import { Dropdown } from "react-native-element-dropdown";
 import RouteInfo from "./RouteInfo.tsx";
 import { useUser, ScheduledPickup } from "../../contexts/UserContext";
+import { useRoute } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { useAllClient } from "../api/user/getAllClient.ts";
+import { grabCollectorHistory } from "../api/transaction/grabCollectorHistory.ts";
+import { useUserC } from "../api/organization/getUserC.ts";
+import { displayEveryItemsWOStatus } from "../api/items/displayAllItemsWOStatus.ts";
+import { useItemTypes } from "../api/items/itemTypes.ts";
+
+type RootStackParamList = {
+  CLHome: { id: number };
+  CLProfile: { id:number };
+  CLHistory: { id:number };
+};
 
 // Extended ScheduledPickup type to include weight property
 interface ExtendedPickup extends ScheduledPickup {
@@ -11,16 +24,19 @@ interface ExtendedPickup extends ScheduledPickup {
   collectedTimestamp?: string;
 }
 
-type NavigationProp = {
-  navigate: (screen: string) => void;
-  addListener: (event: string, callback: () => void) => () => void;
-};
-
 type CLHistoryScreenProps = {
-  navigation: NavigationProp;
+  navigation: NativeStackNavigationProp<RootStackParamList, 'CLHistory'>;
 };
 
 const CLHistoryScreen: React.FC<CLHistoryScreenProps> = ({ navigation }) => {
+  const route = useRoute();
+  const {id} = route.params;
+  console.log("History: "+id)
+  const { displayAllClient, loading: loadingAllClient } = useAllClient();
+  const { displayCollectorHistory, loading: loadingCollectorHistory } = grabCollectorHistory(id);
+  const { displayUserC, loading: loadingUserC } = useUserC(id);
+  const { displayAllItemsWS, loading: loadingAllItems } = displayEveryItemsWOStatus();
+  const { pickupStatus, loadingName } = useItemTypes();
   const { user, getCollectorPickups } = useUser();
 
   const [completedPickups, setCompletedPickups] = useState<ExtendedPickup[]>([]);
@@ -29,27 +45,6 @@ const CLHistoryScreen: React.FC<CLHistoryScreenProps> = ({ navigation }) => {
   const [modal1Visible, setModal1Visible] = useState(false);
   const [selectedPickup, setSelectedPickup] = useState<ExtendedPickup | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-
-  // Add mockUsers to get client names - in a real app, this would be a backend API call
-  const mockUsers: Record<string, { name: string; phoneNumber: string }> = {
-    '1': { name: 'John Doe', phoneNumber: '+601233335555' },
-    '2': { name: 'GreenTech Recyclers', phoneNumber: '+601244445555' },
-    '3': { name: 'EcoLife Solutions', phoneNumber: '+601244446666' },
-    '4': { name: 'ReNew Electronics', phoneNumber: '+601244447777' },
-    '5': { name: 'John Collector', phoneNumber: '+601244448888' },
-  };
-
-  // Function to get client name from clientId
-  const getClientName = (clientId: string | undefined) => {
-    if (!clientId) return "Unassigned";
-    return mockUsers[clientId]?.name || `Client ${clientId}`;
-  };
-
-  // Function to get client phone from clientId
-  const getClientPhone = (clientId: string | undefined) => {
-    if (!clientId) return "+60123456789"; // Default fallback
-    return mockUsers[clientId]?.phoneNumber || "+60123456789";
-  };
 
   // Get screen dimensions
   const windowHeight = Dimensions.get('window').height;
@@ -62,32 +57,54 @@ const CLHistoryScreen: React.FC<CLHistoryScreenProps> = ({ navigation }) => {
   // Calculate each table's height
   const tableHeight = (windowHeight - headerHeight - navHeight - spacing);
 
+    // Function to get client name from clientId
+    const getClientName = (clientId: number | undefined) => {
+      if (!clientId) return "Unassigned";
+      const client = displayAllClient.find((t) => t.id === clientId)
+      return client.user_name;
+    };
+  
+    // Function to get client phone from clientId
+    const getClientPhone = (clientId: number | undefined) => {
+      if (!clientId) return "+60123456789"; // Default fallback
+      const client = displayAllClient.find((t) => t.id === clientId)
+      return client.phone_number;
+    };
+  
+    const getItemName = (itemId: number) => {
+      if (!itemId) return "Unassigned";
+      const item = displayAllItemsWS.find((t) => t.pickup_items_id === itemId);
+      return item?.item_name || `Item ${itemId}`;
+    };
+
+    const getItemAddress = (itemId: number) => {
+      if (!itemId) return "Unassigned";
+      const itemLocation = displayAllItemsWS.find((t) => t.pickup_items_id === itemId);
+      return itemLocation.pickup_location || "Unknown";
+    }
+
+    const getStatusName = (pickupStatusId: number | undefined) => {
+      if(!pickupStatusId) return "Error";
+      const pStatus = pickupStatus.find((t) => t.id === pickupStatusId)
+      return pStatus?.name || "Unknown";
+    }
+
   // Load data when component mounts and when screen comes into focus
   useEffect(() => {
-    loadData();
-
-    // Add a focus listener to reload data when the screen comes into focus
-    const unsubscribe = navigation.addListener('focus', () => {
+    if(displayUserC && pickupStatus && displayCollectorHistory.length > 0){
       loadData();
-    });
-
-    // Clean up the listener when component unmounts
-    return unsubscribe;
-  }, [navigation]);
+    }
+  }, [displayUserC, pickupStatus, displayCollectorHistory]);
 
   const loadData = async () => {
     setLoading(true);
     try {
-      console.log("Loading history for collector:", user?.name);
-      
-      // Get all pickups for this collector
-      const collectorPickups = await getCollectorPickups();
-      console.log("Total collector pickups:", collectorPickups.length);
+      console.log("Loading history for collector:", displayUserC?.user_name);
       
       // Only keep pickups that are Recycled (fully completed with weight)
-      const completedPickupsData = collectorPickups.filter(pickup => 
-        pickup.pickupStatus === 'Recycled'
-      ) as ExtendedPickup[];
+      const completedPickupsData = displayCollectorHistory?.filter(pickup => 
+        pickup?.pickup_status_id === 3 || 4
+      )
       
       console.log("Completed pickups with weight:", completedPickupsData.length);
       setCompletedPickups(completedPickupsData);
@@ -126,7 +143,11 @@ const CLHistoryScreen: React.FC<CLHistoryScreenProps> = ({ navigation }) => {
   };
 
   const handleTabPress = (tabName: string) => {
-    navigation.navigate(tabName);
+    if(tabName === 'CLHome'){
+      navigation.navigate(tabName, {id: id});
+    } else if(tabName === 'CLProfile'){
+      navigation.navigate(tabName, {id: id});
+    }
   };
 
   // Helper function to safely handle dimensions
@@ -145,7 +166,7 @@ const CLHistoryScreen: React.FC<CLHistoryScreenProps> = ({ navigation }) => {
       <View style={styles.headerSection}>
           <Text style={styles.header}>Completed pickups</Text>
           <View style={[styles.tableContainer, { height: tableHeight }]}>
-            {completedPickups.length === 0 ? (
+            {displayCollectorHistory.length === 0 ? (
               <View style={styles.emptyContainer}>
                 <Text style={styles.emptyText}>
                   {loading ? "Loading completed pickups..." : "No completed pickups"}
@@ -155,17 +176,15 @@ const CLHistoryScreen: React.FC<CLHistoryScreenProps> = ({ navigation }) => {
               <FlatList
                 style={styles.flatList}
                 data={completedPickups}
-                keyExtractor={(item) => item.id}
+                keyExtractor={(item) => item.pickup_transaction_id}
                 renderItem={({ item }) => (
                   <View style={styles.pendingCard}>
                     <View style={styles.pickupInfo}>
                       <Text style={styles.itemText}>
-                        {item.items && item.items.length > 0 
-                          ? `${item.items[0].name} ${item.items.length > 1 ? `+ ${item.items.length - 1} more` : ''}`
-                          : 'Item name not available'}
+                        {getItemName(item.pickup_item_id)}
                       </Text>
                       <Text style={styles.collectorText}>
-                        {item.date && `Completed: ${formatDate(item.date)}`}
+                        {item.updateDate && `Completed: ${formatDate(item.updateDate)}`}
                         {item.weight !== undefined && ` • Weight: ${item.weight} kg`}
                       </Text>
                     </View>
@@ -209,29 +228,21 @@ const CLHistoryScreen: React.FC<CLHistoryScreenProps> = ({ navigation }) => {
 
             {selectedPickup && (
               <ScrollView style={styles.modalScrollView}>
-                <View style={styles.detailsContainer}>
-                  {selectedPickup.items && selectedPickup.items.length > 0 && (
-                    <>
-                      <Text style={styles.label}>
-                        <Text style={styles.bold}>Item Name:</Text> {selectedPickup.items[0].name}
-                      </Text>
-                      {selectedPickup.items.length > 1 && (
-                        <Text style={styles.label}>
-                          <Text style={styles.bold}>Additional Items:</Text> {selectedPickup.items.length - 1} more items
-                        </Text>
-                      )}
-                    </>
-                  )}
-                  <Text style={styles.label}><Text style={styles.bold}>Weight:</Text> {selectedPickup.weight || 'Not recorded'} kg</Text>
-                  <Text style={styles.label}><Text style={styles.bold}>Address:</Text> {selectedPickup.address || 'Address not available'}</Text>
-                  <Text style={styles.label}><Text style={styles.bold}>Client:</Text> {getClientName(selectedPickup.clientId)}</Text>
-                  <Text style={styles.label}><Text style={styles.bold}>Client contact number:</Text>
-                      <TouchableOpacity onPress={() => handleCall(getClientPhone(selectedPickup.clientId))} style={styles.touchable} >
-                        <Text style={styles.phonelabel}>{getClientPhone(selectedPickup.clientId)}</Text>
-                      </TouchableOpacity>
+                <View style={styles.detailsContainer}>                  
+                  <Text style={styles.label}>
+                    <Text style={styles.bold}>Item Name:</Text> {getItemName(selectedPickup.pickup_item_id)}
                   </Text>
-                  <Text style={styles.label}><Text style={styles.bold}>Date completed:</Text> {formatDateTime(selectedPickup.date)} (UTC+8)</Text>
-                  <Text style={styles.label}><Text style={styles.bold}>Pickup status:</Text> {selectedPickup.pickupStatus}</Text>
+                  <Text style={styles.label}><Text style={styles.bold}>Weight:</Text> {selectedPickup.weight || 'Not recorded'} kg</Text>
+                  <Text style={styles.label}><Text style={styles.bold}>Address:</Text> {getItemAddress(selectedPickup.pickup_item_id) || 'Address not available'}</Text>
+                  <Text style={styles.label}><Text style={styles.bold}>Client:</Text> {getClientName(selectedPickup.user_donor_id)}</Text>
+                  <View style={styles.phoneStyle}>
+                    <Text style={styles.bold}>Client contact number:</Text>
+                    <TouchableOpacity onPress={() => handleCall(getClientPhone(selectedPickup.user_donor_id))} style={styles.touchable} >
+                        <Text style={styles.phonelabel}>{getClientPhone(selectedPickup.user_donor_id)}</Text>
+                      </TouchableOpacity>
+                  </View>
+                  <Text style={styles.label}><Text style={styles.bold}>Date completed:</Text> {formatDateTime(selectedPickup.updateDate)}</Text>
+                  <Text style={styles.label}><Text style={styles.bold}>Pickup status:</Text> {getStatusName(selectedPickup.pickup_status_id)}</Text>
                 </View>
               </ScrollView>
             )}
@@ -369,9 +380,13 @@ const styles = StyleSheet.create({
   },
   phonelabel: {
     fontSize: 16,
-    marginBottom: 12,
+    marginBottom: 10,
     color: "#5E4DCD",
     textDecorationLine: "underline",
+  },
+  phoneStyle: {
+    flexDirection: "row", 
+    flexWrap: "wrap"
   },
 });
 

@@ -2,12 +2,17 @@ import React, { useState , useMemo} from "react";
 import { View, ScrollView, Text, StyleSheet, Dimensions, Alert ,Modal, TouchableOpacity} from "react-native";
 import { TextInput, Button, HelperText ,Checkbox} from "react-native-paper";
 import Icon from "react-native-vector-icons/MaterialIcons";
+import { resetPassword } from "../api/user/resetPassword";
+import { resetOrgPassword } from "../api/organization/resetOrgPassword";
 
 const { width, height } = Dimensions.get("window");
 
 const ResetPassword = ({ route,navigation }) => {
 
   const email = route?.params?.email || "";
+  const userTypeV = route?.params?.userTypeV || "";
+  console.log(userTypeV)
+  console.log(email)
 
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -24,10 +29,8 @@ const isFormValid = useMemo(() => {
     confirmPassword.trim() !== ""
   );
 }, [password, confirmPassword]);
-//backend team may work on this function for updating password
-const updatePassword = async (email, password, confirmPassword) => {
-    return true;
-}
+
+
 const handleSubmit = async () => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;//valid email format
     const passwordRegex = /^(?=.*[0-9])(?=.*[\W_]).{8,}$/;// at least 8 characters, including a number and a special character.
@@ -47,12 +50,24 @@ const handleSubmit = async () => {
     setIsLoading(true);
     try {
       // Call the register function from UserContext
-      const success = await updatePassword(email, password, confirmPassword);
-
-      if (success) {
-        Alert.alert("Success", "Your account password has been updated, you may login now");
-      } else {
-        Alert.alert("Error", "Updated password failed. Please try again.");
+      if(userTypeV == "user"){
+        const success = await resetPassword(email, password);
+        if(success){
+          Alert.alert("Success", "Your account password has been updated, you may login now");
+        }
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'Login' }],
+        });
+      } else if(userTypeV == "organization"){
+        const success = await resetOrgPassword(email, password);
+        if(success){
+          Alert.alert("Success", "Your account password has been updated, you may login now");
+        }
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'Login' }],
+        });
       }
     } catch (error) {
       console.error("Updated password error:", error);
@@ -60,10 +75,7 @@ const handleSubmit = async () => {
     } finally {
       setIsLoading(false);
     }
-    navigation.reset({
-          index: 0,
-          routes: [{ name: 'Login' }],
-    });
+
 }
 
 

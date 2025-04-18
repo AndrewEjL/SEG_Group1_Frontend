@@ -7,6 +7,7 @@ import { useCollector } from '../api/organization/getCollector';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { checkEmailExists, registerCollector } from '../api/organization/registerCollector';
 import { useDeleteCollector } from '../api/organization/deleteCollector';
+import { useRestoreCollector } from '../api/organization/restoreCollector';
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const passwordRegex = /^(?=.*[0-9])(?=.*[\W_]).{8,}$/;
@@ -46,10 +47,11 @@ const CollectorListScreen: React.FC<CollectorListProps> = ({navigation}) => {
   console.log(id)
   const { getCollectors, addCollector, removeCollector } = useUser();
   const { displayCollector, loading: loadingCollector} = useCollector(id);
-  console.log(displayCollector)
-  const { deleteCollector, loadingDelete, error} = useDeleteCollector();
+  const { deleteCollector, loadingDelete, error } = useDeleteCollector();
+  const { restoreCollector, loadingRestore, error: errorRestore } = useRestoreCollector();
 
   const [modalVisible, setModalVisible] = useState(false);
+  const [restoreModalVisible, setRestoreModalVisible] = useState(false);
   const [newEmployee, setNewEmployee] = useState<Employee>({ 
     id: '', name: '', email: '', phoneNumber: '', password: '', confirmPassword: '' 
   });
@@ -73,7 +75,7 @@ const CollectorListScreen: React.FC<CollectorListProps> = ({navigation}) => {
         id: collector.value,
         name: collector.label,
         email: collector.email,
-        phoneNumber: collector.phoneNumber.startsWith('+60') ? collector.phoneNumber.slice(3) : collector.phoneNumber,
+        phoneNumber: collector.phoneNumber,
         password: 'Password@123' // Default password for UI only
       }));
 
@@ -117,6 +119,33 @@ const CollectorListScreen: React.FC<CollectorListProps> = ({navigation}) => {
     );
   };
 
+  const handleRestore = async (cid: number) => {
+    Alert.alert(
+      "Confirm Restore",
+      "Are you sure you want to re-employ this employee?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Restore",
+          style: "destructive",
+          onPress: async () => {
+            const success = await restoreCollector(cid);
+            if (success) {          
+              setRestoreModalVisible(false);    
+              navigation.replace("CollectorList", {id: id});
+              Alert.alert("Success", "Collector restore successfully");
+            } else {
+              Alert.alert("Error", "Failed to restore collector");
+            }
+          },
+        },
+      ]
+    );
+  };
+
 
   const validateAndAddEmployee = async () => {
     const emailExists = await checkEmailExists(newEmployee.email);
@@ -135,17 +164,12 @@ const CollectorListScreen: React.FC<CollectorListProps> = ({navigation}) => {
       setErrors(validationErrors);
       return;
     }
-
-    // Strip the +60 prefix if it exists
-    const phoneNumber = newEmployee.phoneNumber.startsWith('+60') 
-      ? newEmployee.phoneNumber.slice(3) 
-      : newEmployee.phoneNumber;
     
     const success = await registerCollector(
       newEmployee.name,
       newEmployee.email,
       newEmployee.password,
-      phoneNumber,
+      newEmployee.phoneNumber,
       id
     )
     
@@ -163,6 +187,17 @@ const CollectorListScreen: React.FC<CollectorListProps> = ({navigation}) => {
       Alert.alert("Error", "Failed to add collector. The email might already be in use.");
     }
   };
+  
+  const ActiveCollector = displayCollector?.filter(
+    (c) => !c.isDelete && c.user_status_id === 1
+  ) || [];
+
+  const NonActiveCollector = displayCollector?.filter(
+    (c) => !!c.isDelete && c.user_status_id === 2
+  );
+
+  console.log("All: ",displayCollector)
+  console.log("Non-active: ",NonActiveCollector)
 
 return (
 <View style={styles.container}>
@@ -173,10 +208,17 @@ return (
     >
       <Text style={styles.addButtonText}>+ Add</Text>
     </TouchableOpacity>
+
+    <TouchableOpacity
+      style={styles.restoreButton}
+      onPress={() => setRestoreModalVisible(true)}
+    >
+      <Text style={styles.restoreButtonText}>Restore</Text>
+    </TouchableOpacity>
   </View>
 
   <FlatList
-    data={displayCollector}
+    data={ActiveCollector}
     keyExtractor={(item) => item.id}
     renderItem={({ item }) => (
       <View style={styles.itemContainer}>
@@ -186,7 +228,7 @@ return (
         <View style={styles.collectorInfo}>
           <Text style={styles.collectorName}>{item.user_name}</Text>
           <Text style={styles.collectorEmail}>{item.email}</Text>
-          <Text style={styles.collectorPhone}>+60{item.phone_number}</Text>
+          <Text style={styles.collectorPhone}>{item.phone_number}</Text>
         </View>
         <TouchableOpacity onPress={() => handleDelete(item.id)}>
           <Icon name="trash-can" size={24} color="#333333" />
@@ -238,12 +280,17 @@ return (
         <TextInput
           style={styles.input}
           placeholder="Phone Number"
-          value={newEmployee.phoneNumber ? `+60${newEmployee.phoneNumber}` : ""}
+          value={newEmployee.phoneNumber}
           onChangeText={(text) => {
-            const numberOnly = text.startsWith("+60")
-              ? text.slice(3).replace(/\D/g, "")
-              : text.replace(/\D/g, "");
-            setNewEmployee({ ...newEmployee, phoneNumber: numberOnly });
+            // Remove all non-digit characters EXCEPT the + at the start
+            let formatted = text.replace(/[^\d]/g, '');
+
+            // Always keep +60 at the start
+            if (!formatted.startsWith('60')) {
+              formatted = '60' + formatted;
+            }
+
+            setNewEmployee({ ...newEmployee, phoneNumber: `+${formatted}` });
           }}
           placeholderTextColor="#999999"
         />
@@ -300,6 +347,47 @@ return (
       </View>
     </View>
   </Modal>
+
+  {/* Modal for restore */}
+  <Modal visible={restoreModalVisible} transparent animationType="slide">
+      <View style={styles.modalContainer}> 
+        <View style={styles.modalContent}>  
+
+        <TouchableOpacity
+          onPress={() => {
+            setRestoreModalVisible(false);            
+          }}
+        >
+          <Icon name="close" size={24} color="#333333" />
+        </TouchableOpacity>
+
+          <Text style={styles.modalTitle}>Restore Collector</Text>
+          {NonActiveCollector?.length === 0 ? (
+            <Text>No Terminated collector Found.</Text>
+          ) : (
+            <FlatList
+              data={NonActiveCollector}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <View style={styles.itemContainer}>
+                  <View style={styles.avatar}>
+                    <Text style={styles.avatarText}>{item.user_name.charAt(0)}</Text>
+                  </View>
+                  <View style={styles.collectorInfo}>
+                    <Text style={styles.collectorName}>{item.user_name}</Text>
+                    <Text style={styles.collectorEmail}>{item.email}</Text>
+                    <Text style={styles.collectorPhone}>{item.phone_number}</Text>
+                  </View>
+                  <TouchableOpacity onPress={() => handleRestore(item.id)}>
+                    <Icon name="restore" size={24} color="#333333" />
+                  </TouchableOpacity>
+                </View>
+              )}
+            />
+          )}
+        </View>
+      </View>
+  </Modal>
 </View>
 )};
 
@@ -322,6 +410,18 @@ const styles = StyleSheet.create({
   addButtonText: {
     color: 'white',
     fontWeight: 'bold'
+  },
+  restoreButton: {
+    backgroundColor: "#000000",
+    borderWidth: 1,
+    padding: 10,
+    borderRadius: 5,
+    marginLeft: 10,
+    marginRight: 10
+  },
+  restoreButtonText: {
+    color: "white",
+    fontWeight: "bold",
   },
   itemContainer: {
     flexDirection: 'row',

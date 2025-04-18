@@ -49,25 +49,21 @@ const isFormValid = useMemo(() => {
     }
 
     if (!passwordRegex.test(password)) {
-        setPasswordError("Password must be at least 8 characters long and include a number and a special character.");
-        return;
+      setPasswordError("Password must be at least 8 characters long and include a number and a special character.");
+      return;
     }
 
   if (password !== confirmPassword) {
     setConfirmPasswordError("Passwords do not match.");
-    hasError = true;
+    return;
   } else {
     setConfirmPasswordError("");
   }
   if (phoneNumber.length < 8) {
     setPhoneNumberError("Phone number must start with +60 and have at least 10 digits");
-    hasError = true;
+    return;
   } else {
     setPhoneNumberError("");
-  }
-
-  if (hasError) {
-    return;
   }
 
     setIsLoading(true);
@@ -94,6 +90,11 @@ const isFormValid = useMemo(() => {
       setIsLoading(false);
     }
   };
+
+  const handleAcceptTnC = () => {
+    setChecked(true);
+    setModalVisible(false);
+}
 
   return (
     <ScrollView
@@ -228,22 +229,24 @@ const isFormValid = useMemo(() => {
             </TouchableOpacity>
             <Text style={styles.modalTitle}>Terms & Conditions </Text>
               <ScrollView style={styles.modalScrollView}>
-              <Text style={styles.modalText}>
-                <Text style={styles.modalSubTitle}>Non-Retrievable E-Waste Policy{"\n"}</Text>
-
-                {"\n"}By using this application and its e-waste collection services, you agree to the following condition:{"\n\n"}
-
-                1) Once the e-waste has been collected by the assigned recycling facility, all items are deemed non-retrievable.{"\n\n"}
-
-                2) Clients will not be able to request the return of any collected e-waste under any circumstances.{"\n\n"}
+              <Text style={styles.modalSubTitle}>Non-Retrievable E-Waste Policy{"\n"}</Text>
+               <Text>
+                 By using this application and its e-waste collection services, you acknowledge and agree to the following terms and conditions:{"\n\n"}
+                 1) All items submitted through the e-waste collection service — including but not limited to used electronics, electrical appliances, batteries, and related components — are classified as e-waste.{"\n\n"}
+                 2) Once collected by the assigned or authorized recycling facility, these items are considered permanently surrendered and non-retrievable.{"\n\n"}
+                 3) Under no circumstances shall requests for return, exchange, or retrieval of collected e-waste be accepted.{"\n\n"}
+ 
+                 4) Users are responsible for ensuring that all personal or sensitive data has been removed from devices before submission. The company and its recycling partners are not liable for any data that remains on surrendered items.{"\n\n"}
+ 
+                 5) By proceeding with an e-waste submission, you confirm that you have read, understood, and agreed to this policy in full.{"\n\n"}
               </Text>
+              </ScrollView>
                 <TouchableOpacity
                   style={styles.acceptButton}
                   onPress={handleAcceptTnC}
                 >
                   <Text style={styles.acceptText}>accept</Text>
                 </TouchableOpacity>
-              </ScrollView>
           </View>
         </View>
       </Modal>
@@ -314,7 +317,6 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: "center",
   },
-
   modalContent: {
     width: '90%',
     maxWidth: 400,
@@ -342,9 +344,9 @@ const styles = StyleSheet.create({
     color: "#333333",
   },
   modalScrollView: {
-      width: '100%',
-      maxHeight: '90%',
-      paddingTop: 30,
+    width: '100%',
+    maxHeight: '90%',
+    paddingTop: 20,
   },
   acceptButton: {
     backgroundColor: "#5E4DCD",

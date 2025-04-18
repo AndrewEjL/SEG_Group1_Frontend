@@ -55,95 +55,100 @@ const PickupDetails: React.FC<PickupDetailsProps> = ({ navigation, route }) => {
   const { displayOrg, loading: loadingOrg} = useOrganization();
   const pickupItemID = displayOrgItem.map(item => item.pickup_item_id);
   const { displayItems: displayItemByID, loading } = displayItemsByItemID(pickupItemID);
-  const { itemTypes, deviceCondition, itemsStatus, loadingName } = useItemTypes();
+  const { itemTypes, deviceCondition, itemsStatus, pickupStatus, loadingName } = useItemTypes();
   const [pickup, setPickup] = useState<ScheduledPickup | null>(null);
   const [itemDetails, setItemDetails] = useState<{ [key: string]: ListedItem | null }>({});
   const [isLoading, setIsLoading] = useState(true);
   const [organizationName, setOrganizationName] = useState<string>('');
 
-  useEffect(() => {
-    loadPickupDetails();
-  }, [pickupId]);
+  // useEffect(() => {
+  //   loadPickupDetails();
+  // }, [pickupId]);
 
-  const loadPickupDetails = async () => {
-    setIsLoading(true);
-    try {
-      const details = await getPickupDetails(pickupId);
-      if (details) {
-        setPickup(details);
+  // const loadPickupDetails = async () => {
+  //   setIsLoading(true);
+  //   try {
+  //     const details = await getPickupDetails(pickupId);
+  //     if (details) {
+  //       setPickup(details);
         
-        // Get all active listed items
-        const allListedItems = await getListedItems();
-        const activeItemsMap = allListedItems.reduce((acc, item) => {
-          acc[item.id] = item;
-          return acc;
-        }, {} as { [key: string]: ListedItem });
+  //       // Get all active listed items
+  //       const allListedItems = await getListedItems();
+  //       const activeItemsMap = allListedItems.reduce((acc, item) => {
+  //         acc[item.id] = item;
+  //         return acc;
+  //       }, {} as { [key: string]: ListedItem });
         
-        // Load detailed information for each item in the pickup
-        const detailsMap: { [key: string]: ListedItem | null } = {};
+  //       // Load detailed information for each item in the pickup
+  //       const detailsMap: { [key: string]: ListedItem | null } = {};
         
-        for (const pickupItem of details.items) {
-          // First check if the item exists in active listings
-          if (activeItemsMap[pickupItem.id]) {
-            detailsMap[pickupItem.id] = activeItemsMap[pickupItem.id];
-          } else {
-            // If not in active listings, try to get from historical records
-            const historicalItem = await getHistoricalItemDetails(pickupItem.id);
-            detailsMap[pickupItem.id] = historicalItem;
-          }
-        }
+  //       for (const pickupItem of details.items) {
+  //         // First check if the item exists in active listings
+  //         if (activeItemsMap[pickupItem.id]) {
+  //           detailsMap[pickupItem.id] = activeItemsMap[pickupItem.id];
+  //         } else {
+  //           // If not in active listings, try to get from historical records
+  //           const historicalItem = await getHistoricalItemDetails(pickupItem.id);
+  //           detailsMap[pickupItem.id] = historicalItem;
+  //         }
+  //       }
         
-        setItemDetails(detailsMap);
-      }
-    } catch (error) {
-      console.error('Error loading pickup details:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  //       setItemDetails(detailsMap);
+  //     }
+  //   } catch (error) {
+  //     console.error('Error loading pickup details:', error);
+  //   } finally {
+  //     setIsLoading(false);
+  //   }
+  // };
 
-  // Helper function to render item details safely
-  const renderItemDetails = (pickupItem: PickupItem) => {
-    const item = itemDetails[pickupItem.id];
+  // // Helper function to render item details safely
+  // const renderItemDetails = (pickupItem: PickupItem) => {
+  //   const item = itemDetails[pickupItem.id];
     
-    // If the item details are not available at all
-    if (!item) {
-      return (
-        <View style={styles.itemCard}>
-          <View style={styles.itemDetails}>
-            <Text style={styles.itemName}>{pickupItem.name}</Text>
-            <Text style={styles.itemSubtext}>
-              Item details are not available
-            </Text>
-          </View>
-        </View>
-      );
-    }
+  //   // If the item details are not available at all
+  //   if (!item) {
+  //     return (
+  //       <View style={styles.itemCard}>
+  //         <View style={styles.itemDetails}>
+  //           <Text style={styles.itemName}>{pickupItem.name}</Text>
+  //           <Text style={styles.itemSubtext}>
+  //             Item details are not available
+  //           </Text>
+  //         </View>
+  //       </View>
+  //     );
+  //   }
     
-    // Item details are available (either from active listings or historical records)
-    return (
-      <View style={styles.itemCard}>
-        <View style={styles.itemDetails}>
-          <Text style={styles.itemName}>{item.name}</Text>
-          <Text style={styles.itemSubtext}>
-            {item.type} • {item.condition}
-          </Text>
-          <Text style={styles.itemDimensions}>
-            Dimensions: {item.dimensions.length}×{item.dimensions.width}×{item.dimensions.height} cm
-          </Text>
-          <Text style={styles.itemQuantity}>
-            Quantity: {item.quantity}
-          </Text>
-          {item.address && (
-            <Text style={styles.itemAddress}>
-              Address: {item.address}
-            </Text>
-          )}
-        </View>
-      </View>
-    );
+  //   // Item details are available (either from active listings or historical records)
+  //   return (
+  //     <View style={styles.itemCard}>
+  //       <View style={styles.itemDetails}>
+  //         <Text style={styles.itemName}>{item.name}</Text>
+  //         <Text style={styles.itemSubtext}>
+  //           {item.type} • {item.condition}
+  //         </Text>
+  //         <Text style={styles.itemDimensions}>
+  //           Dimensions: {item.dimensions.length}×{item.dimensions.width}×{item.dimensions.height} cm
+  //         </Text>
+  //         <Text style={styles.itemQuantity}>
+  //           Quantity: {item.quantity}
+  //         </Text>
+  //         {item.address && (
+  //           <Text style={styles.itemAddress}>
+  //             Address: {item.address}
+  //           </Text>
+  //         )}
+  //       </View>
+  //     </View>
+  //   );
+  // };
+  const getStatusColor = (status: number) => {
+    if (status === 1) return '#F57C00'; // Orange for pending
+    if (status === 2) return '#5E4DCD'; // Purple for Collecting
+    return '#FFC107'; // Default yellow
   };
-
+  
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
@@ -186,9 +191,15 @@ const PickupDetails: React.FC<PickupDetailsProps> = ({ navigation, route }) => {
                   displayItemByID.map((item) => {
                     const type = itemTypes.find((t) => t.id === item.item_type_id);
                     const cond = deviceCondition.find((t) => t.id === item.device_condition_id);
+                    const pickup = displayOrgItem.find((t) => t.pickup_item_id === item.pickup_items_id);
+                    const pickStatus = pickupStatus.find((t) => t.id === pickup?.pickup_status_id);
+
                     return(
                       <View key={item.pickup_items_id} style={styles.itemCard}>
                       <View style={styles.itemDetails}>
+                        <View style={[styles.statusBadge,{ backgroundColor: getStatusColor(pickup?.pickup_status_id) }]}> 
+                          <Text style={styles.statusText}>{pickStatus?.name}</Text>
+                        </View>                      
                         <Text style={styles.itemName}>{item.item_name}</Text>
                         <Text style={styles.itemSubtext}>{type?.name} • {cond?.name}</Text>
                         <Text style={styles.itemDimensions}>
@@ -338,6 +349,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
     textTransform: 'capitalize',
+  },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+    marginRight: 8,
   },
 });
 

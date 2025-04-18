@@ -32,7 +32,6 @@ interface PickupItem {
   facility: string;
 }
 
-
 const COMPLETED_PICKUPS_STORAGE_KEY = 'completedPickupIds';
 
 const LoadingIcon: React.FC = () => {
@@ -69,7 +68,7 @@ const LoadingIcon: React.FC = () => {
 const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const route = useRoute();
   const { user, getScheduledPickups, getListedItems, deleteListedItem, getOrganizationName } = useUser();
-  const { itemTypes, deviceCondition, itemsStatus, loadingName } = useItemTypes();
+  const { itemTypes, deviceCondition, itemsStatus, pickupStatus, loadingName } = useItemTypes();
   const {id} = route.params;
   const { displayItems, loading } = displayItem(id);
   console.log(displayItems);
@@ -138,128 +137,128 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   };
 
   // Helper function to check if an item is in any scheduled pickup
-  const isItemInPickup = (itemId: string) => {
-    return scheduledPickups.some(pickup => 
-      pickup.listedItemIds.includes(itemId) && 
-      pickup.status === 'ongoing'
-    );
-  };
+  // const isItemInPickup = (itemId: string) => {
+  //   return scheduledPickups.some(pickup => 
+  //     pickup.listedItemIds.includes(itemId) && 
+  //     pickup.status === 'ongoing'
+  //   );
+  // };
 
   const handleViewPickup = (orgId: number) => {
     navigation.navigate('PickupDetails', { id, orgId });
   };
 
-  const handleEditPickup = (pickup: ScheduledPickup) => {
-    // Show options to update pickup status
-    Alert.alert(
-      "Update Pickup",
-      "What would you like to do with this pickup?",
-      [
-        {
-          text: "Cancel",
-          style: "cancel"
-        },
-        {
-          text: "Mark as Collected",
-          onPress: async () => {
-            // In a real app, this would call an API to update the pickup
-            const updatedPickup: ScheduledPickup = {
-              ...pickup,
-              status: 'Collected',
-              date: new Date().toISOString().split('T')[0]
-            };
+  // const handleEditPickup = (pickup: ScheduledPickup) => {
+  //   // Show options to update pickup status
+  //   Alert.alert(
+  //     "Update Pickup",
+  //     "What would you like to do with this pickup?",
+  //     [
+  //       {
+  //         text: "Cancel",
+  //         style: "cancel"
+  //       },
+  //       {
+  //         text: "Mark as Collected",
+  //         onPress: async () => {
+  //           // In a real app, this would call an API to update the pickup
+  //           const updatedPickup: ScheduledPickup = {
+  //             ...pickup,
+  //             status: 'Collected',
+  //             date: new Date().toISOString().split('T')[0]
+  //           };
             
-            // Update the pickup
-            updatePickup(updatedPickup);
+  //           // Update the pickup
+  //           updatePickup(updatedPickup);
             
-            Alert.alert(
-              "Success", 
-              "Pickup has been marked as collected."
-            );
+  //           Alert.alert(
+  //             "Success", 
+  //             "Pickup has been marked as collected."
+  //           );
             
-            // Trigger data reload to reflect the changes
-            loadData();
-          }
-        },
-        {
-          text: "Mark as Completed",
-          onPress: async () => {
-            // Add debug logging
-            console.log("1. STARTING Mark as Completed process for pickup ID:", pickup.id);
+  //           // Trigger data reload to reflect the changes
+  //           loadData();
+  //         }
+  //       },
+  //       {
+  //         text: "Mark as Completed",
+  //         onPress: async () => {
+  //           // Add debug logging
+  //           console.log("1. STARTING Mark as Completed process for pickup ID:", pickup.id);
             
-            // Mark as collected in the database and add readyForClaiming property
-            const updatedPickup: ScheduledPickup = {
-              ...pickup,
-              status: 'Collected', // This is a valid status in the ScheduledPickup type
-              date: new Date().toISOString().split('T')[0],
-              // Add readyForClaiming with @ts-ignore since it's not in the type definition
-              // @ts-ignore
-              readyForClaiming: true
-            };
+  //           // Mark as collected in the database and add readyForClaiming property
+  //           const updatedPickup: ScheduledPickup = {
+  //             ...pickup,
+  //             status: 'Collected', // This is a valid status in the ScheduledPickup type
+  //             date: new Date().toISOString().split('T')[0],
+  //             // Add readyForClaiming with @ts-ignore since it's not in the type definition
+  //             // @ts-ignore
+  //             readyForClaiming: true
+  //           };
             
-            console.log("3. Updated pickup object with readyForClaiming:", updatedPickup);
+  //           console.log("3. Updated pickup object with readyForClaiming:", updatedPickup);
             
-            // Update the pickup in the backend
-            updatePickup(updatedPickup);
-            console.log("4. Called updatePickup");
+  //           // Update the pickup in the backend
+  //           updatePickup(updatedPickup);
+  //           console.log("4. Called updatePickup");
             
-            // Also update it in our local state immediately
-            setScheduledPickups(prev => 
-              prev.map(p => p.id === pickup.id ? 
-                {
-                  ...p,
-                  // @ts-ignore - Adding property not in type definition
-                  readyForClaiming: true
-                } : p
-              )
-            );
-            console.log("5. Updated local scheduledPickups state");
+  //           // Also update it in our local state immediately
+  //           setScheduledPickups(prev => 
+  //             prev.map(p => p.id === pickup.id ? 
+  //               {
+  //                 ...p,
+  //                 // @ts-ignore - Adding property not in type definition
+  //                 readyForClaiming: true
+  //               } : p
+  //             )
+  //           );
+  //           console.log("5. Updated local scheduledPickups state");
             
-            Alert.alert(
-              "Success", 
-              "Pickup has been marked as completed. You can now claim your points!"
-            );
+  //           Alert.alert(
+  //             "Success", 
+  //             "Pickup has been marked as completed. You can now claim your points!"
+  //           );
             
-            // Trigger data reload to reflect the changes
-            console.log("6. Calling loadData");
-            loadData();
-          }
-        },
-        {
-          text: "Mark as Cancelled",
-          style: "destructive",
-          onPress: async () => {
-            // In a real app, this would call an API to update the pickup
-            const updatedPickup: ScheduledPickup = {
-              ...pickup,
-              status: 'Cancelled',
-              date: new Date().toISOString().split('T')[0]
-            };
+  //           // Trigger data reload to reflect the changes
+  //           console.log("6. Calling loadData");
+  //           loadData();
+  //         }
+  //       },
+  //       {
+  //         text: "Mark as Cancelled",
+  //         style: "destructive",
+  //         onPress: async () => {
+  //           // In a real app, this would call an API to update the pickup
+  //           const updatedPickup: ScheduledPickup = {
+  //             ...pickup,
+  //             status: 'Cancelled',
+  //             date: new Date().toISOString().split('T')[0]
+  //           };
             
-            // Update the pickup
-            updatePickup(updatedPickup);
+  //           // Update the pickup
+  //           updatePickup(updatedPickup);
             
-            // Remove from completed pickups if it was there and save to storage
-            const updatedIds = completedPickupIds.filter(id => id !== pickup.id);
-            setCompletedPickupIds(updatedIds);
-            try {
-              await AsyncStorage.setItem(COMPLETED_PICKUPS_STORAGE_KEY, JSON.stringify(updatedIds));
-            } catch (e) {
-              console.error("Failed to save completed pickup IDs to storage", e);
-            }
+  //           // Remove from completed pickups if it was there and save to storage
+  //           const updatedIds = completedPickupIds.filter(id => id !== pickup.id);
+  //           setCompletedPickupIds(updatedIds);
+  //           try {
+  //             await AsyncStorage.setItem(COMPLETED_PICKUPS_STORAGE_KEY, JSON.stringify(updatedIds));
+  //           } catch (e) {
+  //             console.error("Failed to save completed pickup IDs to storage", e);
+  //           }
             
-            Alert.alert(
-              "Success", 
-              "Pickup has been cancelled."
-            );
+  //           Alert.alert(
+  //             "Success", 
+  //             "Pickup has been cancelled."
+  //           );
             
-            // Trigger data reload to reflect the changes
-            loadData();
-          }
-        }
-      ]
-    );
-  };
+  //           // Trigger data reload to reflect the changes
+  //           loadData();
+  //         }
+  //       }
+  //     ]
+  //   );
+  // };
 
   const handleEditItem = (itemId: number) => {
     console.log("Navigating with:", { itemId, id });
@@ -300,15 +299,12 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   };
 
   const handleTabPress = (tabName: string) => {
-    console.log('Pressed tab:', tabName);
     if (tabName === 'profile') {
       navigation.navigate('CProfileScreen', {id});
     } else if (tabName === 'rewards') {
       navigation.navigate('rewards', {id});
     }
   };
-
-  
 
   return (
     <SafeAreaView style={styles.container}>
@@ -323,7 +319,12 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
 
       {/* Scheduled Pickups Section */}
       <View style={styles.section}>
+      <View style={styles.headerRow}>
         <Text style={styles.sectionTitle}>Your Scheduled Pickups</Text>
+        <TouchableOpacity onPress={() => navigation.replace("Home", {id: id})}>
+          <Icon name="refresh" size={24} color="#5E4DCD" />
+        </TouchableOpacity>
+      </View>
         <View style={styles.tableContainer}>
           <ScrollView style={styles.scrollView}>
             {displayTransactionOrg.length === 0 ? (
@@ -346,12 +347,12 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                     >
                       <Icon name="visibility" size={24} color="#666" />
                     </TouchableOpacity>
-                    <TouchableOpacity 
+                    {/* <TouchableOpacity 
                       style={styles.iconButton} 
                       onPress={() => handleEditPickup(pickup.pickup_transaction_id)}
                     >
                       <LoadingIcon />
-                    </TouchableOpacity>
+                    </TouchableOpacity> */}
                   </View>
                 </View>
                 )
@@ -651,6 +652,12 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '500',
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 5,
   },
 });
 

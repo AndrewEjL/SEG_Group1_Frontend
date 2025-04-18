@@ -44,7 +44,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
               if (result.userType === "donor") {
                   navigation.navigate('Home', { id: result.id, userType: result.userType });
               } else if (result.userType === "recipient") {
-                  navigation.navigate("");
+                  navigation.navigate("CLHome", {id: result.id, userType: result.userType});
               } else if (result.userType === "organization") {
                   navigation.navigate('RHome', {id: result.id, userType: result.userType});
               }

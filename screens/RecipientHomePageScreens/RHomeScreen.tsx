@@ -17,6 +17,7 @@ import { addTransaction } from "../api/transaction/addTransaction.ts";
 import { useOrgTransaction } from "../api/organization/getOrgTransaction.ts";
 import { useAllCollector } from "../api/organization/getAllCollector.ts";
 import { displayEveryItemsWOStatus } from "../api/items/displayAllItemsWOStatus.ts";
+import { updateToCancel } from "../api/transaction/updateToCancel.ts";
 
 type RootStackParamList = {
   RHome: {id: number};
@@ -224,7 +225,7 @@ const RHomeScreen: React.FC<RHomeScreenProps> = ({ navigation }) => {
     .map(([address]) => address);
 
   // Add a function to handle cancelling a pickup
-  const handleCancelPickup = (pickup: ScheduledPickup) => {
+  const handleCancelPickup = (transaction: typeof displayOrgTransaction[0]) => {
     Alert.alert(
       "Cancel Pickup",
       "Are you sure you want to cancel this pickup? This action cannot be undone, and all items in this pickup will be permanently deleted.",
@@ -238,62 +239,15 @@ const RHomeScreen: React.FC<RHomeScreenProps> = ({ navigation }) => {
           style: "destructive",
           onPress: async () => {
             try {
-              console.log(`Attempting to cancel pickup ${pickup.id} with ${pickup.listedItemIds?.length || 0} items`);
+              console.log(`Attempting to cancel pickup ${transaction.pickup_item_id} for ${transaction.pickup_transaction_id}`);
               
               // First update the pickup status to Cancelled
-              const success = await updatePickupStatus(pickup.id, 'Cancelled');
+              const success = await updateToCancel(transaction.pickup_transaction_id, 0);
               
               if (success) {
-                console.log(`Successfully updated pickup ${pickup.id} status to Cancelled`);
-                
-                // Delete all items in the pickup from listings
-                if (pickup.listedItemIds && pickup.listedItemIds.length > 0) {
-                  console.log(`Deleting ${pickup.listedItemIds.length} items from cancelled pickup ${pickup.id}`);
-                  
-                  // Track successful and failed deletions
-                  const results = { success: 0, failed: 0 };
-                  
-                  // Delete each item
-                  for (const itemId of pickup.listedItemIds) {
-                    try {
-                      const deleteSuccess = await deleteListedItem(itemId);
-                      if (deleteSuccess) {
-                        console.log(`Deleted item ${itemId} from listings`);
-                        results.success++;
-                      } else {
-                        console.warn(`Failed to delete item ${itemId}`);
-                        results.failed++;
-                      }
-                    } catch (err) {
-                      console.error(`Error deleting item ${itemId}:`, err);
-                      results.failed++;
-                    }
-                  }
-                  
-                  // Show appropriate message based on results
-                  if (results.failed > 0) {
-                    Alert.alert(
-                      "Partial Success",
-                      `Pickup cancelled. ${results.success} items deleted, ${results.failed} items could not be deleted.`
-                    );
-                  } else {
-                    Alert.alert(
-                      "Success",
-                      "Pickup cancelled successfully. All items have been removed from listings."
-                    );
-                  }
-                } else {
-                  Alert.alert(
-                    "Success",
-                    "Pickup cancelled successfully. (No items were found to delete)"
-                  );
-                }
-                
-                // Remove the pickup from our local state immediately
-                setPendingPickups(prev => prev.filter(p => p.id !== pickup.id));
-                
-                // Then reload data to update both tables
-                loadData();
+                console.log(`Successfully updated pickup ${transaction.pickup_transaction_id} status to Cancelled`);
+                navigation.replace("RHome", {id: id});
+                Alert.alert("Success", `Pickup transaction delete successfully`);
               } else {
                 Alert.alert("Error", "Failed to cancel pickup. Please try again.");
               }
@@ -426,6 +380,12 @@ const RHomeScreen: React.FC<RHomeScreenProps> = ({ navigation }) => {
                       <View style={styles.iconRow}>
                         <TouchableOpacity onPress={() => handleViewPendingPickupStatus(item)}>
                           <Icon name="hourglass-empty" size={20} color="#333333" />
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                          style={styles.cancelButton}
+                          onPress={() => handleCancelPickup(item)}
+                        >
+                          <Text style={styles.cancelText}>Cancel</Text>
                         </TouchableOpacity>
                       </View>
                     </View>

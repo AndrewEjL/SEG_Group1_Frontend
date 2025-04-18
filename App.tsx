@@ -31,6 +31,7 @@ import PickupHistoryDetails from './screens/PickupHistoryDetails.tsx';
 import CLProfileScreen from './screens/CollectorScreens/CLProfileScreen.tsx'
 import CLHomeScreen from './screens/CollectorScreens/CLHomeScreen.tsx'
 import CLHistoryScreen from './screens/CollectorScreens/CLHistoryScreen.tsx'
+import RPickupHistoryScreen from './screens/RecipientHomePageScreens/RPickupHistoryScreen.tsx';
 
 
 // Define your navigation types
@@ -240,6 +241,10 @@ const App = () => {
           <Stack.Screen
             name="RStats"
             component={RStatsScreen}
+          />
+           <Stack.Screen
+            name="RPickupHistory"
+            component={RPickupHistoryScreen}
           />
           <Stack.Screen
             name="CLProfile"

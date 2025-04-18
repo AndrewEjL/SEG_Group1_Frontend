@@ -3,10 +3,10 @@ import { ip_address } from '../ipAddress';
 const base_api = `${ip_address}/api/status`;
 
 export const useItemTypes = () => {
-  const [itemTypes, setItemTypes] = useState<string[]>([]);
-  const [deviceCondition, setDeviceCondition] = useState<string[]>([]);
+  const [itemTypes, setItemTypes] = useState<any[]>([]);
+  const [deviceCondition, setDeviceCondition] = useState<any[]>([]);
   const [itemsStatus, setItemStatus] = useState<string[]>([]);
-  const [pickupStatus, setPickuoStatus] = useState<string[]>([]);
+  const [pickupStatus, setPickuoStatus] = useState<any[]>([]);
   const [statusType, setStatusType] = useState<string[]>([]);
   const [citiesT, setCities] = useState<string[]>([]);
   const [rewardsT, setRewardsT] = useState<string[]>([]);

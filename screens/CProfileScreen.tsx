@@ -9,6 +9,7 @@ import { useClient } from './api/user/getClient';
 import { updateUser } from "./api/user/updateUserProfile";
 import { updatePassword } from "./api/user/updatePassword";
 import { checkEmailExists } from "./api/registerClient";
+import { validatePass } from "./api/user/validatePass";
 
 // Add type definitions for navigation
 type RootStackParamList = {
@@ -50,6 +51,11 @@ const [tempUser, setTempUser] = useState({
 const [tempPassword, setTempPassword] = useState({ originPassword: "",password: "", confirmPassword: "" })
 const [errors, setErrors] = useState({ email: "", phoneNumber: "", organization: "" });
 const [passwordErrors, setPasswordErrors] = useState({originPassword: "", password: "", confirmPassword: "" });
+const [passwordVisibility, setPasswordVisibility] = useState({
+  origin: false,
+  new: false,
+  confirm: false,
+});
 // Initialize tempUser when user data is loaded
 useEffect(() => {
   if(displayClient){
@@ -88,32 +94,33 @@ const handleSave = async () => {
     if (!validateEmail(tempUser.email)) {
       newErrors.email = "Invalid email format";
     }
-    if (!tempUser.phoneNumber.startsWith("+60") || tempUser.phoneNumber.length < 10) {
-      newErrors.phoneNumber = "Phone number must start with +60 and have at least 10 digits";
-    }
-    if (!tempUser.organization || tempUser.organization.trim() === "") {
-      newErrors.organization = "Username cannot be empty";
-    }
+  }
+
+  if (!tempUser.phoneNumber.startsWith("+60") || tempUser.phoneNumber.length < 10) {
+    newErrors.phoneNumber = "Phone number must start with +60 and have at least 10 digits";
+  }
+  if (!tempUser.organization || tempUser.organization.trim() === "") {
+    newErrors.organization = "Username cannot be empty";
+  }
   
-    setErrors(newErrors);
+  setErrors(newErrors);
   
-    if (!newErrors.email && !newErrors.phoneNumber  && !newErrors.organization) {
-      const success = await updateUser(
-        id,
-        tempUser.organization,
-        tempUser.email,
-        tempUser.phoneNumber,
-      );
+  if (!newErrors.email && !newErrors.phoneNumber  && !newErrors.organization) {
+    const success = await updateUser(
+      id,
+      tempUser.organization,
+      tempUser.email,
+      tempUser.phoneNumber,
+    );
       
-      if (success) {
-        setModal1Visible(false);
-        navigation.replace("CProfileScreen", {id: id});
-        Alert.alert("Success", "Profile updated successfully!");
-      } else {
-        Alert.alert("Error", "Failed to update profile. Please try again.");
-      }
+    if (success) {
+      setModal1Visible(false);
+      navigation.replace("CProfileScreen", {id: id});
+      Alert.alert("Success", "Profile updated successfully!");
+    } else {
+      Alert.alert("Error", "Failed to update profile. Please try again.");
     }
-  }  
+  } 
 };
 
 const handleChangePassword = async () => {
@@ -121,8 +128,13 @@ const handleChangePassword = async () => {
 
   const passwordRegex = /^(?=.*[0-9])(?=.*[\W_]).{8,}$/;
 
-  if (!tempPassword.originPassword){
-    newErrors.originPassword = "Please enter your original password"
+  if(!tempPassword.originPassword){
+    newErrors.originPassword = "Origin password cannot be empty";
+  }
+
+  const result = await validatePass(id, tempPassword.originPassword);
+  if (!result.success){
+    newErrors.originPassword = result.message
   }
 
   if (!tempPassword.password) {
@@ -323,32 +335,72 @@ const handleLogout = async () => {
                 <Icon name="close" size={24} color="black" />
             </TouchableOpacity>
             <Text style={styles.modalTitle}>Change password</Text>
+            <View style={styles.inputContainer}>
             <TextInput
               placeholder="Origin Password"
               placeholderTextColor="#999999"
               value={tempPassword.originPassword}
               onChangeText={(text) => setTempPassword({ ...tempPassword, originPassword: text })}
-              secureTextEntry
+              secureTextEntry = {!passwordVisibility.origin}
               style={styles.input}
             />
+            <TouchableOpacity
+              onPress={() =>
+                setPasswordVisibility((prev) => ({
+                  ...prev,
+                  origin: !prev.origin,
+               }))
+              }
+                style={styles.eyeIcon}
+              >
+                <Icon name={passwordVisibility.origin ? "eye-off" : "eye"} size={20} color="#555555" />
+            </TouchableOpacity>
+            </View>            
             {passwordErrors.originPassword ? <Text style={styles.errorText}>{passwordErrors.originPassword}</Text> : null}
-            <TextInput
-              placeholder="New Password"
-              placeholderTextColor="#999999"
-              value={tempPassword.password}
-              onChangeText={(text) => setTempPassword({ ...tempPassword, password: text })}
-              secureTextEntry
-              style={styles.input}
-            />
+            <View style={styles.inputContainer}>
+              <TextInput
+                placeholder="New Password"
+                placeholderTextColor="#999999"
+                value={tempPassword.password}
+                onChangeText={(text) => setTempPassword({ ...tempPassword, password: text })}
+                secureTextEntry = {!passwordVisibility.new}
+                style={styles.input}
+              />
+              <TouchableOpacity
+              onPress={() =>
+                setPasswordVisibility((prev) => ({
+                  ...prev,
+                  new: !prev.new,
+               }))
+              }
+                style={styles.eyeIcon}
+              >
+                <Icon name={passwordVisibility.new ? "eye-off" : "eye"} size={20} color="#555555" />
+            </TouchableOpacity>
+            </View> 
             {passwordErrors.password ? <Text style={styles.errorText}>{passwordErrors.password}</Text> : null}
-            <TextInput
-              placeholder="Confirm new Password"
-              placeholderTextColor="#999999"
-              value={tempPassword.confirmPassword}
-              onChangeText={(text) => setTempPassword({ ...tempPassword, confirmPassword: text })}
-              secureTextEntry
-              style={styles.input}
-            />
+            <View style={styles.inputContainer}>
+              <TextInput
+                placeholder="Confirm new Password"
+                placeholderTextColor="#999999"
+                value={tempPassword.confirmPassword}
+                onChangeText={(text) => setTempPassword({ ...tempPassword, confirmPassword: text })}
+                secureTextEntry = {!passwordVisibility.confirm}
+                style={styles.input}
+              />
+              <TouchableOpacity
+              onPress={() =>
+                setPasswordVisibility((prev) => ({
+                  ...prev,
+                  confirm: !prev.confirm,
+               }))
+              }
+                style={styles.eyeIcon}
+              >
+                <Icon name={passwordVisibility.confirm ? "eye-off" : "eye"} size={20} color="#555555" />
+            </TouchableOpacity>
+            </View> 
+         
             {passwordErrors.confirmPassword ? <Text style={styles.errorText}>{passwordErrors.confirmPassword}</Text> : null}
             <View style={styles.modalButtons}>
               <TouchableOpacity
@@ -526,6 +578,15 @@ modalContainer: {
   },
   logoutText: {
     color: "#D32F2F",
+  },
+  eyeIcon: {
+    padding: 5,
+  },
+  inputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderColor: "#ccc",
+    width: "95%"
   },
 });
 

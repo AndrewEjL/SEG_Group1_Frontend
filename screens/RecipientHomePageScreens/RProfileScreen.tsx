@@ -14,13 +14,15 @@ import { updateOrgPassword } from "../api/organization/updateOrgPassword";
 import { useItemTypes } from "../api/items/itemTypes";
 import { useDisplayCities } from "../api/organization/getCities";
 import RNPickerSelect from 'react-native-picker-select';
-import { checkEmailExists } from "../api/registerOrganization";
+import { checkEmailExistsOrg } from "../api/registerOrganization";
+import { validatePass } from "../api/organization/validatePass";
 
 // Add type definitions for navigation
 type RootStackParamList = {
   RHome: {id:number};
   RStats: {id:number};
   RProfile: {id:number};
+  RPickupHistory: {id:number};
   CollectorList: {id:number};
   Login: undefined;
   // Add other screens as needed
@@ -103,7 +105,7 @@ const RProfileScreen: React.FC<RProfileScreenProps> = ({ navigation }) => {
   const handleSave = async () => {
     let newErrors = { email: "", phoneNumber: "", address: "" };
     if(tempUser.email!=displayOrg.email){
-      const emailExists = await checkEmailExists(tempUser.email);
+      const emailExists = await checkEmailExistsOrg(tempUser.email);
       if(emailExists){
         newErrors.email = "Email already exist";      
       }
@@ -111,6 +113,8 @@ const RProfileScreen: React.FC<RProfileScreenProps> = ({ navigation }) => {
       if (!validateEmail(tempUser.email)) {
         newErrors.email = "Invalid email format";
       }
+    }
+      
       if (!tempUser.phoneNumber.startsWith("+60") || tempUser.phoneNumber.length < 10) {
         newErrors.phoneNumber = "Phone number must start with +60 and have at least 10 digits";
       }
@@ -137,7 +141,6 @@ const RProfileScreen: React.FC<RProfileScreenProps> = ({ navigation }) => {
         }
        
       }
-    }
   };
 
   const handleChangePassword = async () => {
@@ -146,8 +149,13 @@ const RProfileScreen: React.FC<RProfileScreenProps> = ({ navigation }) => {
     // Password validation regex - at least 8 chars, 1 number, 1 special char
     const passwordRegex = /^(?=.*[0-9])(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$/;
 
-    if (!tempPassword.originPassword){
-      newErrors.originPassword = "Please enter your original password"
+    if(!tempPassword.originPassword){
+      newErrors.originPassword = "Origin password cannot be empty";
+    }
+
+    const result = await validatePass(id, tempPassword.originPassword);
+    if (!result.success){
+      newErrors.originPassword = result.message
     }
 
     if (!tempPassword.password) {
@@ -329,6 +337,10 @@ const RProfileScreen: React.FC<RProfileScreenProps> = ({ navigation }) => {
         <TouchableOpacity style={styles.listItem} onPress={() => navigation.navigate("RStats", {id: id})}>
           <Icon name="chart-pie" size={20} color="#5E4DCD" />
           <Text style={styles.listText}>Recycling Volume Statistics</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.listItem} onPress={() => navigation.navigate("RPickupHistory", {id: id})}>
+          <Icon name="history" size={20} color="#5E4DCD" />
+          <Text style={styles.listText}>Pickup history</Text>
         </TouchableOpacity>
       </View>
 

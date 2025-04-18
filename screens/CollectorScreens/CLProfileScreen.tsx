@@ -4,32 +4,51 @@ import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import MenuIcon from "react-native-vector-icons/MaterialIcons";
 import { useUser } from '../../contexts/UserContext';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useRoute } from "@react-navigation/native";
+import { useCollector } from "../api/user/getCollector";
+import { useAllOrganization } from "../api/organization/getAllOrg";
+import { updateCollector } from "../api/user/updateCollectorProfile";
+import { checkEmailExists } from "../api/organization/registerCollector";
+import { validateCollectorPass } from "../api/user/validateCollectorPass";
+import { updateCollectorPassword } from "../api/user/updateCollectorPassword";
 
-type RProfileScreenProps = {
-  navigation: NativeStackNavigationProp<any, any>;
+type RootStackParamList = {
+  CLHome: { id: number };
+  CLProfile: { id:number };
+  CLHistory: { id:number };
+  Login: undefined;
 };
 
-const CLProfileScreen: React.FC<RProfileScreenProps> = ({ navigation }) => {
+type CLProfileScreenProps = {
+  navigation: NativeStackNavigationProp<RootStackParamList, 'CLProfile'>;
+};
+
+const CLProfileScreen: React.FC<CLProfileScreenProps> = ({ navigation }) => {
+  const route = useRoute();
+  const {id} = route.params;
+  console.log("Profile: "+id)
+  const { displayCollector, loading: loadingCollector } = useCollector(id);
+  const { displayAllOrg, loading: loadingAllOrg } = useAllOrganization();
+  console.log(displayCollector)
+  console.log(displayAllOrg)
   const { user, logout, changePassword, updateUserProfile } = useUser();
 
   const [tempUser, setTempUser] = useState({
-    name: user?.name || "",
-    email: user?.email || "",
-    address: user?.address || "",
-    phoneNumber: user?.phoneNumber || ""
+    name: displayCollector?.user_name || "",
+    email: displayCollector?.email || "",
+    phoneNumber: displayCollector?.phone_number || ""
   });
   
   // Update temp user data when user object changes
   useEffect(() => {
-    if (user) {
+    if (displayCollector) {
       setTempUser({
-        name: user.name,
-        email: user.email,
-        address: user.address || "",
-        phoneNumber: user.phoneNumber
+        name: displayCollector?.user_name,
+        email: displayCollector?.email,
+        phoneNumber: displayCollector?.phone_number
       });
     }
-  }, [user]);
+  }, [displayCollector]);
 
   const [tempPassword, setTempPassword] = useState({ originPassword: "", password: "", confirmPassword: "" });
   const [errors, setErrors] = useState({ email: "", phoneNumber: "", address: "" });
@@ -43,6 +62,11 @@ const CLProfileScreen: React.FC<RProfileScreenProps> = ({ navigation }) => {
   const [modal1Visible, setModal1Visible] = useState(false);
   const [modal2Visible, setModal2Visible] = useState(false);
 
+  const getOrganizationName = (orgID: number) => {
+    if(!orgID) return "No Organization";
+    const orgName = displayAllOrg?.find((t) => t.organizationID === orgID)
+    return orgName?.organization_name;
+  }
   const clearModal2Data = () => {
     setTempPassword({ originPassword: "", password: "", confirmPassword: "" });
     setPasswordErrors({ originPassword: "", password: "", confirmPassword: "" });
@@ -63,40 +87,42 @@ const CLProfileScreen: React.FC<RProfileScreenProps> = ({ navigation }) => {
     setTempUser((prev) => ({ ...prev, phoneNumber: text }));
   };
 
-  const validateAddress = () => {
-    return tempUser.address.trim().length > 0;
-  };
-
   const handleSave = async () => {
     let newErrors = { email: "", phoneNumber: "", address: "" };
 
-    if (!validateEmail(tempUser.email)) {
-      newErrors.email = "Invalid email format";
-    }
-    if (!tempUser.phoneNumber.startsWith("+60") || tempUser.phoneNumber.length < 10) {
-      newErrors.phoneNumber = "Phone number must start with +60 and have at least 10 digits";
-    }
-    if (!validateAddress()) {
-      newErrors.address = "Address cannot be empty";
-    }
+    if(tempUser.email != displayCollector.email){
+      const checkEmail = await checkEmailExists(tempUser.email);
+      if(checkEmail){
+        newErrors.email = "Email already exists."
+      }
 
-    setErrors(newErrors);
-
-    if (!newErrors.email && !newErrors.phoneNumber && !newErrors.address) {
-      // Update profile using the UserContext method
-      const success = await updateUserProfile({
-        email: tempUser.email,
-        address: tempUser.address,
-        phoneNumber: tempUser.phoneNumber
-      });
-
-      if (success) {
-        setModal1Visible(false);
-        Alert.alert("Success", "Profile updated successfully!");
-      } else {
-        Alert.alert("Error", "Failed to update profile. Please try again.");
+      if (!validateEmail(tempUser.email)) {
+        newErrors.email = "Invalid email format";
       }
     }
+    
+      if (!tempUser.phoneNumber.startsWith("+60") || tempUser.phoneNumber.length < 10) {
+        newErrors.phoneNumber = "Phone number must start with +60 and have at least 10 digits";
+      }
+      setErrors(newErrors);
+
+      if (!newErrors.email && !newErrors.phoneNumber && !newErrors.address) {
+        // Update profile using the UserContext method
+        const success = await updateCollector(
+          id,
+          tempUser.name,
+          tempUser.email,
+          tempUser.phoneNumber
+        );
+  
+        if (success) {
+          setModal1Visible(false);
+          navigation.replace('CLProfile', { id: id });
+          Alert.alert("Success", "Profile updated successfully!");
+        } else {
+          Alert.alert("Error", "Failed to update profile. Please try again.");
+        }
+      }
   };
 
   const handleChangePassword = async () => {
@@ -107,6 +133,11 @@ const CLProfileScreen: React.FC<RProfileScreenProps> = ({ navigation }) => {
 
     if (!tempPassword.originPassword) {
       newErrors.originPassword = "Current password cannot be empty";
+    }
+
+    const result = await validateCollectorPass(id, tempPassword.originPassword);
+    if (!result.success){
+      newErrors.originPassword = result.message
     }
 
     if (!tempPassword.password) {
@@ -121,25 +152,25 @@ const CLProfileScreen: React.FC<RProfileScreenProps> = ({ navigation }) => {
 
     setPasswordErrors(newErrors);
 
-    if (!newErrors.originPassword && !newErrors.password && !newErrors.confirmPassword) {
-      // Call the changePassword method from UserContext
-      const success = await changePassword(tempPassword.originPassword, tempPassword.password);
+    if (newErrors.originPassword || newErrors.password || newErrors.confirmPassword) {
+      return;
+    }
 
-      if (success) {
-        // Clear the form
-        clearModal2Data();
+    try {
+      const success = await updateCollectorPassword(id, tempPassword.password, tempPassword.originPassword);
 
-        // Close the modal
+      if (success?.success) {
+        setPasswordErrors({ originPassword: "", password: "", confirmPassword: "" });
+        setTempPassword({ originPassword: "", password: "", confirmPassword: "" });      
         setModal2Visible(false);
-
-        // Show success message
+        navigation.replace("CLProfile", {id: id});
         Alert.alert("Success", "Password changed successfully!");
-      } else {
-        setPasswordErrors(prev => ({
-          ...prev,
-          originPassword: "Incorrect current password"
-        }));
+      }else {
+        Alert.alert("Error", success?.message || "Failed to change password");
       }
+    } catch (error) {
+      console.error("Error changing password:", error);
+      Alert.alert("Error", "Something went wrong. Please try again later.");
     }
   };
 
@@ -167,11 +198,15 @@ const CLProfileScreen: React.FC<RProfileScreenProps> = ({ navigation }) => {
   };
 
   const handleTabPress = (tabName: string) => {
-    navigation.navigate(tabName);
+    if(tabName === 'CLHome'){
+      navigation.navigate(tabName, {id: id});
+    } else if (tabName === 'CLHistory'){
+      navigation.navigate(tabName, {id: id});
+    }
   };
 
   // If user is not loaded yet, show a loading indicator
-  if (!user) {
+  if (!displayCollector) {
     return (
       <View style={[styles.container, {justifyContent: 'center', alignItems: 'center'}]}>
         <Text>Loading profile...</Text>
@@ -187,8 +222,8 @@ const CLProfileScreen: React.FC<RProfileScreenProps> = ({ navigation }) => {
             <Icon name="account-circle" size={60} color="#a393eb" />
           </View>
           <View style={styles.userInfo}>
-            <Text style={styles.username}>{user.name}</Text>
-            <Text style={styles.email}>{user.email}</Text>
+            <Text style={styles.username}>{displayCollector.user_name}</Text>
+            <Text style={styles.email}>{displayCollector.email}</Text>
             <TouchableOpacity
               style={styles.editProfileButton}
               onPress={() => setModal1Visible(true)}
@@ -202,16 +237,12 @@ const CLProfileScreen: React.FC<RProfileScreenProps> = ({ navigation }) => {
           <Text style={styles.sectionTitle}>Contact Information</Text>
           <View style={styles.infoItem}>
             <Icon name="phone" size={20} color="#5E4DCD" />
-            <Text style={styles.infoText}>{user.phoneNumber}</Text>
-          </View>
-          <View style={styles.infoItem}>
-            <Icon name="map-marker" size={20} color="#5E4DCD" />
-            <Text style={styles.infoText}>{user.address || "No address set"}</Text>
+            <Text style={styles.infoText}>{displayCollector.phone_number}</Text>
           </View>
           <View style={styles.infoItem}>
             <Icon name="office-building" size={20} color="#5E4DCD" />
             <Text style={styles.infoText}>
-              Organization: {user.organizationId ? `GreenTech Recyclers (ID: ${user.organizationId})` : "None"}
+              Organization: {getOrganizationName(displayCollector?.organization_id)}
             </Text>
           </View>
         </View>
@@ -264,12 +295,11 @@ const CLProfileScreen: React.FC<RProfileScreenProps> = ({ navigation }) => {
         onRequestClose={() => {
           setModal1Visible(false);
           // Reset temp user to current user data
-          if (user) {
+          if (displayCollector) {
             setTempUser({
-              name: user.name,
-              email: user.email,
-              address: user.address || "",
-              phoneNumber: user.phoneNumber
+              name: displayCollector?.name,
+              email: displayCollector?.email,
+              phoneNumber: displayCollector?.phone_number
             });
           }
         }}
@@ -280,12 +310,11 @@ const CLProfileScreen: React.FC<RProfileScreenProps> = ({ navigation }) => {
               onPress={() => {
                 setModal1Visible(false);
                 // Reset temp user to current user data
-                if (user) {
+                if (displayCollector) {
                   setTempUser({
-                    name: user.name,
-                    email: user.email,
-                    address: user.address || "",
-                    phoneNumber: user.phoneNumber
+                    name: displayCollector?.user_name,
+                    email: displayCollector?.email,
+                    phoneNumber: displayCollector?.phone_number
                   });
                 }
               }} 
@@ -309,15 +338,7 @@ const CLProfileScreen: React.FC<RProfileScreenProps> = ({ navigation }) => {
               onChangeText={handlePhoneNumberChange}
               placeholderTextColor="#999999"
             />
-            {errors.phoneNumber ? <Text style={styles.errorText}>{errors.phoneNumber}</Text> : null}
-            <TextInput
-              style={styles.input}
-              placeholder="Address"
-              value={tempUser.address}
-              onChangeText={(text) => setTempUser({ ...tempUser, address: text })}
-              placeholderTextColor="#999999"
-            />
-            {errors.address ? <Text style={styles.errorText}>{errors.address}</Text> : null}
+            {errors.phoneNumber ? <Text style={styles.errorText}>{errors.phoneNumber}</Text> : null}            
             <View style={styles.modalButtons}>
               <TouchableOpacity
                 style={styles.saveButton}

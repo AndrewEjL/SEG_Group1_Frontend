@@ -124,7 +124,7 @@ const PickupHistoryScreen: React.FC<PickupHistoryScreenProps> = ({ navigation })
         <FlatList
           data={groupedHistoryArray}
           renderItem={renderPickupItem}
-          keyExtractor={item => item.pickup_item_id}          
+          keyExtractor={item => item.pickup_transaction_id}          
           contentContainerStyle={styles.listContainer}
         />
       )}

@@ -123,8 +123,7 @@ const PickupHistoryDetails: React.FC<PickupHistoryDetailsProps> = ({ navigation,
                     const cond = deviceCondition.find((t) => t.id === item.device_condition_id);
                     const pickup = displayOrgHistoryItem.find((t) => t.pickup_item_id === item.pickup_items_id);
                     const pickStatus = pickupStatus.find((t) => t.id === pickup?.pickup_status_id);
-                    console.log("status: "+pickup?.updateDate)
-                    console.log("name: "+pickStatus?.name)
+              
                     return(
                       <View key={item.pickup_items_id} style={styles.itemCard}>
                       <View style={styles.itemDetails}>

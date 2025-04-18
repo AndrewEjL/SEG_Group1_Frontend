@@ -2,18 +2,22 @@ import React, { useState } from "react";
 import { View, ScrollView, Text, StyleSheet, Dimensions, Alert ,Modal, TouchableOpacity} from "react-native";
 import { TextInput, Button, HelperText ,Checkbox} from "react-native-paper";
 import Icon from "react-native-vector-icons/MaterialIcons";
+import { generateCode } from "../api/user/generateCode";
+import { useClientVerify } from "../api/user/getForgotPassVerify";
+import { useOrgVerify } from "../api/organization/getOrgForgotPassVerify";
 
 const { width, height } = Dimensions.get("window");
 
 const codeVerification = ({ route,navigation }) => {
+  const { verifyEmailCode, loading, error, success } = useClientVerify();
+  const { verifyOrgEmailCode, loading: loadingOrg, error:Org, success:org } = useOrgVerify();
+  const { generate1Code, loading: loading1Code } = generateCode();
 
 const email = route?.params?.email || "";
+const initialCode = route?.params?.verifyCode || "";
+const userTypeV = route?.params?.userType || "";
+const [verificationCode, setVerificationCode] = useState(initialCode);
 
-const getVerificationCode = () => {
-    return "813hdh92922902";
-}
-
-const [verificationCode, setVerificationCode] = useState(getVerificationCode());
 const [input, setInput] = useState("");
 const [inputError, setInputError] = useState("");
 const [isLoading, setIsLoading] = useState(false);
@@ -21,22 +25,32 @@ const [isLoading, setIsLoading] = useState(false);
 
 
 const handleSubmit = () => {
-
     if(verificationCode == input){
         navigation.reset({
           index: 1,
-          routes: [{ name: 'Login' }, { name: 'ResetPassword', params: {email} }],
+          routes: [{ name: 'Login' }, { name: 'ResetPassword', params: {email, userTypeV} }],
         });
     }else{
         setInputError("Incorrect verification code ")
     }
 }
 
-const resendVerificationCode = () => {
-    setVerificationCode("82heeieoieoe");
-    Alert.alert("Success", "A new verification code has been sent to your email. Please check it.");
+const resendVerificationCode = async () => {
+  try {
+    const newCode = generate1Code.code;
+    setVerificationCode(newCode);
+    console.log("user: ",userTypeV)
+    if(userTypeV == "user"){
+      const send = await verifyEmailCode(email, newCode);
+    } else if(userTypeV === "organization"){
+      const sendOrg = await verifyOrgEmailCode(email, newCode);
+    }
+  } catch (err) {
+    console.error("Resend error:", err);
+    Alert.alert("Error", "Something went wrong.");
+  }
+};
 
-}
 
 return (
     <View

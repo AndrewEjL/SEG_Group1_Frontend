@@ -4,7 +4,7 @@ const base_api = `${ip_address}/api/organization`;
 // const base_api = "http://192.168.0.183:8080/api/organization";
 
 // check email
-export const checkEmailExists = async (email: string): Promise<boolean> => {
+export const checkEmailExistsOrg = async (email: string): Promise<boolean> => {
   try {
     const url = `${base_api}/checkEmail?email=${encodeURIComponent(email)}`;
     console.log('Fetching URL:', url.toString()); 
