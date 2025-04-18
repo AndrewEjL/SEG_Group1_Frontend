@@ -6,6 +6,8 @@ import { useRoute } from '@react-navigation/native';
 import { useItemTypes } from '../api/items/itemTypes';
 import { grabOrgHistory } from '../api/transaction/grabOrgHistory';
 import { displayItemsByItemID } from '../api/items/displayItemsByItemID';
+import { useAllClient } from '../api/user/getAllClient';
+import { useAllCollector } from '../api/organization/getAllCollector';
 
 type RootStackParamList = {
   RHome: {id:number}
@@ -55,6 +57,9 @@ const PickupHistoryScreen: React.FC<RPickupHistoryScreenProps> = ({ navigation }
   const { displayOrgHistory, loading: loadingOrgHistory} = grabOrgHistory(id);
   console.log(displayOrgHistory)
   const pickupItemID = displayOrgHistory.map(item => item.pickup_item_id);
+  const { displayAllClient, loading: loadingAllClient } = useAllClient();
+  const { allCollector, loading: loadingAllCollector } = useAllCollector();
+  console.log(allCollector)
   const { displayItems: displayItemByID, loading: loadingItems} = displayItemsByItemID(pickupItemID);
   const { itemTypes, deviceCondition, itemsStatus, pickupStatus, loadingName } = useItemTypes();
 
@@ -63,6 +68,25 @@ const PickupHistoryScreen: React.FC<RPickupHistoryScreenProps> = ({ navigation }
     if (status === 4) return '#F44336'; // Red for cancelled
     return '#FFC107'; // Default yellow
   };
+
+    // Function to get client name from clientId
+    const getClientName = (clientId: number | undefined) => {
+      if (!clientId) return "Unassigned";
+      const client = displayAllClient.find((t) => t.id === clientId)
+      return client.user_name;
+    };
+
+    const getClientEmail = (clientId: number | undefined) => {
+      if (!clientId) return "Unassigned";
+      const client = displayAllClient.find((t) => t.id === clientId)
+      return client.email;
+    };
+  
+    const getCollectorName = (collectorId: number | undefined) => {
+      if (!collectorId) return "Unassigned";
+      const collector = allCollector.find((t) => t.id === collectorId)
+      return collector.user_name;
+    };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -127,6 +151,9 @@ const PickupHistoryScreen: React.FC<RPickupHistoryScreenProps> = ({ navigation }
                             <Text style={styles.statusText}>{pickStatus?.name}</Text>
                           </View>
                           <Text style={styles.itemName}>{item.item_name}</Text>
+                          <Text style={styles.itemName}>Client: {getClientName(pickup?.user_donor_id)}</Text>
+                          <Text style={styles.itemName}>Client Email: {getClientEmail(pickup?.user_donor_id)}</Text>
+                          <Text style={styles.itemName}>Collector: {getCollectorName(pickup?.user_recipient_id)}</Text>
                           <Text style={styles.itemSubtext}>{type?.name} • {cond?.name}</Text>
                           <Text style={styles.itemDimensions}>
                             Dimensions: {item.dimension_length}×{item.dimension_width}×{item.dimension_height} cm

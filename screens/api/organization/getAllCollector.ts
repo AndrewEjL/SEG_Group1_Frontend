@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { ip_address } from '../ipAddress';
 
 export const useAllCollector = () => {
-  const [allCollector, setAllCollector] = useState<string[]>([]);
+  const [allCollector, setAllCollector] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

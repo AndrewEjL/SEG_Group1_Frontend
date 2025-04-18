@@ -18,6 +18,7 @@ import { Item } from "react-native-paper/lib/typescript/components/Drawer/Drawer
 import { updateToCompleted } from "../api/transaction/updateToCompleted.ts";
 import { updateCollectedStats } from "../api/organization/updateCollectedStats.ts";
 import { updateUserPoint } from "../api/user/updateUserPoint.ts";
+import { useAllCollector } from "../api/organization/getAllCollector.ts";
 
 type RootStackParamList = {
   CLHome: { id: number };
@@ -121,7 +122,7 @@ const CLHomeScreen: React.FC<CLHomeScreenProps> = ({ navigation }) => {
   const getDeviceConditionName = (itemId: number) => {
     if (!itemId) return "Unassigned";
     const item = displayAllItemsWS.find((t) => t.pickup_items_id === itemId);
-    const itemTypeId = item?.item_type_id;
+    const itemTypeId = item?.device_condition_id;
 
     if (!itemTypeId) return "Unknown";
     const device = deviceCondition.find((t) => t.id === itemTypeId);
