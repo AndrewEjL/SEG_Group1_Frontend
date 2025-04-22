@@ -9,6 +9,7 @@ import { useCollector } from "../api/user/getCollector";
 import { useAllOrganization } from "../api/organization/getAllOrg";
 import { updateCollector } from "../api/user/updateCollectorProfile";
 import { checkEmailExists } from "../api/organization/registerCollector";
+import { checkEmailExistsOrg } from "../api/registerOrganization";
 import { validateCollectorPass } from "../api/user/validateCollectorPass";
 import { updateCollectorPassword } from "../api/user/updateCollectorPassword";
 
@@ -92,7 +93,8 @@ const CLProfileScreen: React.FC<CLProfileScreenProps> = ({ navigation }) => {
 
     if(tempUser.email != displayCollector.email){
       const checkEmail = await checkEmailExists(tempUser.email);
-      if(checkEmail){
+      const checkEmailOrg = await checkEmailExistsOrg(tempUser.email)
+      if(checkEmail || checkEmailOrg){
         newErrors.email = "Email already exists."
       }
 
@@ -107,6 +109,7 @@ const CLProfileScreen: React.FC<CLProfileScreenProps> = ({ navigation }) => {
       setErrors(newErrors);
 
       if (!newErrors.email && !newErrors.phoneNumber && !newErrors.address) {
+        setErrors({ email: "", phoneNumber: "", address: "" });
         // Update profile using the UserContext method
         const success = await updateCollector(
           id,
@@ -293,13 +296,19 @@ const CLProfileScreen: React.FC<CLProfileScreenProps> = ({ navigation }) => {
         transparent={true}
         visible={modal1Visible}
         onRequestClose={() => {
+          setErrors({ email: "", phoneNumber: "", address: "" });
           setModal1Visible(false);
           // Reset temp user to current user data
           if (displayCollector) {
             setTempUser({
-              name: displayCollector?.name,
+              name: displayCollector?.user_name,
               email: displayCollector?.email,
               phoneNumber: displayCollector?.phone_number
+            });
+            setErrors({              
+              email: "",
+              phoneNumber: "",
+              address: ""
             });
           }
         }}
@@ -315,6 +324,11 @@ const CLProfileScreen: React.FC<CLProfileScreenProps> = ({ navigation }) => {
                     name: displayCollector?.user_name,
                     email: displayCollector?.email,
                     phoneNumber: displayCollector?.phone_number
+                  });
+                  setErrors({              
+                    email: "",
+                    phoneNumber: "",
+                    address: ""
                   });
                 }
               }} 

@@ -9,6 +9,7 @@ import { useClient } from './api/user/getClient';
 import { updateUser } from "./api/user/updateUserProfile";
 import { updatePassword } from "./api/user/updatePassword";
 import { checkEmailExists } from "./api/registerClient";
+import { checkEmailExistsOrg } from "./api/registerOrganization";
 import { validatePass } from "./api/user/validatePass";
 
 // Add type definitions for navigation
@@ -87,7 +88,8 @@ const handleSave = async () => {
   let newErrors = { email: "", phoneNumber: "", organization: "" };
   if(tempUser.email != displayClient.email){
     const emailExists = await checkEmailExists(tempUser.email);
-    if(emailExists){
+    const emailExistsOrg = await checkEmailExistsOrg(tempUser.email);
+    if(emailExists || emailExistsOrg){
       newErrors.email = "Email already exist";      
     }
   
@@ -278,11 +280,39 @@ const handleLogout = async () => {
         animationType="slide"
         transparent={true}
         visible={modal1Visible}
-        onRequestClose={() => setModal1Visible(false)}
+        onRequestClose={() => {
+          setModal1Visible(false);
+          if(displayClient){
+            setTempUser({
+              organization: displayClient?.user_name,
+              email: displayClient?.email,
+              phoneNumber: displayClient?.phone_number
+            })
+            setErrors({
+              organization: "",
+              email: "",
+              phoneNumber: ""
+            })
+          }
+        }}
       >
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
-            <TouchableOpacity onPress={() => setModal1Visible(false)} style={{ alignSelf: "flex-start" }}>
+            <TouchableOpacity onPress={() => {
+              setModal1Visible(false);
+              if(displayClient){
+                setTempUser({
+                  organization: displayClient?.user_name,
+                  email: displayClient?.email,
+                  phoneNumber: displayClient?.phone_number
+                })
+                setErrors({
+                  organization: "",
+                  email: "",
+                  phoneNumber: ""
+                })
+              }
+              }} style={{ alignSelf: "flex-start" }}>
                 <Icon name="close" size={24} color="black" />
             </TouchableOpacity>
             <Text style={styles.modalTitle}>Edit Profile</Text>

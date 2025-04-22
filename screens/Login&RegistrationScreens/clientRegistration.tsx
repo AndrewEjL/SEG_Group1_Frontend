@@ -4,6 +4,7 @@ import { TextInput, Button, HelperText ,Checkbox} from "react-native-paper";
 import Icon from "react-native-vector-icons/MaterialIcons";
 import { useUser } from "../../contexts/UserContext";
 import { checkEmailExists, registerUser } from "../api/registerClient";
+import { checkEmailExistsOrg } from "../api/registerOrganization";
 
 const { width, height } = Dimensions.get("window");
 
@@ -31,13 +32,22 @@ const isFormValid = useMemo(() => {
     email.trim() !== "" &&
     phoneNumber.trim() !== "" &&
     password.trim() !== "" &&
-    confirmPassword.trim() !== ""
+    confirmPassword.trim() !== "" &&
+    checked == true
   );
-}, [username, email, phoneNumber, password, confirmPassword]);
+}, [username, email, phoneNumber, password, confirmPassword, checked]);
 
   const handleSubmit = async () => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;//valid email format
     const passwordRegex = /^(?=.*[0-9])(?=.*[\W_]).{8,}$/;// at least 8 characters, including a number and a special character.
+
+    let hasError = false;
+    if (!checked) {
+      setUncheckedError("Please check the terms and conditions and accept before submitting your registration.");
+      hasError = true;
+    } else {
+      setUncheckedError("");
+    }
 
     setEmailError("");
     setPasswordError("");
@@ -69,7 +79,8 @@ const isFormValid = useMemo(() => {
     setIsLoading(true);
     try {
       const emailExists = await checkEmailExists(email);
-      if(emailExists){
+      const emailExistsOrg = await checkEmailExistsOrg(email);
+      if(emailExists || emailExistsOrg){
         setEmailError("Email already exist");
         setIsLoading(false);
         return;

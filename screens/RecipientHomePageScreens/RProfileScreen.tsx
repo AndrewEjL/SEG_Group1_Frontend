@@ -15,6 +15,7 @@ import { useItemTypes } from "../api/items/itemTypes";
 import { useDisplayCities } from "../api/organization/getCities";
 import RNPickerSelect from 'react-native-picker-select';
 import { checkEmailExistsOrg } from "../api/registerOrganization";
+import { checkEmailExists } from "../api/registerClient";
 import { validatePass } from "../api/organization/validatePass";
 
 // Add type definitions for navigation
@@ -106,7 +107,8 @@ const RProfileScreen: React.FC<RProfileScreenProps> = ({ navigation }) => {
     let newErrors = { email: "", phoneNumber: "", address: "" };
     if(tempUser.email!=displayOrg.email){
       const emailExists = await checkEmailExistsOrg(tempUser.email);
-      if(emailExists){
+      const emailExistsUser = await checkEmailExists(tempUser.email);
+      if(emailExists || emailExistsUser){
         newErrors.email = "Email already exist";      
       }
   
@@ -380,7 +382,21 @@ const RProfileScreen: React.FC<RProfileScreenProps> = ({ navigation }) => {
       >
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
-            <TouchableOpacity onPress={() => {setModal1Visible(false);}} style={{ alignSelf: "flex-start" }}>
+            <TouchableOpacity onPress={() => {
+              setModal1Visible(false);
+              if(displayOrg){
+                setTempUser({
+                  email: displayOrg.email || '',
+                  phoneNumber: displayOrg.phone_number || '',
+                  address: displayOrg.address || '',
+                })
+                setErrors({
+                  email: "",
+                  phoneNumber: "",
+                  address: "",
+                })
+              }
+              }} style={{ alignSelf: "flex-start" }}>
                 <Icon name="close" size={24} color="#333333" />
             </TouchableOpacity>
             <Text style={styles.modalTitle}>Edit Profile</Text>

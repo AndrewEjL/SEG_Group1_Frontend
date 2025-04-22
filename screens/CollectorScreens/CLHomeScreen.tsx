@@ -521,9 +521,9 @@ const handleViewPickup = (pickup: PickupItem) => {
       <Modal visible={modal2Visible} animationType="slide" transparent={true}>
         <View style={styles.modalContainer}>
           <View style={styles.modal1Content}>
-            <TouchableOpacity onPress={() => setModal2Visible(false)} style={{ alignSelf: "flex-start" }}>
+            {/* <TouchableOpacity onPress={() => setModal2Visible(false)} style={{ alignSelf: "flex-start" }}>
               <Icon name="close" size={24} color="#333333" />
-            </TouchableOpacity>
+            </TouchableOpacity> */}
             <Text style={styles.modalTitle}>Pickup details</Text>
 
             {selectedPickup && (
@@ -570,9 +570,9 @@ const handleViewPickup = (pickup: PickupItem) => {
       <Modal visible={modal3Visible} animationType="slide" transparent={true}>
         <View style={styles.modalContainer}>
           <View style={styles.modal1Content}>
-            <TouchableOpacity onPress={() => setModal3Visible(false)} style={{ alignSelf: "flex-start" }}>
+            {/* <TouchableOpacity onPress={() => setModal3Visible(false)} style={{ alignSelf: "flex-start" }}>
               <Icon name="close" size={24} color="#333333" />
-            </TouchableOpacity>
+            </TouchableOpacity> */}
             <Text style={styles.modalTitle}>Enter the weight of the item to completed this pickup</Text>
             <TextInput
               style={styles.input}

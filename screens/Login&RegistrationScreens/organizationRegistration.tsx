@@ -5,6 +5,7 @@ import { Dropdown } from "react-native-element-dropdown";
 import Icon from "react-native-vector-icons/MaterialIcons";
 import { useRegistrationTypes } from "../api/useRegistrationType";
 import { checkEmailExistsOrg, registerOrganization } from "../api/registerOrganization";
+import { checkEmailExists } from "../api/registerClient";
 import { registerOrganizationStats } from "../api/registerOrganizationStats";
 
 const { width, height } = Dimensions.get("window");
@@ -43,7 +44,8 @@ const OrgRegistration = ({ navigation }) => {
   setIsLoading(true);
   try{
     const emailExists = await checkEmailExistsOrg(email);
-    if(emailExists){
+    const emailExistsUser = await checkEmailExists(email);
+    if(emailExists || emailExistsUser){
       setEmailError("Email already exist");
       setIsLoading(false);
       return;
