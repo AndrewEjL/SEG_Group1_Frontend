@@ -241,7 +241,7 @@ const isFormValid = useMemo(() => {
             <Text style={styles.modalTitle}>Terms & Conditions </Text>
               <ScrollView style={styles.modalScrollView}>
               <Text style={styles.modalSubTitle}>Non-Retrievable E-Waste Policy{"\n"}</Text>
-               <Text>
+               <Text style={styles.modalBodyText}>
                  By using this application and its e-waste collection services, you acknowledge and agree to the following terms and conditions:{"\n\n"}
                  1) All items submitted through the e-waste collection service — including but not limited to used electronics, electrical appliances, batteries, and related components — are classified as e-waste.{"\n\n"}
                  2) Once collected by the assigned or authorized recycling facility, these items are considered permanently surrendered and non-retrievable.{"\n\n"}
@@ -353,6 +353,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginBottom: 20,
     color: "#333333",
+  },
+  modalBodyText: {
+    color: "#333333",
+    fontSize: 14,
   },
   modalScrollView: {
     width: '100%',
